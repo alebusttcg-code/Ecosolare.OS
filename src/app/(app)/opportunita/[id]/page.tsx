@@ -3,12 +3,23 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Badge, Card, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { getDb } from '@/db'
-import { activities, contacts, opportunities, opportunityStatusHistory, users } from '@/db/schema'
+import {
+  activities,
+  contacts,
+  opportunities,
+  opportunityStatusHistory,
+  surveyTemplates,
+  surveys,
+  users,
+} from '@/db/schema'
 import { guard } from '@/lib/auth/session'
 import { getStages } from '@/lib/queries/pipeline'
 import { getQuotesForOpportunity } from '@/lib/queries/quotes'
+import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnaire'
 import { CambiaStato } from './cambia-stato'
 import { NuovoPreventivo } from './nuovo-preventivo'
+import { NuovoSopralluogo } from './nuovo-sopralluogo'
+import { Prequalifica } from './prequalifica'
 
 export const metadata = { title: 'Opportunita — EcoSolare OS' }
 
@@ -38,7 +49,8 @@ export default async function OpportunitaDettaglioPage({
 
   if (!riga) notFound()
 
-  const [stages, storico, attivitaAperte, preventivi] = await Promise.all([
+  const [stages, storico, attivitaAperte, preventivi, sopralluoghi, templatePrequalifica] =
+    await Promise.all([
     getStages(),
     db
       .select()
@@ -51,6 +63,26 @@ export default async function OpportunitaDettaglioPage({
       .where(and(eq(activities.opportunityId, id), eq(activities.isNextAction, true)))
       .limit(1),
     getQuotesForOpportunity(id),
+    db
+      .select({
+        id: surveys.id,
+        status: surveys.status,
+        completedAt: surveys.completedAt,
+        hasCriticalIssues: surveys.hasCriticalIssues,
+        estimatedPowerKw: surveys.estimatedPowerKw,
+        templateName: surveyTemplates.name,
+      })
+      .from(surveys)
+      .innerJoin(surveyTemplates, eq(surveyTemplates.id, surveys.templateId))
+      .where(eq(surveys.opportunityId, id))
+      .orderBy(desc(surveys.createdAt)),
+    db.query.surveyTemplates.findFirst({
+      where: and(
+        eq(surveyTemplates.kind, 'prequalifica'),
+        eq(surveyTemplates.isActive, true),
+      ),
+      orderBy: desc(surveyTemplates.version),
+    }),
   ])
 
   const opp = riga.opp
@@ -102,6 +134,56 @@ export default async function OpportunitaDettaglioPage({
               </p>
             ) : (
               <Vuoto messaggio="Opportunita chiusa: nessuna azione in sospeso." />
+            )}
+          </Card>
+
+          {templatePrequalifica ? (
+            <Card title="Prequalifica">
+              <Prequalifica
+                opportunityId={opp.id}
+                templateId={templatePrequalifica.id}
+                definizione={templatePrequalifica.definition as DefinizioneQuestionario}
+                risposteIniziali={(opp.prequalification ?? {}) as Risposte}
+                punteggioSalvato={
+                  opp.score !== null && opp.scoreMax !== null
+                    ? { punteggio: opp.score, massimo: opp.scoreMax }
+                    : null
+                }
+              />
+            </Card>
+          ) : null}
+
+          <Card
+            title="Sopralluoghi"
+            action={<NuovoSopralluogo opportunityId={opp.id} />}
+          >
+            {sopralluoghi.length === 0 ? (
+              <Vuoto messaggio="Nessun sopralluogo per questa opportunita." />
+            ) : (
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo)' }}>
+                {sopralluoghi.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <Link
+                        href={`/sopralluoghi/${s.id}`}
+                        className="text-sm font-medium text-eco-blue-500 hover:underline"
+                      >
+                        {s.templateName}
+                      </Link>
+                      <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                        {s.status === 'completato'
+                          ? `completato il ${formattaData(s.completedAt)}`
+                          : 'in compilazione'}
+                        {s.estimatedPowerKw ? ` · ${s.estimatedPowerKw} kWp` : ''}
+                      </div>
+                    </div>
+                    {s.hasCriticalIssues ? <Badge tone="attenzione">Criticita</Badge> : null}
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
 

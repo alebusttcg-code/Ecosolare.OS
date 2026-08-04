@@ -1,6 +1,8 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { appSettings, leadSources, pipelineStages } from './schema'
+import { appSettings, leadSources, pipelineStages, surveyTemplates } from './schema'
+import { PREQUALIFICA_FV } from './templates/prequalifica-fv'
+import { SOPRALLUOGO_FV } from './templates/sopralluogo-fv'
 
 /**
  * Dati di configurazione iniziali.
@@ -174,6 +176,31 @@ async function main(): Promise<void> {
       )
       .onConflictDoNothing()
     console.log(`Configurazioni: ${CONFIGURAZIONI.length} verificate.`)
+
+    // I template sono versionati: il seed non sovrascrive mai una versione
+    // esistente, cosi' i questionari gia' compilati restano leggibili.
+    await db
+      .insert(surveyTemplates)
+      .values([
+        {
+          code: PREQUALIFICA_FV.code,
+          version: PREQUALIFICA_FV.version,
+          kind: 'prequalifica' as const,
+          name: PREQUALIFICA_FV.name,
+          businessLine: 'fotovoltaico' as const,
+          definition: PREQUALIFICA_FV,
+        },
+        {
+          code: SOPRALLUOGO_FV.code,
+          version: SOPRALLUOGO_FV.version,
+          kind: 'sopralluogo' as const,
+          name: SOPRALLUOGO_FV.name,
+          businessLine: 'fotovoltaico' as const,
+          definition: SOPRALLUOGO_FV,
+        },
+      ])
+      .onConflictDoNothing()
+    console.log('Questionari: 2 verificati (prequalifica e sopralluogo fotovoltaico).')
 
     console.log('Seed completato.')
   } finally {

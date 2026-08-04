@@ -472,7 +472,10 @@ export const opportunities = pgTable(
 
     /** Risposte di prequalifica (ADR-004). Il template arriva in Fase 2. */
     prequalification: jsonb('prequalification'),
+    /** Template con cui la prequalifica e' stata compilata: serve a rileggerla. */
+    prequalificationTemplateId: uuid('prequalification_template_id'),
     score: integer('score'),
+    scoreMax: integer('score_max'),
     scoreComputedAt: timestamp('score_computed_at', { withTimezone: true }),
 
     notes: text('notes'),
@@ -636,12 +639,22 @@ export const products = pgTable(
  * La versione non si modifica: se ne crea una nuova, cosi' i sopralluoghi storici
  * restano leggibili con la checklist con cui sono stati compilati.
  */
+/**
+ * Prequalifica e sopralluogo condividono struttura e motore (§5.3 e §5.6):
+ * cambiano il momento in cui si compilano e cosa bloccano.
+ */
+export const questionnaireKind = pgEnum('questionnaire_kind', [
+  'prequalifica',
+  'sopralluogo',
+])
+
 export const surveyTemplates = pgTable(
   'survey_templates',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     code: text('code').notNull(),
     version: integer('version').notNull().default(1),
+    kind: questionnaireKind('kind').notNull().default('sopralluogo'),
     name: text('name').notNull(),
     businessLine: businessLine('business_line').notNull(),
     definition: jsonb('definition').notNull(),
