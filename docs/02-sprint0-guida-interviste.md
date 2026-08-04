@@ -123,7 +123,7 @@ Questa è l'intervista che più spesso viene saltata ed è quella che decide se 
 2. Quante volte in una settimana devi telefonare per avere un'informazione che avresti dovuto avere?
 3. Quante volte arrivi sul posto e manca qualcosa — materiale, un documento, il cliente?
 4. Come segni le ore oggi? E i materiali usati?
-5. Il rapportino: su cosa lo scrivi, quando, e che fine fa?
+5. Il foglio di lavoro: su cosa lo scrivi, quando, e che fine fa?
 6. Le foto di cantiere: le fai? Dove finiscono?
 7. Se dovessi fare tutto questo dal telefono, cosa ti farebbe smettere di usarlo dopo due giorni?
 8. Che telefono usi, è tuo o aziendale, e in cantiere prende? *(→ A8, R8)*
@@ -150,7 +150,7 @@ Da chiedere durante o subito dopo le interviste. Senza questi si costruisce su i
 - [ ] Il contratto tipo attualmente usato
 - [ ] Il listino materiali, in qualunque forma esista (anche un Excel disordinato)
 - [ ] La checklist documenti per una pratica fotovoltaica, se esiste in forma scritta
-- [ ] Un rapportino di cantiere compilato
+- [ ] Un foglio di lavoro di cantiere compilato
 - [ ] Export dell'anagrafica clienti dallo strumento attuale
 - [ ] Testo dell'informativa privacy attualmente in uso sul sito, se esiste
 - [ ] 2–3 esempi di comunicazione tipo inviata ai clienti (email o WhatsApp)

@@ -6,6 +6,7 @@ import { puoModificare, type StatoVersione } from '@/lib/domain/quote-lifecycle'
 import { getCatalogo, getQuoteVersion } from '@/lib/queries/quotes'
 import { CHIAVI_MARGINE, getSetting } from '@/lib/settings'
 import { AzioniPreventivo } from './azioni'
+import { RegistraFirma } from './firma'
 import { EditorPreventivo } from './editor'
 
 export const metadata = { title: 'Preventivo — EcoSolare OS' }
@@ -108,6 +109,12 @@ export default async function PreventivoPage({
               stato={stato}
             />
           </Card>
+
+          {stato === 'inviato' || stato === 'accettato' ? (
+            <Card title="Contratto" accento="oro">
+              <RegistraFirma versionId={dati.versione.id} />
+            </Card>
+          ) : null}
 
           <Card title="Versioni">
             <ul className="space-y-2 text-sm">

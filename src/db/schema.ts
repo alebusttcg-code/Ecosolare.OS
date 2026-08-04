@@ -871,6 +871,434 @@ export const approvals = pgTable(
   ],
 )
 
+/* ========================================================================== */
+/*  FASE 3 — Contratto, commessa, documenti, materiali                         */
+/* ========================================================================== */
+
+export const contracts = pgTable(
+  'contracts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull().unique(),
+    opportunityId: uuid('opportunity_id')
+      .notNull()
+      .references(() => opportunities.id, { onDelete: 'restrict' }),
+    /** La versione di preventivo accettata: il contratto non nasce dal nulla. */
+    quoteVersionId: uuid('quote_version_id')
+      .notNull()
+      .references(() => quoteVersions.id, { onDelete: 'restrict' }),
+
+    signedAt: timestamp('signed_at', { withTimezone: true }).notNull(),
+    /** Come è stata raccolta la firma: elettronica, cartacea, scansione. */
+    signatureMethod: text('signature_method').notNull().default('cartacea'),
+    amountNet: numeric('amount_net', { precision: 14, scale: 2 }).notNull(),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [index('contracts_opportunity_idx').on(table.opportunityId)],
+)
+
+/**
+ * Stati della commessa, configurabili come quelli della pipeline (§5.10).
+ *
+ * `requiresReadiness` marca gli stati in cui il cantiere sta per partire: da lì
+ * in poi la pianificabilità non è più un'informazione, è un prerequisito.
+ */
+export const projectStages = pgTable('project_stages', {
+  code: text('code').primaryKey(),
+  label: text('label').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+  requiresReadiness: boolean('requires_readiness').notNull().default(false),
+  isClosed: boolean('is_closed').notNull().default(false),
+  isSuspended: boolean('is_suspended').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+})
+
+export const projects = pgTable(
+  'projects',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull().unique(),
+
+    contractId: uuid('contract_id')
+      .notNull()
+      .references(() => contracts.id, { onDelete: 'restrict' })
+      .unique(),
+    contactId: uuid('contact_id')
+      .notNull()
+      .references(() => contacts.id, { onDelete: 'restrict' }),
+    siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+    businessLine: businessLine('business_line').notNull(),
+    title: text('title').notNull(),
+
+    stage: text('stage')
+      .notNull()
+      .references(() => projectStages.code),
+    stageSince: timestamp('stage_since', { withTimezone: true }).notNull().defaultNow(),
+
+    /** Responsabile della commessa: senza, nessuno la porta avanti. */
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+
+    /* Valori congelati alla firma: il consuntivo si confronta con questi. */
+    revenueNet: numeric('revenue_net', { precision: 14, scale: 2 }).notNull(),
+    estimatedCost: numeric('estimated_cost', { precision: 14, scale: 2 }),
+    estimatedMargin: numeric('estimated_margin', { precision: 14, scale: 2 }),
+
+    /* Pianificabilità, ricalcolata a ogni evento e conservata per gli elenchi. */
+    readinessState: text('readiness_state').notNull().default('non_pianificabile'),
+    readinessBlockers: jsonb('readiness_blockers'),
+    readinessComputedAt: timestamp('readiness_computed_at', { withTimezone: true }),
+    /** Da quando la commessa è ferma: alimenta il KPI «giorni di blocco». */
+    blockedSince: timestamp('blocked_since', { withTimezone: true }),
+
+    technicalCheckDoneAt: timestamp('technical_check_done_at', { withTimezone: true }),
+    clientConfirmedAt: timestamp('client_confirmed_at', { withTimezone: true }),
+
+    plannedStartAt: timestamp('planned_start_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    notes: text('notes'),
+
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('projects_stage_idx').on(table.stage),
+    index('projects_readiness_idx').on(table.readinessState),
+    index('projects_owner_idx').on(table.ownerId),
+    index('projects_contact_idx').on(table.contactId),
+  ],
+)
+
+export const projectStatusHistory = pgTable(
+  'project_status_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    fromStage: text('from_stage'),
+    toStage: text('to_stage').notNull(),
+    daysInPreviousStage: integer('days_in_previous_stage'),
+    note: text('note'),
+    changedBy: uuid('changed_by').references(() => users.id, { onDelete: 'set null' }),
+    changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('project_history_project_idx').on(table.projectId)],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Task e checklist                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Modelli di task creati all'apertura di una commessa.
+ *
+ * In tabella e non nel codice: l'elenco vero uscirà dall'audit, e cambiarlo
+ * dev'essere una riga da modificare, non un rilascio.
+ */
+export const taskTemplates = pgTable('task_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  businessLine: businessLine('business_line'),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  /** Ruolo a cui assegnarlo, se non è indicata una persona. */
+  defaultRole: userRole('default_role'),
+  /** Giorni dalla firma entro cui va completato. */
+  dueDaysFromStart: integer('due_days_from_start'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+})
+
+export const projectTasks = pgTable(
+  'project_tasks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    description: text('description'),
+    assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
+    dueAt: timestamp('due_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('project_tasks_project_idx').on(table.projectId, table.sortOrder)],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Documenti                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export const documentStatus = pgEnum('document_status', [
+  'richiesto',
+  'caricato',
+  'da_verificare',
+  'approvato',
+  'respinto',
+  'scaduto',
+  'non_necessario',
+])
+
+/** Modelli di checklist documentale, per linea di business. */
+export const documentTemplates = pgTable('document_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  businessLine: businessLine('business_line'),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  mandatory: boolean('mandatory').notNull().default(true),
+  /** Chi deve procurarlo: il cliente o l'azienda. */
+  providedByClient: boolean('provided_by_client').notNull().default(false),
+  defaultRole: userRole('default_role'),
+  dueDaysFromStart: integer('due_days_from_start'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+})
+
+/**
+ * Requisito documentale su una commessa.
+ *
+ * Il requisito esiste anche quando il file non c'è: è proprio questo che
+ * permette di rispondere a «quali documenti mancano» (§5.9). Basare la
+ * checklist sui file presenti direbbe solo cosa è già arrivato.
+ */
+export const documentRequirements = pgTable(
+  'document_requirements',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    templateId: uuid('template_id').references(() => documentTemplates.id, {
+      onDelete: 'set null',
+    }),
+
+    code: text('code').notNull(),
+    label: text('label').notNull(),
+    mandatory: boolean('mandatory').notNull().default(true),
+    providedByClient: boolean('provided_by_client').notNull().default(false),
+
+    status: documentStatus('status').notNull().default('richiesto'),
+    /** Da quando è in questo stato: alimenta i giorni di blocco. */
+    statusSince: timestamp('status_since', { withTimezone: true }).notNull().defaultNow(),
+
+    responsibleId: uuid('responsible_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    dueAt: timestamp('due_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+
+    rejectionReason: text('rejection_reason'),
+    verifiedBy: uuid('verified_by').references(() => users.id, { onDelete: 'set null' }),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+
+    lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('doc_req_project_idx').on(table.projectId, table.sortOrder),
+    index('doc_req_status_idx').on(table.status),
+    uniqueIndex('doc_req_project_code_idx').on(table.projectId, table.code),
+  ],
+)
+
+/**
+ * File caricati a fronte di un requisito.
+ *
+ * Metadati strutturati, mai il solo nome del file (§5.9). Il file vive
+ * nell'object storage; qui resta la chiave e tutto ciò che serve a capirlo.
+ */
+export const documentFiles = pgTable(
+  'document_files',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requirementId: uuid('requirement_id')
+      .notNull()
+      .references(() => documentRequirements.id, { onDelete: 'cascade' }),
+    versionNo: integer('version_no').notNull().default(1),
+
+    storageKey: text('storage_key').notNull(),
+    filename: text('filename').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    checksum: text('checksum'),
+
+    /** Chi l'ha caricato: interno, cliente via link firmato, automazione. */
+    source: text('source').notNull().default('interno'),
+    uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('doc_files_req_version_idx').on(table.requirementId, table.versionNo),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Pratiche                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export const practiceStatus = pgEnum('practice_status', [
+  'da_preparare',
+  'in_preparazione',
+  'inviata',
+  'approvata',
+  'respinta',
+])
+
+export const projectPractices = pgTable(
+  'project_practices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    label: text('label').notNull(),
+    /** Se true, dev'essere almeno inviata perché il cantiere possa partire. */
+    blocking: boolean('blocking').notNull().default(false),
+    /** Gestita internamente o da un consulente esterno (domanda B10). */
+    handledExternally: boolean('handled_externally').notNull().default(false),
+
+    status: practiceStatus('status').notNull().default('da_preparare'),
+    statusSince: timestamp('status_since', { withTimezone: true }).notNull().defaultNow(),
+    responsibleId: uuid('responsible_id').references(() => users.id, { onDelete: 'set null' }),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    referenceNumber: text('reference_number'),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('practices_project_idx').on(table.projectId)],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Fornitori e materiali                                                      */
+/* -------------------------------------------------------------------------- */
+
+export const suppliers = pgTable('suppliers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  vatNumber: text('vat_number'),
+  email: text('email'),
+  phone: text('phone'),
+  /** Giorni medi fra ordine e consegna: serve a capire quando ordinare. */
+  leadTimeDays: integer('lead_time_days'),
+  notes: text('notes'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const materialStatus = pgEnum('material_status', [
+  'da_ordinare',
+  'ordinato',
+  'parzialmente_consegnato',
+  'consegnato',
+  'non_disponibile',
+])
+
+/**
+ * Distinta materiali della commessa.
+ *
+ * Nasce dalle righe del preventivo accettato, poi vive di vita propria: quello
+ * che si ordina non coincide sempre con quello che si è preventivato, ed è
+ * proprio quella differenza che erode il margine.
+ */
+export const projectMaterials = pgTable(
+  'project_materials',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
+    description: text('description').notNull(),
+    unit: text('unit').notNull().default('pz'),
+
+    quantityPlanned: numeric('quantity_planned', { precision: 12, scale: 3 }).notNull(),
+    quantityOrdered: numeric('quantity_ordered', { precision: 12, scale: 3 })
+      .notNull()
+      .default('0'),
+    quantityReceived: numeric('quantity_received', { precision: 12, scale: 3 })
+      .notNull()
+      .default('0'),
+
+    /** Senza questo il cantiere non parte. Lo decide l'ufficio tecnico. */
+    critical: boolean('critical').notNull().default(false),
+
+    status: materialStatus('status').notNull().default('da_ordinare'),
+    statusSince: timestamp('status_since', { withTimezone: true }).notNull().defaultNow(),
+
+    /* Costo previsto congelato dal preventivo, costo reale dagli ordini. */
+    estimatedUnitCost: numeric('estimated_unit_cost', { precision: 14, scale: 4 }),
+    actualUnitCost: numeric('actual_unit_cost', { precision: 14, scale: 4 }),
+
+    supplierId: uuid('supplier_id').references(() => suppliers.id, { onDelete: 'set null' }),
+    expectedAt: timestamp('expected_at', { withTimezone: true }),
+    responsibleId: uuid('responsible_id').references(() => users.id, { onDelete: 'set null' }),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('project_materials_project_idx').on(table.projectId),
+    index('project_materials_status_idx').on(table.status),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Piano pagamenti                                                            */
+/* -------------------------------------------------------------------------- */
+
+export const paymentMilestoneStatus = pgEnum('payment_milestone_status', [
+  'previsto',
+  'fatturato',
+  'incassato',
+  'insoluto',
+])
+
+export const paymentMilestones = pgTable(
+  'payment_milestones',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    /** Percentuale dell'imponibile, se la scadenza è definita in quota. */
+    percentage: numeric('percentage', { precision: 5, scale: 2 }),
+    amountNet: numeric('amount_net', { precision: 14, scale: 2 }).notNull(),
+
+    /** Se true, il suo mancato incasso può bloccare la partenza del cantiere. */
+    blocksStart: boolean('blocks_start').notNull().default(false),
+
+    status: paymentMilestoneStatus('status').notNull().default('previsto'),
+    dueAt: timestamp('due_at', { withTimezone: true }),
+    invoicedAt: timestamp('invoiced_at', { withTimezone: true }),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('payment_milestones_project_idx').on(table.projectId, table.sortOrder)],
+)
+
 /* -------------------------------------------------------------------------- */
 
 export type User = typeof users.$inferSelect
@@ -899,3 +1327,15 @@ export type QuoteVersion = typeof quoteVersions.$inferSelect
 export type QuoteLine = typeof quoteLines.$inferSelect
 export type NewQuoteLine = typeof quoteLines.$inferInsert
 export type Approval = typeof approvals.$inferSelect
+
+export type Contract = typeof contracts.$inferSelect
+export type ProjectStage = typeof projectStages.$inferSelect
+export type Project = typeof projects.$inferSelect
+export type NewProject = typeof projects.$inferInsert
+export type ProjectTask = typeof projectTasks.$inferSelect
+export type DocumentRequirement = typeof documentRequirements.$inferSelect
+export type DocumentFile = typeof documentFiles.$inferSelect
+export type ProjectPractice = typeof projectPractices.$inferSelect
+export type Supplier = typeof suppliers.$inferSelect
+export type ProjectMaterial = typeof projectMaterials.$inferSelect
+export type PaymentMilestone = typeof paymentMilestones.$inferSelect

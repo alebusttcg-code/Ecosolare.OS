@@ -60,4 +60,18 @@ export function getDb(): ReturnType<typeof buildDb> {
 }
 
 export type Database = ReturnType<typeof getDb>
+
+/** Il gestore di transazione passato a `db.transaction(...)`. */
+export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+
+/**
+ * Chi esegue una query: il database o una transazione in corso.
+ *
+ * Serve a rendere impossibile un errore che abbiamo già commesso: chiamare
+ * `getDb()` DENTRO una transazione. Quella query userebbe una connessione
+ * diversa, quindi non vedrebbe le righe non ancora committate — e con un pool
+ * da una sola connessione si blocca aspettando se stessa.
+ */
+export type Esecutore = Database | Transaction
+
 export { schema }

@@ -3,7 +3,7 @@
 import { and, desc, eq, like, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getDb } from '@/db'
+import { getDb, type Esecutore } from '@/db'
 import { activities, opportunities, opportunityStatusHistory } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
@@ -23,9 +23,9 @@ const STATO_INIZIALE = 'nuovo'
  * per ogni prefisso. Se la numerazione dovra' allinearsi al gestionale contabile
  * (D-004), questo e' il punto da cambiare.
  */
-async function prossimoCodice(anno: number): Promise<string> {
+async function prossimoCodice(db: Esecutore, anno: number): Promise<string> {
   const prefisso = `OPP-${anno}-`
-  const [ultima] = await getDb()
+  const [ultima] = await db
     .select({ code: opportunities.code })
     .from(opportunities)
     .where(like(opportunities.code, `${prefisso}%`))
@@ -93,7 +93,7 @@ export async function createOpportunity(
 
   const db = getDb()
   const creata = await db.transaction(async (tx) => {
-    const code = await prossimoCodice(new Date().getFullYear())
+    const code = await prossimoCodice(tx, new Date().getFullYear())
 
     const [opp] = await tx
       .insert(opportunities)

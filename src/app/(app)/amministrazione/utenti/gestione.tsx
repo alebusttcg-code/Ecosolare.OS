@@ -9,7 +9,7 @@ const RUOLI: readonly { value: Role; label: string; descrizione: string }[] = [
   { value: 'amministratore', label: 'Amministratore', descrizione: 'Accesso completo, configurazioni, utenti, audit' },
   { value: 'contabilita', label: 'Contabilita', descrizione: 'Fatture, pagamenti, documenti, pratiche' },
   { value: 'commerciale', label: 'Commerciale', descrizione: 'Lead, opportunita, sopralluoghi, preventivi' },
-  { value: 'cantiere', label: 'Cantiere', descrizione: 'Materiali, pianificazione, esecuzione, rapportini' },
+  { value: 'cantiere', label: 'Cantiere', descrizione: 'Materiali, pianificazione, esecuzione, fogli di lavoro' },
 ]
 
 export interface UtenteInElenco {

@@ -140,7 +140,7 @@ Quattro ruoli, allineati alle aree funzionali dell'azienda invece che ai livelli
 | `amministratore` | Tutto, incluse configurazioni, utenti, integrazioni e audit |
 | `contabilita` | Ciclo amministrativo: fatture, pagamenti, incassi, scadenze, documenti e pratiche |
 | `commerciale` | Ciclo di vendita: lead, opportunità, sopralluoghi, preventivi, follow-up |
-| `cantiere` | Ciclo operativo: verifica tecnica, materiali, pianificazione, esecuzione, rapportini |
+| `cantiere` | Ciclo operativo: verifica tecnica, materiali, pianificazione, esecuzione, fogli di lavoro |
 
 **Perché quattro e non otto (brief) né due (D-005).** Otto ruoli descrivevano mansioni, non responsabilità di processo: in un'azienda di questa dimensione una persona ne ricopre tre o quattro, e la matrice diventa un costo di manutenzione senza beneficio. Due ruoli erano al di sotto della soglia in cui i permessi hanno un senso economico. Quattro corrispondono ai quattro tratti del ciclo *vendo → apro e amministro → costruisco → incasso*, che è come il lavoro è realmente organizzato.
 
@@ -166,7 +166,7 @@ Default per ruolo: `amministratore` ✅ · `contabilita` ✅ · `commerciale` �
 Il commerciale vede prezzo di vendita, margine **percentuale** e l'indicatore sopra/sotto soglia — che è quanto gli serve per negoziare — ma non i prezzi di acquisto dei fornitori. Il responsabile cantieri che deve presidiare il budget di commessa lo ottiene con un click.
 
 **`is_field_only`** — vista di campo soltanto (Fase 4, non nell'MVP).
-Si applica sopra il ruolo `cantiere` e distingue l'installatore dal responsabile: accede solo ai lavori assegnati, checklist, foto, ore e rapportini; nessun importo. Non è (solo) una restrizione di sicurezza: su uno schermo da 6 pollici, mostrare l'intero gestionale a un installatore garantisce che non lo userà.
+Si applica sopra il ruolo `cantiere` e distingue l'installatore dal responsabile: accede solo ai lavori assegnati, checklist, foto, ore e fogli di lavoro; nessun importo. Non è (solo) una restrizione di sicurezza: su uno schermo da 6 pollici, mostrare l'intero gestionale a un installatore garantisce che non lo userà.
 
 ### Regole trasversali
 

@@ -26,6 +26,7 @@ const VOCI: readonly (VoceMenu & { resource: Resource })[] = [
   { href: '/opportunita', label: 'Opportunità', icona: '◭', gruppo: 'operativo', resource: 'opportunity' },
   { href: '/sopralluoghi', label: 'Sopralluoghi', icona: '⌂', gruppo: 'operativo', resource: 'survey' },
   { href: '/preventivi', label: 'Preventivi', icona: '€', gruppo: 'operativo', resource: 'quote' },
+  { href: '/commesse', label: 'Commesse', icona: '◫', gruppo: 'operativo', resource: 'project' },
   { href: '/attivita', label: 'Attività', icona: '✓', gruppo: 'operativo', resource: 'activity' },
   { href: '/approvazioni', label: 'Approvazioni', icona: '⚑', gruppo: 'amministrazione', resource: 'quote_approval' },
   { href: '/amministrazione/utenti', label: 'Utenti', icona: '◇', gruppo: 'amministrazione', resource: 'user' },

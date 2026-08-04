@@ -33,3 +33,6 @@ npm-debug.log*
 /tmp/
 *.local.csv
 docs/baseline-kpi-compilato*.csv
+
+# Archivio documenti locale (in produzione: Supabase Storage)
+.archivio/

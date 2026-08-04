@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import { and, asc, desc, eq, isNull, like, or } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { getDb } from '@/db'
+import { getDb, type Esecutore } from '@/db'
 import {
   activities,
   contacts,
@@ -74,9 +74,9 @@ async function scegliProprietario(): Promise<string | null> {
   return amministratore?.id ?? null
 }
 
-async function prossimoCodice(anno: number): Promise<string> {
+async function prossimoCodice(db: Esecutore, anno: number): Promise<string> {
   const prefisso = `OPP-${anno}-`
-  const [ultima] = await getDb()
+  const [ultima] = await db
     .select({ code: opportunities.code })
     .from(opportunities)
     .where(like(opportunities.code, `${prefisso}%`))
@@ -231,7 +231,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       contactId = nuovo!.id
     }
 
-    const code = await prossimoCodice(new Date().getFullYear())
+    const code = await prossimoCodice(tx, new Date().getFullYear())
     const [opp] = await tx
       .insert(opportunities)
       .values({

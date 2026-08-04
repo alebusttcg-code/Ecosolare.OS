@@ -32,7 +32,7 @@ voleva risolvere.
 | **1 — Fondamenta** | Auth, ruoli, anagrafiche, intake, pipeline, attività | ✅ **Completa** |
 | **2 — Vendita** | Prequalifica, sopralluoghi, preventivi, follow-up, documenti, firma | 🟡 **~60%** |
 | **3 — Commessa** | Apertura da contratto, materiali, fornitori, readiness | ❌ Non iniziata |
-| **4 — Cantieri** | Squadre, pianificazione, PWA tecnici, ore, rapportini | ❌ Non iniziata |
+| **4 — Cantieri** | Squadre, pianificazione, PWA tecnici, ore, fogli di lavoro | ❌ Non iniziata |
 | **5 — Controllo economico** | Costi reali, consuntivi, margine reale, incassi | ❌ Non iniziata |
 | **6 — Post-vendita e AI** | Ticket, manutenzioni, recensioni, assistenti | ❌ Non iniziata |
 
@@ -74,7 +74,7 @@ passa dalla Cloud API (B14).
 | 13 | Cantieri pianificabili distinti da non pianificabili | ❌ |
 | 14 | Materiali e documenti bloccanti visibili | ❌ |
 | 15 | Tecnici e squadre vedono ciò che serve | 🟡 permessi pronti, interfaccia di campo no |
-| 16 | Ore e rapportini registrati | ❌ |
+| 16 | Ore e fogli di lavoro registrati | ❌ |
 | 17 | Costi previsti e reali confrontabili | ❌ |
 | 18 | Il margine reale è calcolabile | ❌ |
 | 19 | I ticket sono tracciati | ❌ |

@@ -16,7 +16,7 @@ Non solo quelle andate bene. La proporzione giusta è indicativamente:
 
 Se prendi solo le pratiche riuscite, la baseline risulterà migliore della realtà e a fine progetto i miglioramenti sembreranno inferiori a quelli veri.
 
-**2. Ricostruisci ogni riga da ciò che esiste:** WhatsApp, email, Google Calendar, fatture, bolle di consegna, rapportini cartacei.
+**2. Ricostruisci ogni riga da ciò che esiste:** WhatsApp, email, Google Calendar, fatture, bolle di consegna, fogli di lavoro cartacei.
 
 **3. Accetta l'approssimazione.** "Circa 4 giorni" è un dato utilizzabile. Aspettare il dato esatto significa non finire mai.
 
@@ -47,11 +47,11 @@ Apri [`baseline-kpi-template.csv`](baseline-kpi-template.csv) in Google Sheets (
 | `esito` | `vinto` / `perso` / `aperto` | — |
 | `motivo_perdita` | Prezzo, tempi, concorrente, silenzio, non idoneo… | Memoria |
 | `data_firma` | Firma o accettazione | Contratto |
-| `data_inizio_cantiere` | Primo giorno di lavoro in campo | Rapportini, calendar |
-| `data_fine_cantiere` | Ultimo giorno | Rapportini |
+| `data_inizio_cantiere` | Primo giorno di lavoro in campo | Fogli di lavoro, calendar |
+| `data_fine_cantiere` | Ultimo giorno | Fogli di lavoro |
 | `giorni_blocco` | Giorni in cui la commessa è stata ferma in attesa di qualcosa | Stima |
 | `motivo_blocco` | Documenti, materiali, pratica, cliente, meteo, altro | — |
-| `ore_previste` / `ore_effettive` | Ore di manodopera | Preventivo / rapportini |
+| `ore_previste` / `ore_effettive` | Ore di manodopera | Preventivo / fogli di lavoro |
 | `costo_materiali_previsto` / `costo_materiali_reale` | Materiali | Preventivo / fatture fornitore |
 | `data_fattura_saldo` / `data_incasso_saldo` | Fatturazione e incasso del saldo | Contabilità |
 | `note` | Qualunque cosa sia andata storta | — |

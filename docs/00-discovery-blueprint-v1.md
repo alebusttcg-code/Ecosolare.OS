@@ -179,7 +179,7 @@ Per ognuna è indicata la risposta di default che verrà assunta in assenza di r
 | **Ufficio tecnico** | Progettare senza rilavorare | Dati sopralluogo, verifica tecnica, distinta, pratiche | Riceve sopralluoghi incompleti e ricontatta il cliente |
 | **Back-office** | Chiudere le pratiche | Documenti, scadenze, solleciti, stato amministrativo | Insegue documenti via WhatsApp senza traccia |
 | **Responsabile cantieri** | Far partire cantieri che non si fermano | Pianificazione, squadre, materiali, avanzamento | Scopre i blocchi la mattina stessa |
-| **Tecnico / Installatore** | Sapere cosa fare, con meno carta possibile | Lavori del giorno, checklist, foto, ore, rapportino | Telefonate per informazioni, rapportini su carta |
+| **Tecnico / Installatore** | Sapere cosa fare, con meno carta possibile | Lavori del giorno, checklist, foto, ore, foglio di lavoro | Telefonate per informazioni, fogli di lavoro su carta |
 | **Amministrazione** | Incassare puntualmente | Piano pagamenti, stato incassi, costi reali | Nessuna visibilità sul consuntivo di commessa |
 | **Cliente finale** | Capire a che punto è il suo impianto | Caricare documenti, confermare appuntamenti, firmare | Chiama per chiedere aggiornamenti |
 
@@ -218,7 +218,7 @@ flowchart TD
     P -->|Bloccato| P1[Motivo di blocco visibile<br/>+ responsabile + alert]
     P -->|Pianificabile| Q[Pianificazione squadra + data]
     Q --> R[Esecuzione: checklist, foto, ore, materiali usati, extra]
-    R --> S[Chiusura cantiere + collaudo + rapportino firmato]
+    R --> S[Chiusura cantiere + collaudo + foglio di lavoro firmato]
     S --> T[Consuntivo: costi reali vs previsti, margine reale]
     S --> U[Fascicolo finale, garanzie, impianto creato]
     U --> V[Post-vendita: manutenzioni, recensione, referral, cross-selling]
@@ -277,7 +277,7 @@ Questa singola funzione produce: la lista "cantieri pianificabili", gli alert di
 | M12 Comunicazioni | Email, WhatsApp, SMS, log, template | ✅ (solo email) | M0 |
 | M13 Materiali & fornitori | Catalogo, distinta, ordini, consegne | ❌ Fase 3 | M10 |
 | M14 Pianificazione cantieri | Calendario squadre, work order, conflitti | ❌ Fase 4 | M10, M13 |
-| M15 App tecnica (PWA) | Lavori, checklist, foto, ore, rapportino | ❌ Fase 4 | M14 |
+| M15 App tecnica (PWA) | Lavori, checklist, foto, ore, foglio di lavoro | ❌ Fase 4 | M14 |
 | M16 Controllo economico | Consuntivo, scostamenti, margine reale | ❌ Fase 5 | M15 |
 | M17 Fatturazione & incassi | Piano pagamenti, stato incassi, export contabile | ❌ Fase 5 | M10 |
 | M18 Ticket & assistenza | Ticket, SLA, interventi | ❌ Fase 6 | M15 |
@@ -534,7 +534,7 @@ I ruoli seguono le aree funzionali, non la gerarchia. Corrispondono ai quattro t
 | `amministratore` | Tutto, incluse configurazioni, utenti, integrazioni, audit | Amministratore + Titolare/Direzione |
 | `contabilita` | Fatture, pagamenti, incassi, scadenze, documenti, pratiche | Amministrazione + Back-office |
 | `commerciale` | Lead, opportunità, sopralluoghi, preventivi, follow-up | Commerciale |
-| `cantiere` | Verifica tecnica, materiali, pianificazione, esecuzione, rapportini | Ufficio tecnico + Resp. cantieri + Installatore (con `is_field_only`) |
+| `cantiere` | Verifica tecnica, materiali, pianificazione, esecuzione, fogli di lavoro | Ufficio tecnico + Resp. cantieri + Installatore (con `is_field_only`) |
 
 ### 11.2 Matrice permessi
 
@@ -560,7 +560,7 @@ Legenda: **T** = completo · **S** = scrittura sul proprio ambito · **L** = sol
 | Materiali e ordini fornitore *(F3)* | T | L | — | S |
 | Costi materiali e prezzi fornitore *(F3)* | T | T | — | `can_view_costs` |
 | Pianificazione cantieri e squadre *(F4)* | T | L | L | S |
-| Ore e rapportini *(F4)* | T | L | — | S |
+| Ore e fogli di lavoro *(F4)* | T | L | — | S |
 | Economics di commessa, margine reale *(F5)* | T | T | — | `can_view_costs` |
 | Fatture, pagamenti, incassi *(F5)* | T | T | L (solo stato) | — |
 | Ticket e assistenza *(F6)* | T | L | S | S |
@@ -579,7 +579,7 @@ Default: `amministratore` ✅ · `contabilita` ✅ · `commerciale` ❌ · `cant
 Il commerciale vede prezzo di vendita, margine **percentuale** e indicatore sopra/sotto soglia: è quanto serve per negoziare. Non vede i prezzi di acquisto dai fornitori — l'unico dato la cui diffusione ha un effetto economico immediato e irreversibile. Il responsabile cantieri che deve presidiare il budget di commessa lo ottiene con un click dell'amministratore.
 
 **`is_field_only`** — vista di campo soltanto (Fase 4, non nell'MVP).
-Si applica sopra il ruolo `cantiere` e distingue l'installatore dal responsabile: solo lavori assegnati, checklist, foto, ore, rapportini; nessun importo. Non è solo sicurezza: su uno schermo da 6 pollici, mostrare l'intero gestionale a un installatore garantisce che non lo userà.
+Si applica sopra il ruolo `cantiere` e distingue l'installatore dal responsabile: solo lavori assegnati, checklist, foto, ore, fogli di lavoro; nessun importo. Non è solo sicurezza: su uno schermo da 6 pollici, mostrare l'intero gestionale a un installatore garantisce che non lo userà.
 
 ### 11.4 Regole non negoziabili
 
@@ -745,7 +745,7 @@ I KPI **prima** dell'implementazione vanno stimati in Fase 0 anche in modo grezz
 
 ### 16.2 Cosa resta esplicitamente fuori
 
-Materiali e ordini fornitore · pianificazione squadre · PWA tecnici · rapportini e ore · consuntivo e margine reale · fatturazione · ticket · manutenzioni · tutti gli assistenti AI · WhatsApp automatizzato (se A10 non risolta) · portale cliente completo.
+Materiali e ordini fornitore · pianificazione squadre · PWA tecnici · fogli di lavoro e ore · consuntivo e margine reale · fatturazione · ticket · manutenzioni · tutti gli assistenti AI · WhatsApp automatizzato (se A10 non risolta) · portale cliente completo.
 
 ### 16.3 Definizione di "MVP riuscito"
 
@@ -761,7 +761,7 @@ Non "il software è online". Ma: **per 30 giorni consecutivi, il 100% dei nuovi 
 | **1 — Fondamenta** | Auth, ruoli, policy, audit, anagrafiche, intake, pipeline, attività, config, storage documenti | 3–4 settimane | Primo utilizzo reale: i lead entrano nel sistema |
 | **2 — Vendita** | Prequalifica, appuntamenti, sopralluoghi, preventivi, versioni, approvazioni, follow-up, documenti, firma | 5–7 settimane | **Fine MVP.** Un preventivo nasce e si chiude nel sistema |
 | **3 — Commessa** | Apertura da contratto, stati, task, checklist, pratiche, materiali, fornitori, readiness completa | 4–6 settimane | Nessun cantiere pianificato senza prerequisiti |
-| **4 — Cantieri** | Squadre, calendario, work order, PWA tecnici, foto, ore, rapportini | 4–6 settimane | I rapportini cartacei spariscono |
+| **4 — Cantieri** | Squadre, calendario, work order, PWA tecnici, foto, ore, fogli di lavoro | 4–6 settimane | I fogli di lavoro cartacei spariscono |
 | **5 — Controllo economico** | Costi reali, consuntivi, varianti, incassi, scostamenti, dashboard economica | 3–4 settimane | Margine reale per commessa entro 15 giorni dalla chiusura |
 | **6 — Post-vendita e AI** | Ticket, manutenzioni, recensioni, cross-selling, assistenti AI | 4–6 settimane | Assistente direzionale su dati veri |
 
@@ -856,7 +856,7 @@ I 22 criteri del brief, tradotti in verifiche eseguibili. Il progetto è accetta
 | 13 | Cantieri pianificabili distinti | Readiness calcolata con motivi di blocco espliciti |
 | 14 | Blocchi visibili | Ogni blocco ha tipo, responsabile e data di insorgenza |
 | 15 | Tecnici vedono ciò che serve | Test di autorizzazione: l'installatore non accede a dati economici né ad altri lavori |
-| 16 | Ore e rapportini registrati | % lavori chiusi con ore e rapportino > 95% |
+| 16 | Ore e fogli di lavoro registrati | % lavori chiusi con ore e foglio di lavoro > 95% |
 | 17 | Costi previsti e reali confrontabili | Report di scostamento per commessa |
 | 18 | Margine reale calcolabile | Calcolato entro 15 giorni dalla chiusura su > 90% delle commesse |
 | 19 | Ticket tracciati | Ogni richiesta assistenza ha un ticket con stato e responsabile |

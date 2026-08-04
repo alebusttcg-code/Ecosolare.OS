@@ -3,7 +3,7 @@
 import { and, desc, eq, inArray, like, max } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getDb } from '@/db'
+import { getDb, type Esecutore } from '@/db'
 import { approvals, products, quoteLines, quoteVersions, quotes } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
@@ -30,9 +30,9 @@ async function sogliaMargine(): Promise<number> {
   return percentualeDaNumero(valore)
 }
 
-async function prossimoCodicePreventivo(anno: number): Promise<string> {
+async function prossimoCodicePreventivo(db: Esecutore, anno: number): Promise<string> {
   const prefisso = `PRV-${anno}-`
-  const [ultimo] = await getDb()
+  const [ultimo] = await db
     .select({ code: quotes.code })
     .from(quotes)
     .where(like(quotes.code, `${prefisso}%`))
@@ -59,7 +59,7 @@ export async function createQuote(
   if (!parsed.success) return { ok: false, errors: errori(parsed.error.issues) }
 
   const risultato = await getDb().transaction(async (tx) => {
-    const code = await prossimoCodicePreventivo(new Date().getFullYear())
+    const code = await prossimoCodicePreventivo(tx, new Date().getFullYear())
 
     const [quote] = await tx
       .insert(quotes)

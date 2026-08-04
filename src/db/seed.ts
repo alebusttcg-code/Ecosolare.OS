@@ -1,6 +1,20 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { appSettings, leadSources, pipelineStages, surveyTemplates } from './schema'
+import {
+  appSettings,
+  documentTemplates,
+  leadSources,
+  pipelineStages,
+  projectStages,
+  surveyTemplates,
+  taskTemplates,
+} from './schema'
+import {
+  DOCUMENTI_FV,
+  STATI_COMMESSA,
+  STATI_COMMESSA_SPECIALI,
+  TASK_COMMESSA,
+} from './templates/commessa'
 import { PREQUALIFICA_FV } from './templates/prequalifica-fv'
 import { SOPRALLUOGO_FV } from './templates/sopralluogo-fv'
 
@@ -201,6 +215,56 @@ async function main(): Promise<void> {
       ])
       .onConflictDoNothing()
     console.log('Questionari: 2 verificati (prequalifica e sopralluogo fotovoltaico).')
+
+    const statiCommessa = [
+      ...STATI_COMMESSA.map((s) => ({
+        code: s.code,
+        label: s.label,
+        sortOrder: s.sortOrder,
+        requiresReadiness: 'requiresReadiness' in s ? s.requiresReadiness : false,
+      })),
+      ...STATI_COMMESSA_SPECIALI.map((s) => ({
+        code: s.code,
+        label: s.label,
+        sortOrder: s.sortOrder,
+        isClosed: 'isClosed' in s ? s.isClosed : false,
+        isSuspended: 'isSuspended' in s ? s.isSuspended : false,
+      })),
+    ]
+    await db.insert(projectStages).values(statiCommessa).onConflictDoNothing()
+    console.log(`Stati commessa: ${statiCommessa.length} verificati.`)
+
+    await db
+      .insert(taskTemplates)
+      .values(
+        TASK_COMMESSA.map((t) => ({
+          code: t.code,
+          label: t.label,
+          defaultRole: t.defaultRole,
+          dueDaysFromStart: t.dueDaysFromStart,
+          sortOrder: t.sortOrder,
+          businessLine: 'fotovoltaico' as const,
+        })),
+      )
+      .onConflictDoNothing()
+    console.log(`Modelli di task: ${TASK_COMMESSA.length} verificati.`)
+
+    await db
+      .insert(documentTemplates)
+      .values(
+        DOCUMENTI_FV.map((d) => ({
+          code: d.code,
+          label: d.label,
+          mandatory: d.mandatory,
+          providedByClient: d.providedByClient,
+          defaultRole: 'defaultRole' in d ? d.defaultRole : null,
+          dueDaysFromStart: 'dueDaysFromStart' in d ? d.dueDaysFromStart : null,
+          sortOrder: d.sortOrder,
+          businessLine: 'fotovoltaico' as const,
+        })),
+      )
+      .onConflictDoNothing()
+    console.log(`Checklist documentale: ${DOCUMENTI_FV.length} voci verificate.`)
 
     console.log('Seed completato.')
   } finally {
