@@ -24,6 +24,8 @@ const VOCI: readonly { href: string; label: string; resource: Resource }[] = [
   { href: '/clienti', label: 'Clienti', resource: 'contact' },
   { href: '/opportunita', label: 'Opportunita', resource: 'opportunity' },
   { href: '/attivita', label: 'Attivita', resource: 'activity' },
+  { href: '/amministrazione/utenti', label: 'Utenti', resource: 'user' },
+  { href: '/amministrazione/configurazioni', label: 'Configurazioni', resource: 'settings' },
 ]
 
 export default async function AppLayout({ children }: { children: ReactNode }) {

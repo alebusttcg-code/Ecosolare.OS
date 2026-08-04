@@ -22,6 +22,12 @@ const schema = z.object({
 
   /** Serve solo alla creazione del primo amministratore. */
   ADMIN_BOOTSTRAP_EMAIL: z.email().optional().or(z.literal('')),
+
+  /**
+   * Segreto condiviso con i form del sito e le landing per l'endpoint di intake.
+   * Se assente, l'endpoint risponde 503: meglio disattivo che aperto.
+   */
+  INTAKE_TOKEN: z.string().min(24).optional().or(z.literal('')),
 })
 
 export type Env = z.infer<typeof schema>

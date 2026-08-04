@@ -4,6 +4,7 @@ import { Badge, Card, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import { getContactDetail } from '@/lib/queries/contacts'
 import { getStages } from '@/lib/queries/pipeline'
+import { NuovoImmobile } from './nuovo-immobile'
 
 export const metadata = { title: 'Scheda cliente — EcoSolare OS' }
 
@@ -45,7 +46,17 @@ export default async function SchedaClientePage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card title="Opportunita">
+          <Card
+            title="Opportunita"
+            action={
+              <Link
+                href={`/opportunita/nuova?cliente=${contatto.id}`}
+                className="text-xs text-eco-blue-500 hover:underline"
+              >
+                + Nuova opportunita
+              </Link>
+            }
+          >
             {opportunita.length === 0 ? (
               <Vuoto messaggio="Nessuna opportunita per questo cliente." />
             ) : (
@@ -135,20 +146,31 @@ export default async function SchedaClientePage({
           </Card>
 
           <Card title="Immobili">
-            {siti.length === 0 ? (
-              <Vuoto messaggio="Nessun immobile registrato." />
-            ) : (
-              <ul className="space-y-3 text-sm">
-                {siti.map((s) => (
-                  <li key={s.id}>
-                    <div className="font-medium">{s.label}</div>
-                    <div className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                      {s.addressLine}, {s.city}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="space-y-3">
+              {siti.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
+                  Nessun immobile registrato.
+                </p>
+              ) : (
+                <ul className="space-y-3 text-sm">
+                  {siti.map((s) => (
+                    <li key={s.id}>
+                      <div className="font-medium">{s.label}</div>
+                      <div className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                        {s.addressLine}, {s.city}
+                        {s.province ? ` (${s.province})` : ''}
+                      </div>
+                      {s.pod ? (
+                        <div className="font-mono text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                          POD {s.pod}
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <NuovoImmobile contactId={contatto.id} />
+            </div>
           </Card>
         </div>
       </div>

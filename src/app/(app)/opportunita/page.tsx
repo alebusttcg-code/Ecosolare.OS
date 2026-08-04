@@ -19,11 +19,19 @@ export default async function OpportunitaPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Opportunita aperte</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          {righe.length} in pipeline
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Opportunita aperte</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
+            {righe.length} in pipeline
+          </p>
+        </div>
+        <Link
+          href="/opportunita/nuova"
+          className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-eco-blue-600"
+        >
+          Nuova opportunita
+        </Link>
       </div>
 
       {righe.length === 0 ? (

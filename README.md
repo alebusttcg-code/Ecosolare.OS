@@ -4,7 +4,8 @@ Sistema operativo aziendale per EcoSolare: ciclo completo
 *Lead → Qualifica → Sopralluogo → Preventivo → Contratto → Commessa → Pratiche → Materiali → Cantiere → Controllo economico → Assistenza*
 per le tre linee di business (fotovoltaico, elettrico, idraulico).
 
-**Stato:** Fase 1 in corso — anagrafiche, pipeline e attività operative.
+**Stato:** Fase 1 completa — anagrafiche, immobili, intake lead, pipeline, attività,
+amministrazione utenti e configurazioni.
 Audit operativo (Sprint 0, interviste e baseline) ancora da svolgere.
 
 ## Avvio in locale
@@ -37,6 +38,7 @@ npm run check    # lint + typecheck + test (42 test)
 | [Registro decisioni](docs/01-registro-decisioni.md) | Ogni decisione presa, con motivazione e conseguenze. Le decisioni superate restano tracciate |
 | [Guida alle interviste](docs/02-sprint0-guida-interviste.md) | Sprint 0 · le 5 interviste operative, domande pronte all'uso |
 | [Baseline KPI](docs/03-baseline-kpi.md) + [template CSV](docs/baseline-kpi-template.csv) | Sprint 0 · misura del "prima", senza cui il ROI non è dimostrabile |
+| [Endpoint di intake](docs/04-endpoint-intake.md) | Come collegare i form del sito e le landing page |
 | [ADR](docs/adr/README.md) | Decisioni architetturali, una per file, con alternative scartate |
 
 ## Riferimenti rapidi
