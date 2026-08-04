@@ -3,13 +3,16 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 import type { AdapterAccountType } from 'next-auth/adapters'
 
 /* -------------------------------------------------------------------------- */
@@ -191,6 +194,380 @@ export const appSettings = pgTable('app_settings', {
   updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
 })
 
+/* ========================================================================== */
+/*  FASE 1 — Anagrafiche, intake, pipeline, attivita'                          */
+/* ========================================================================== */
+
+/** Le tre linee di business (§1 del brief). Stabili: enum. */
+export const businessLine = pgEnum('business_line', [
+  'fotovoltaico',
+  'elettrico',
+  'idraulico',
+])
+
+export const preferredChannel = pgEnum('preferred_channel', [
+  'telefono',
+  'email',
+  'whatsapp',
+])
+
+/* -------------------------------------------------------------------------- */
+/*  Aziende e persone                                                          */
+/* -------------------------------------------------------------------------- */
+
+export const companies = pgTable(
+  'companies',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    legalName: text('legal_name').notNull(),
+    vatNumber: text('vat_number'),
+    taxCode: text('tax_code'),
+    email: text('email'),
+    pec: text('pec'),
+    sdiCode: text('sdi_code'),
+    phone: text('phone'),
+    /** Telefono normalizzato E.164: e' la chiave usata per la deduplica. */
+    phoneE164: text('phone_e164'),
+    addressLine: text('address_line'),
+    city: text('city'),
+    province: text('province'),
+    postalCode: text('postal_code'),
+    notes: text('notes'),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('companies_legal_name_idx').on(table.legalName),
+    index('companies_vat_idx').on(table.vatNumber),
+  ],
+)
+
+export const contacts = pgTable(
+  'contacts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    firstName: text('first_name'),
+    lastName: text('last_name').notNull(),
+    email: text('email'),
+    /** Normalizzata in minuscolo alla scrittura: chiave di deduplica. */
+    emailNormalized: text('email_normalized'),
+    phone: text('phone'),
+    phoneE164: text('phone_e164'),
+    taxCode: text('tax_code'),
+
+    /** L'azienda per cui il contatto e' referente, se il cliente e' B2B. */
+    companyId: uuid('company_id').references(() => companies.id, { onDelete: 'set null' }),
+    roleInCompany: text('role_in_company'),
+
+    preferredChannel: preferredChannel('preferred_channel'),
+
+    /**
+     * Consenso marketing per canale. Le automazioni di comunicazione lo leggono
+     * PRIMA di ogni invio (§14 del blueprint): senza consenso tracciato, il
+     * canale non e' utilizzabile, indipendentemente da cosa dice l'utente.
+     */
+    marketingConsent: boolean('marketing_consent').notNull().default(false),
+    marketingConsentAt: timestamp('marketing_consent_at', { withTimezone: true }),
+    /** Testo o versione dell'informativa accettata: serve a dimostrare cosa e' stato accettato. */
+    marketingConsentSource: text('marketing_consent_source'),
+
+    sourceId: uuid('source_id').references(() => leadSources.id, { onDelete: 'set null' }),
+    notes: text('notes'),
+
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('contacts_last_name_idx').on(table.lastName),
+    index('contacts_phone_idx').on(table.phoneE164),
+    index('contacts_email_idx').on(table.emailNormalized),
+    index('contacts_company_idx').on(table.companyId),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Siti / immobili                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Un cliente puo' possedere piu' immobili (§5.1 del brief). Il sito e' il luogo
+ * dell'intervento: e' su di esso che si fanno sopralluogo, impianto e commessa,
+ * non sull'anagrafica.
+ */
+export const sites = pgTable(
+  'sites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    label: text('label').notNull(),
+
+    contactId: uuid('contact_id').references(() => contacts.id, { onDelete: 'cascade' }),
+    companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }),
+
+    addressLine: text('address_line').notNull(),
+    city: text('city').notNull(),
+    province: text('province'),
+    postalCode: text('postal_code'),
+
+    buildingType: text('building_type'),
+    /** Punto di prelievo dell'utenza elettrica: identifica univocamente la fornitura. */
+    pod: text('pod'),
+    /** Dati catastali: forma variabile, non interrogata in modo strutturato. */
+    cadastral: jsonb('cadastral'),
+    notes: text('notes'),
+
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('sites_contact_idx').on(table.contactId),
+    index('sites_company_idx').on(table.companyId),
+    index('sites_city_idx').on(table.city),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Intake                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export const leadSources = pgTable('lead_sources', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+})
+
+export const inboundChannel = pgEnum('inbound_channel', [
+  'sito',
+  'landing',
+  'campagna',
+  'telefono',
+  'email',
+  'whatsapp',
+  'passaparola',
+  'cliente_esistente',
+  'import',
+  'manuale',
+])
+
+export const dedupStatus = pgEnum('dedup_status', [
+  'nessun_duplicato',
+  'possibile_duplicato',
+  'confermato_duplicato',
+  'unito',
+])
+
+/**
+ * Il payload grezzo ricevuto dal canale, immutabile (ADR-003).
+ *
+ * Esiste perche' quando un lead arriva malformato serve poter vedere COSA E'
+ * ARRIVATO DAVVERO, non cosa il sistema ne ha dedotto. E' anche la base della
+ * deduplica e della misura di speed-to-lead.
+ */
+export const inboundSubmissions = pgTable(
+  'inbound_submissions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    channel: inboundChannel('channel').notNull(),
+    payload: jsonb('payload').notNull(),
+
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+
+    contactId: uuid('contact_id').references(() => contacts.id, { onDelete: 'set null' }),
+    opportunityId: uuid('opportunity_id').references(() => opportunities.id, {
+      onDelete: 'set null',
+    }),
+
+    dedupStatus: dedupStatus('dedup_status').notNull().default('nessun_duplicato'),
+    /** Candidati alla fusione, con punteggio e motivo. Mai fusi in automatico. */
+    dedupCandidates: jsonb('dedup_candidates'),
+
+    /** Chiave naturale del canale: impedisce di creare due volte lo stesso lead. */
+    externalId: text('external_id'),
+
+    error: text('error'),
+  },
+  (table) => [
+    index('inbound_received_at_idx').on(table.receivedAt),
+    uniqueIndex('inbound_external_id_idx')
+      .on(table.channel, table.externalId)
+      .where(sql`${table.externalId} is not null`),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Pipeline                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gli stati della pipeline stanno nel database, non in un enum (§5.4 del brief:
+ * "stati configurabili"). Aggiungerne uno dopo l'audit deve essere una riga in
+ * tabella, non una migrazione e un rilascio.
+ */
+export const pipelineStages = pgTable('pipeline_stages', {
+  code: text('code').primaryKey(),
+  label: text('label').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+  /** Aperto = richiede una prossima azione. Vedere src/lib/domain/pipeline.ts */
+  isOpen: boolean('is_open').notNull().default(true),
+  isWon: boolean('is_won').notNull().default(false),
+  isLost: boolean('is_lost').notNull().default(false),
+  /** Probabilita' suggerita, sovrascrivibile sulla singola opportunita'. */
+  defaultProbability: integer('default_probability').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+})
+
+export const opportunities = pgTable(
+  'opportunities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** Riferimento leggibile, mostrato all'utente: OPP-2026-0001 */
+    code: text('code').notNull().unique(),
+
+    contactId: uuid('contact_id')
+      .notNull()
+      .references(() => contacts.id, { onDelete: 'restrict' }),
+    companyId: uuid('company_id').references(() => companies.id, { onDelete: 'set null' }),
+    siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+
+    businessLine: businessLine('business_line').notNull(),
+    title: text('title').notNull(),
+
+    stage: text('stage')
+      .notNull()
+      .references(() => pipelineStages.code),
+    stageSince: timestamp('stage_since', { withTimezone: true }).notNull().defaultNow(),
+
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    sourceId: uuid('source_id').references(() => leadSources.id, { onDelete: 'set null' }),
+
+    estimatedValue: numeric('estimated_value', { precision: 14, scale: 2 }),
+    probability: integer('probability').notNull().default(0),
+
+    /**
+     * Scadenza della prossima azione. Un'opportunita' in stato aperto senza
+     * questo valore e' un errore di sistema, non un caso ammesso (§9.2 del
+     * blueprint): e' la regola che impedisce alla pipeline di svuotarsi da sola.
+     */
+    nextActionDueAt: timestamp('next_action_due_at', { withTimezone: true }),
+
+    /** Misura dello speed-to-lead: chiuso al primo contatto tracciato. */
+    firstResponseAt: timestamp('first_response_at', { withTimezone: true }),
+
+    lostReason: text('lost_reason'),
+    competitor: text('competitor'),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+
+    /** Risposte di prequalifica (ADR-004). Il template arriva in Fase 2. */
+    prequalification: jsonb('prequalification'),
+    score: integer('score'),
+    scoreComputedAt: timestamp('score_computed_at', { withTimezone: true }),
+
+    notes: text('notes'),
+
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('opportunities_stage_idx').on(table.stage),
+    index('opportunities_owner_idx').on(table.ownerId),
+    index('opportunities_contact_idx').on(table.contactId),
+    index('opportunities_next_action_idx').on(table.nextActionDueAt),
+    index('opportunities_created_at_idx').on(table.createdAt),
+  ],
+)
+
+export const opportunityStatusHistory = pgTable(
+  'opportunity_status_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    opportunityId: uuid('opportunity_id')
+      .notNull()
+      .references(() => opportunities.id, { onDelete: 'cascade' }),
+    fromStage: text('from_stage'),
+    toStage: text('to_stage').notNull(),
+    /** Giorni trascorsi nello stato precedente: alimenta i KPI di funnel. */
+    daysInPreviousStage: integer('days_in_previous_stage'),
+    note: text('note'),
+    changedBy: uuid('changed_by').references(() => users.id, { onDelete: 'set null' }),
+    changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('opp_history_opportunity_idx').on(table.opportunityId)],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Attivita'                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export const activityKind = pgEnum('activity_kind', [
+  'chiamata',
+  'email',
+  'whatsapp',
+  'appuntamento',
+  'sopralluogo',
+  'task',
+  'nota',
+])
+
+export const activities = pgTable(
+  'activities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    kind: activityKind('kind').notNull(),
+    subject: text('subject').notNull(),
+    notes: text('notes'),
+
+    opportunityId: uuid('opportunity_id').references(() => opportunities.id, {
+      onDelete: 'cascade',
+    }),
+    contactId: uuid('contact_id').references(() => contacts.id, { onDelete: 'cascade' }),
+
+    assignedTo: uuid('assigned_to')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+
+    dueAt: timestamp('due_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
+    outcome: text('outcome'),
+
+    /**
+     * Marca l'attivita' come "la prossima azione" dell'opportunita'.
+     * Una sola per opportunita' puo' esserlo, garantito da indice univoco parziale.
+     */
+    isNextAction: boolean('is_next_action').notNull().default(false),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('activities_assigned_idx').on(table.assignedTo, table.dueAt),
+    index('activities_opportunity_idx').on(table.opportunityId),
+    index('activities_contact_idx').on(table.contactId),
+    // Una sola prossima azione aperta per opportunita': il vincolo sta nel
+    // database, non nella fiducia che il codice applicativo si comporti bene.
+    uniqueIndex('activities_one_next_action_idx')
+      .on(table.opportunityId)
+      .where(sql`${table.isNextAction} and ${table.completedAt} is null`),
+  ],
+)
+
 /* -------------------------------------------------------------------------- */
 
 export type User = typeof users.$inferSelect
@@ -198,3 +575,15 @@ export type NewUser = typeof users.$inferInsert
 export type AuditLog = typeof auditLogs.$inferSelect
 export type NewAuditLog = typeof auditLogs.$inferInsert
 export type AppSetting = typeof appSettings.$inferSelect
+
+export type Company = typeof companies.$inferSelect
+export type Contact = typeof contacts.$inferSelect
+export type NewContact = typeof contacts.$inferInsert
+export type Site = typeof sites.$inferSelect
+export type LeadSource = typeof leadSources.$inferSelect
+export type InboundSubmission = typeof inboundSubmissions.$inferSelect
+export type PipelineStage = typeof pipelineStages.$inferSelect
+export type Opportunity = typeof opportunities.$inferSelect
+export type NewOpportunity = typeof opportunities.$inferInsert
+export type Activity = typeof activities.$inferSelect
+export type NewActivity = typeof activities.$inferInsert

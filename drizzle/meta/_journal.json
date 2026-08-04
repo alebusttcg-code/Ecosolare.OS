@@ -8,6 +8,13 @@
       "when": 1785830794641,
       "tag": "0000_fondamenta",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785837706057,
+      "tag": "0001_crm_pipeline",
+      "breakpoints": true
     }
   ]
 }

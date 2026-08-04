@@ -4,7 +4,8 @@ Sistema operativo aziendale per EcoSolare: ciclo completo
 *Lead → Qualifica → Sopralluogo → Preventivo → Contratto → Commessa → Pratiche → Materiali → Cantiere → Controllo economico → Assistenza*
 per le tre linee di business (fotovoltaico, elettrico, idraulico).
 
-**Stato:** Sprint 0 — audit operativo in corso, fondamenta tecniche completate (T7–T9, T11).
+**Stato:** Fase 1 in corso — anagrafiche, pipeline e attività operative.
+Audit operativo (Sprint 0, interviste e baseline) ancora da svolgere.
 
 ## Avvio in locale
 
@@ -17,6 +18,7 @@ PGlite e non richiedono nulla.
 npm install
 cp .env.example .env.local   # e compilare
 npm run db:migrate
+npm run db:seed              # stati pipeline, fonti lead, configurazioni
 npm run dev
 ```
 
