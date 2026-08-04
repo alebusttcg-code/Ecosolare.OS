@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+
+/**
+ * Identita' visiva EcoSolare (§13 del blueprint).
+ * Blu istituzionale, giallo solare, verde come accento secondario.
+ * Interfaccia operativa: nessun effetto glow, nessuna animazione decorativa.
+ */
+@theme {
+  --color-eco-blue-50: #eef4fb;
+  --color-eco-blue-100: #d7e6f7;
+  --color-eco-blue-500: #2b6cb0;
+  --color-eco-blue-600: #235a94;
+  --color-eco-blue-700: #1b4778;
+  --color-eco-blue-900: #12314f;
+
+  --color-eco-gold-100: #fdf3d4;
+  --color-eco-gold-400: #e9b924;
+  --color-eco-gold-500: #d4a417;
+
+  --color-eco-green-500: #7aa03c;
+  --color-eco-green-600: #648433;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+:root {
+  --sfondo: #f7f8fa;
+  --superficie: #ffffff;
+  --testo: #1a1d21;
+  --testo-tenue: #5b6470;
+  --bordo: #dfe3e8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sfondo: #12151a;
+    --superficie: #1a1e25;
+    --testo: #eef1f5;
+    --testo-tenue: #9aa4b2;
+    --bordo: #2b313a;
+  }
+}
+
+body {
+  background: var(--sfondo);
+  color: var(--testo);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

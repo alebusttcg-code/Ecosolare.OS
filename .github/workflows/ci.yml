@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Un solo run per branch: i push ravvicinati annullano il precedente.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifica:
+    name: Lint, tipi, test, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Installazione dipendenze
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Controllo dei tipi
+        run: npm run typecheck
+
+      # I test usano PGlite (ADR-010): nessun servizio PostgreSQL da avviare.
+      - name: Test
+        run: npm test
+
+      # Il build non deve richiedere credenziali reali: l'accesso alle variabili
+      # d'ambiente e' pigro di proposito (src/db/index.ts). Se questo passo inizia
+      # a richiedere segreti, e' il segnale che qualcosa e' stato letto troppo presto.
+      - name: Build
+        run: npm run build
