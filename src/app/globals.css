@@ -409,6 +409,66 @@ tr.riga:hover {
   transform: scaleX(1);
 }
 
+/* ---------------------------------------------------------------------------
+   Transizione fra le sezioni
+   --------------------------------------------------------------------------- */
+
+@keyframes eco-vista {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.transizione-vista {
+  animation: eco-vista 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ---------------------------------------------------------------------------
+   Inclinazione tridimensionale
+
+   Le due variabili le scrive il componente `Inclina` a ogni movimento del
+   puntatore; qui si limita a trasformarle in rotazione e riflesso. Il ritorno
+   a riposo e' piu' lento dell'inseguimento, cosi' la tessera "si posa"
+   invece di scattare indietro.
+   --------------------------------------------------------------------------- */
+
+.inclinabile {
+  perspective: 900px;
+  --inclina-x: 0deg;
+  --inclina-y: 0deg;
+  --luce-x: 50%;
+  --luce-y: 50%;
+  --luce-opacita: 0;
+}
+
+.inclinabile > * {
+  transform: rotateX(var(--inclina-x)) rotateY(var(--inclina-y));
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* Riflesso che insegue il puntatore. */
+.inclinabile > *::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    340px circle at var(--luce-x) var(--luce-y),
+    rgba(232, 199, 101, 0.16),
+    transparent 42%
+  );
+  opacity: var(--luce-opacita);
+  transition: opacity 320ms ease;
+  pointer-events: none;
+}
+
 /* Chi ha ridotto le animazioni a livello di sistema le ha ridotte anche qui.
    Non e' una cortesia: per alcune persone il movimento provoca malessere. */
 @media (prefers-reduced-motion: reduce) {
@@ -423,8 +483,13 @@ tr.riga:hover {
 
   .pannello-interattivo:hover,
   .bottone-oro:hover,
-  .bottone-fantasma:hover {
+  .bottone-fantasma:hover,
+  .inclinabile > * {
     transform: none;
+  }
+
+  .inclinabile > *::after {
+    display: none;
   }
 }
 

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Contatore } from './contatore'
+import { Inclina } from './inclina'
 
 /**
  * Primitive di interfaccia.
@@ -112,33 +113,35 @@ export function Stat({
   const colore = colori[tone] ?? colori.neutro!
 
   return (
-    <div className="pannello rivela px-5 py-4" style={ritardo(indice)}>
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-          {label}
-        </span>
-        {icona ? (
-          <span
-            className="anello h-7 w-7 shrink-0 text-xs"
-            style={{ color: colore }}
-            aria-hidden
-          >
-            {icona}
+    <Inclina className="rivela">
+      <div className="pannello relative px-5 py-4" style={ritardo(indice)}>
+        <div className="flex items-start justify-between gap-3">
+          <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+            {label}
           </span>
+          {icona ? (
+            <span
+              className="anello h-7 w-7 shrink-0 text-xs"
+              style={{ color: colore }}
+              aria-hidden
+            >
+              {icona}
+            </span>
+          ) : null}
+        </div>
+        <div
+          className="mt-2 text-3xl font-semibold tracking-tight"
+          style={{ color: tone === 'neutro' ? 'var(--testo)' : colore }}
+        >
+          <Contatore valore={value} formato={formato} />
+        </div>
+        {hint ? (
+          <div className="mt-1 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+            {hint}
+          </div>
         ) : null}
       </div>
-      <div
-        className="mt-2 text-3xl font-semibold tracking-tight"
-        style={{ color: tone === 'neutro' ? 'var(--testo)' : colore }}
-      >
-        <Contatore valore={value} formato={formato} />
-      </div>
-      {hint ? (
-        <div className="mt-1 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-          {hint}
-        </div>
-      ) : null}
-    </div>
+    </Inclina>
   )
 }
 

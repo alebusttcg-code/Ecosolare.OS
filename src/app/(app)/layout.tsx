@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { signOut } from '@/auth'
 import { Sidebar, type VoceMenu } from '@/components/sidebar'
+import { TransizionePagina } from '@/components/transizione'
 import { can, type Resource, type Role } from '@/lib/auth/policy'
 import { getCurrentUser } from '@/lib/auth/session'
 
@@ -73,8 +74,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         }
       />
 
+      {/* La sidebar resta fuori dalla transizione: e' l'elemento che da'
+          continuita' fra una schermata e l'altra. */}
       <main className="ml-60 min-h-screen px-8 py-8">
-        <div className="mx-auto max-w-6xl">{children}</div>
+        <div className="mx-auto max-w-6xl">
+          <TransizionePagina>{children}</TransizionePagina>
+        </div>
       </main>
     </div>
   )
