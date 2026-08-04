@@ -21,8 +21,21 @@ declare global {
   var __ecosolareDb: ReturnType<typeof buildDb> | undefined
 }
 
+/** Su Vercel ogni invocazione e' un processo separato: il pool va tenuto minimo. */
+const inServerless = Boolean(process.env.VERCEL)
+
 function buildDb() {
-  const sql = postgres(env().DATABASE_URL, { max: 10 })
+  const sql = postgres(env().DATABASE_URL, {
+    // Con il pooler in transaction mode ogni connessione e' condivisa fra
+    // richieste diverse: tenerne molte aperte per istanza esaurisce il pooler
+    // senza dare alcun vantaggio.
+    max: inServerless ? 1 : 10,
+    // Supavisor in transaction mode NON supporta i prepared statement: senza
+    // questa riga le query falliscono in produzione ma funzionano in locale,
+    // che e' il modo peggiore di scoprire un problema.
+    prepare: false,
+    idle_timeout: 20,
+  })
   return drizzle(sql, { schema })
 }
 

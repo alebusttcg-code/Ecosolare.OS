@@ -196,3 +196,77 @@ Si applica sopra il ruolo `cantiere` e distingue l'installatore dal responsabile
 2. **Nessun contraddittorio sulle priorità.** Quando committente e referente coincidono, non c'è attrito che filtri le richieste. Mitigazione: il backlog congelato per fase (R2) e i punti di decisione a fine fase restano il presidio.
 
 **Prima scadenza:** completamento di T1–T6 (5 interviste, materiali raccolti, baseline compilata) → produzione del blueprint v2 e stima puntuale del backlog di Fase 1.
+
+---
+
+## D-009 — Infrastruttura: Supabase (database e storage) + Vercel (applicazione)
+
+**Data:** 4 agosto 2026 · **Decisore:** Federico Leporati · **Stato:** attiva
+
+Il database su Supabase, l'applicazione su Vercel. Scelta condivisa: è la
+combinazione con meno attrito per Next.js, non richiede gestione di server e ha
+piani gratuiti o economici adeguati ai volumi previsti (A3).
+
+### Vincoli da rispettare perché la scelta regga
+
+**1. Regione UE su entrambi — obbligatorio (A4).**
+Vercel per impostazione predefinita esegue negli Stati Uniti (`iad1`): va forzato
+Francoforte (`fra1`), come da `vercel.json`. Supabase va creato in una regione UE
+(Francoforte). Oltre alla conformità, tenerli nella stessa regione evita di
+pagare un giro dell'Atlantico a ogni query.
+
+**2. RLS attiva su ogni tabella — obbligatorio.**
+Supabase espone automaticamente lo schema `public` tramite un'API REST, e la
+chiave `anon` è pubblica per progettazione. Senza RLS, chiunque la conosca
+leggerebbe e scriverebbe ogni tabella **aggirando il policy layer** (ADR-006).
+La migrazione `0004_blindatura_rls` abilita RLS senza policy su tutte le tabelle:
+per l'API pubblica significa "nega tutto", mentre l'applicazione continua a
+funzionare perché si collega col ruolo proprietario, non soggetto a RLS.
+
+*Conseguenza:* usare il client Supabase dal browser richiederebbe policy
+esplicite. È una decisione da prendere consapevolmente, non da subire.
+
+**3. Connection pooler, non connessione diretta.**
+Su Vercel ogni richiesta è un processo separato: le connessioni dirette si
+esauriscono. Va usata la stringa del **transaction pooler** (Supavisor, porta
+6543), con `prepare: false` — il transaction mode non supporta i prepared
+statement. Senza quella riga le query funzionano in locale e falliscono in
+produzione, che è il modo peggiore di scoprire un problema. Già applicato in
+`src/db/index.ts`.
+
+**4. Piani a pagamento, non gratuiti.**
+- **Vercel Hobby vieta l'uso commerciale**: per un gestionale aziendale serve Pro.
+- **Supabase Free sospende il progetto** dopo una settimana di inattività: per un
+  sistema in produzione serve Pro, che include anche backup giornalieri e PITR.
+
+Costo indicativo di partenza: **~45–50 €/mese**. Va detto ora, non scoperto dopo.
+
+### Cosa cambia rispetto al blueprint
+
+**ADR-005 (outbox transazionale) resta valido, il worker no.** Il piano prevedeva
+`pg-boss`, che richiede un processo persistente: su Vercel non esiste. Le opzioni
+sono un **Vercel Cron** che ogni minuto chiama una rotta protetta e svuota la
+coda degli eventi, oppure un worker separato altrove.
+
+*Raccomandazione:* Vercel Cron, adeguato ai volumi previsti. Il prezzo è la
+granularità: gli eventi vengono consegnati entro un minuto, non istantaneamente.
+Per i solleciti e i follow-up è irrilevante; per la notifica di un nuovo lead è
+accettabile e resta ben dentro il target di speed-to-lead. Da riaprire se
+servisse una reattività al secondo.
+
+Va aggiornato ADR-005 quando il worker verrà implementato (Fase 2, follow-up).
+
+### Cosa questa scelta risolve gratuitamente
+
+**Supabase Storage** copre il requisito di object storage per i documenti
+(ADR-010 e §14: file fuori dal database, URL firmati a scadenza breve), nella
+stessa regione UE e sotto lo stesso contratto. Un fornitore in meno da nominare
+responsabile del trattamento (D-006).
+
+### Nomine responsabili del trattamento
+
+Vercel e Supabase vanno aggiunti all'elenco dei responsabili esterni con i
+rispettivi DPA, insieme a Google (D-006 punto 2). Entrambi sono società
+statunitensi con sottoscrizione al Data Privacy Framework: i dati restano nella
+regione UE scelta, ma il titolare resta EcoSolare ed è comunque necessaria la
+nomina.
