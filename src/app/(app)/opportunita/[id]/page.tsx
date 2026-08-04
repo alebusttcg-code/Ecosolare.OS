@@ -6,7 +6,9 @@ import { getDb } from '@/db'
 import { activities, contacts, opportunities, opportunityStatusHistory, users } from '@/db/schema'
 import { guard } from '@/lib/auth/session'
 import { getStages } from '@/lib/queries/pipeline'
+import { getQuotesForOpportunity } from '@/lib/queries/quotes'
 import { CambiaStato } from './cambia-stato'
+import { NuovoPreventivo } from './nuovo-preventivo'
 
 export const metadata = { title: 'Opportunita — EcoSolare OS' }
 
@@ -36,7 +38,7 @@ export default async function OpportunitaDettaglioPage({
 
   if (!riga) notFound()
 
-  const [stages, storico, attivitaAperte] = await Promise.all([
+  const [stages, storico, attivitaAperte, preventivi] = await Promise.all([
     getStages(),
     db
       .select()
@@ -48,6 +50,7 @@ export default async function OpportunitaDettaglioPage({
       .from(activities)
       .where(and(eq(activities.opportunityId, id), eq(activities.isNextAction, true)))
       .limit(1),
+    getQuotesForOpportunity(id),
   ])
 
   const opp = riga.opp
@@ -99,6 +102,47 @@ export default async function OpportunitaDettaglioPage({
               </p>
             ) : (
               <Vuoto messaggio="Opportunita chiusa: nessuna azione in sospeso." />
+            )}
+          </Card>
+
+          <Card
+            title="Preventivi"
+            action={
+              <NuovoPreventivo opportunityId={opp.id} titoloProposto={opp.title} />
+            }
+          >
+            {preventivi.length === 0 ? (
+              <Vuoto messaggio="Nessun preventivo per questa opportunita." />
+            ) : (
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo)' }}>
+                {preventivi.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      {p.versionId ? (
+                        <Link
+                          href={`/preventivi/${p.versionId}`}
+                          className="text-sm font-medium text-eco-blue-500 hover:underline"
+                        >
+                          {p.title}
+                        </Link>
+                      ) : (
+                        <span className="text-sm font-medium">{p.title}</span>
+                      )}
+                      <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                        {p.code}
+                        {p.versionNo ? ` · v${p.versionNo}` : ''}
+                        {p.status ? ` · ${p.status}` : ''}
+                      </div>
+                    </div>
+                    <div className="text-right text-sm">
+                      <div className="tabular-nums">{p.grossTotal ?? '—'} €</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
 

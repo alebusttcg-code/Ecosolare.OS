@@ -568,6 +568,296 @@ export const activities = pgTable(
   ],
 )
 
+/* ========================================================================== */
+/*  FASE 2 — Sopralluoghi, catalogo, preventivi, approvazioni                  */
+/* ========================================================================== */
+
+/* -------------------------------------------------------------------------- */
+/*  Catalogo                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export const productType = pgEnum('product_type', [
+  'materiale',
+  'servizio',
+  'manodopera',
+  'kit',
+])
+
+/**
+ * Catalogo unificato di materiali, servizi e manodopera.
+ *
+ * Una sola tabella e non tre (§9.2): hanno la stessa struttura e lo stesso uso
+ * nelle righe di preventivo. La distinzione utile e' il `type`, non lo schema.
+ *
+ * I prezzi qui sono i DEFAULT correnti. Ogni preventivo inviato congela i propri
+ * (ADR-008): cambiare un prezzo in catalogo non altera i documenti gia' emessi.
+ */
+export const products = pgTable(
+  'products',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull().unique(),
+    name: text('name').notNull(),
+    description: text('description'),
+    type: productType('type').notNull(),
+    /** Unita' di misura: pz, kW, kWh, m, h, a corpo. */
+    unit: text('unit').notNull().default('pz'),
+
+    /** numeric(14,4): nel fotovoltaico si ragiona anche in euro/Watt. */
+    defaultCostPrice: numeric('default_cost_price', { precision: 14, scale: 4 }),
+    defaultSalePrice: numeric('default_sale_price', { precision: 14, scale: 4 }),
+    vatRate: numeric('vat_rate', { precision: 5, scale: 2 }).notNull().default('10.00'),
+
+    /** Se null, il prodotto vale per tutte le linee di business. */
+    businessLine: businessLine('business_line'),
+
+    isActive: boolean('is_active').notNull().default(true),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('products_type_idx').on(table.type),
+    index('products_name_idx').on(table.name),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Sopralluoghi                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Definizione versionata di una checklist di sopralluogo (ADR-004).
+ *
+ * `definition` contiene i campi, le condizioni di visibilita' e l'obbligatorieta'.
+ * La versione non si modifica: se ne crea una nuova, cosi' i sopralluoghi storici
+ * restano leggibili con la checklist con cui sono stati compilati.
+ */
+export const surveyTemplates = pgTable(
+  'survey_templates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull(),
+    version: integer('version').notNull().default(1),
+    name: text('name').notNull(),
+    businessLine: businessLine('business_line').notNull(),
+    definition: jsonb('definition').notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [uniqueIndex('survey_templates_code_version_idx').on(table.code, table.version)],
+)
+
+export const surveyStatus = pgEnum('survey_status', ['bozza', 'completato', 'annullato'])
+
+export const surveys = pgTable(
+  'surveys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    opportunityId: uuid('opportunity_id')
+      .notNull()
+      .references(() => opportunities.id, { onDelete: 'cascade' }),
+    siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+
+    templateId: uuid('template_id')
+      .notNull()
+      .references(() => surveyTemplates.id, { onDelete: 'restrict' }),
+
+    status: surveyStatus('status').notNull().default('bozza'),
+    answers: jsonb('answers').notNull().default({}),
+
+    /**
+     * Colonne promosse (ADR-004): i pochi campi usati in filtri, elenchi e KPI
+     * esistono anche come colonne vere, popolate alla scrittura.
+     */
+    estimatedPowerKw: numeric('estimated_power_kw', { precision: 8, scale: 2 }),
+    roofType: text('roof_type'),
+    hasCriticalIssues: boolean('has_critical_issues').notNull().default(false),
+
+    performedAt: timestamp('performed_at', { withTimezone: true }),
+    performedBy: uuid('performed_by').references(() => users.id, { onDelete: 'set null' }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('surveys_opportunity_idx').on(table.opportunityId),
+    index('surveys_status_idx').on(table.status),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Preventivi                                                                 */
+/* -------------------------------------------------------------------------- */
+
+export const quotes = pgTable(
+  'quotes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull().unique(),
+    opportunityId: uuid('opportunity_id')
+      .notNull()
+      .references(() => opportunities.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    /** Versione attualmente valida. Le altre restano consultabili. */
+    currentVersionId: uuid('current_version_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [index('quotes_opportunity_idx').on(table.opportunityId)],
+)
+
+/**
+ * Stato di una versione di preventivo.
+ *
+ * `bozza` e' l'unico stato modificabile. Da `inviato` in poi la versione e'
+ * immutabile (ADR-008): una modifica genera la versione successiva.
+ */
+export const quoteVersionStatus = pgEnum('quote_version_status', [
+  'bozza',
+  'in_approvazione',
+  'approvato',
+  'inviato',
+  'accettato',
+  'rifiutato',
+  'scaduto',
+])
+
+export const quoteVersions = pgTable(
+  'quote_versions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    quoteId: uuid('quote_id')
+      .notNull()
+      .references(() => quotes.id, { onDelete: 'cascade' }),
+    versionNo: integer('version_no').notNull(),
+    status: quoteVersionStatus('status').notNull().default('bozza'),
+
+    /** Sconto sul totale, in percentuale. Ripartito sulle righe al calcolo. */
+    globalDiscountPct: numeric('global_discount_pct', { precision: 5, scale: 2 })
+      .notNull()
+      .default('0.00'),
+
+    /* Totali calcolati esclusivamente lato server (§8.4). */
+    revenueNet: numeric('revenue_net', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    costTotal: numeric('cost_total', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    marginAmount: numeric('margin_amount', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    /** Null quando l'imponibile e' zero: non e' "margine zero", non ha margine. */
+    marginPct: numeric('margin_pct', { precision: 7, scale: 2 }),
+    vatAmount: numeric('vat_amount', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    grossTotal: numeric('gross_total', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    vatBreakdown: jsonb('vat_breakdown'),
+
+    validUntil: timestamp('valid_until', { withTimezone: true }),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    viewedAt: timestamp('viewed_at', { withTimezone: true }),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
+
+    /**
+     * Congela listino, aliquote e soglia vigenti al momento dell'invio.
+     * Un preventivo inviato deve essere ricostruibile identico anche dopo che il
+     * catalogo e' cambiato: e' un problema contrattuale, non tecnico (ADR-008).
+     */
+    snapshot: jsonb('snapshot'),
+
+    notes: text('notes'),
+    termsAndConditions: text('terms_and_conditions'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    uniqueIndex('quote_versions_quote_no_idx').on(table.quoteId, table.versionNo),
+    index('quote_versions_status_idx').on(table.status),
+  ],
+)
+
+export const quoteLines = pgTable(
+  'quote_lines',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    quoteVersionId: uuid('quote_version_id')
+      .notNull()
+      .references(() => quoteVersions.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+
+    /** Null per righe libere non a catalogo. */
+    productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
+    description: text('description').notNull(),
+    unit: text('unit').notNull().default('pz'),
+
+    quantity: numeric('quantity', { precision: 12, scale: 3 }).notNull(),
+    unitCost: numeric('unit_cost', { precision: 14, scale: 4 }).notNull().default('0.0000'),
+    unitPrice: numeric('unit_price', { precision: 14, scale: 4 }).notNull().default('0.0000'),
+    discountPct: numeric('discount_pct', { precision: 5, scale: 2 }).notNull().default('0.00'),
+    vatRate: numeric('vat_rate', { precision: 5, scale: 2 }).notNull().default('10.00'),
+
+    /* Totali di riga, ricalcolati dal server a ogni modifica. */
+    lineNet: numeric('line_net', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    lineCost: numeric('line_cost', { precision: 14, scale: 2 }).notNull().default('0.00'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('quote_lines_version_idx').on(table.quoteVersionId, table.sortOrder)],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Approvazioni                                                               */
+/* -------------------------------------------------------------------------- */
+
+export const approvalStatus = pgEnum('approval_status', [
+  'richiesta',
+  'approvata',
+  'respinta',
+  'annullata',
+])
+
+/**
+ * Richieste di approvazione, generiche per entita'.
+ *
+ * Oggi serve solo ai preventivi sotto soglia di marginalita', ma varianti,
+ * sconti straordinari e note di credito seguiranno lo stesso percorso: tenere
+ * la tabella generica evita di riscriverlo tre volte.
+ */
+export const approvals = pgTable(
+  'approvals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    entityType: text('entity_type').notNull(),
+    entityId: uuid('entity_id').notNull(),
+    reason: text('reason').notNull(),
+    /** Contesto oggettivo al momento della richiesta: margine, soglia, importo. */
+    context: jsonb('context'),
+
+    status: approvalStatus('status').notNull().default('richiesta'),
+    requestedBy: uuid('requested_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+    decidedBy: uuid('decided_by').references(() => users.id, { onDelete: 'set null' }),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    decisionNote: text('decision_note'),
+  },
+  (table) => [
+    index('approvals_entity_idx').on(table.entityType, table.entityId),
+    index('approvals_status_idx').on(table.status),
+    // Una sola richiesta pendente per entita': evita code di approvazione
+    // duplicate generate da doppi click o da rilanci dell'automazione.
+    uniqueIndex('approvals_one_pending_idx')
+      .on(table.entityType, table.entityId)
+      .where(sql`${table.status} = 'richiesta'`),
+  ],
+)
+
 /* -------------------------------------------------------------------------- */
 
 export type User = typeof users.$inferSelect
@@ -587,3 +877,12 @@ export type Opportunity = typeof opportunities.$inferSelect
 export type NewOpportunity = typeof opportunities.$inferInsert
 export type Activity = typeof activities.$inferSelect
 export type NewActivity = typeof activities.$inferInsert
+
+export type Product = typeof products.$inferSelect
+export type SurveyTemplate = typeof surveyTemplates.$inferSelect
+export type Survey = typeof surveys.$inferSelect
+export type Quote = typeof quotes.$inferSelect
+export type QuoteVersion = typeof quoteVersions.$inferSelect
+export type QuoteLine = typeof quoteLines.$inferSelect
+export type NewQuoteLine = typeof quoteLines.$inferInsert
+export type Approval = typeof approvals.$inferSelect

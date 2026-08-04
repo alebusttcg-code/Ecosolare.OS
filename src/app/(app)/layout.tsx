@@ -24,6 +24,7 @@ const VOCI: readonly { href: string; label: string; resource: Resource }[] = [
   { href: '/clienti', label: 'Clienti', resource: 'contact' },
   { href: '/opportunita', label: 'Opportunita', resource: 'opportunity' },
   { href: '/attivita', label: 'Attivita', resource: 'activity' },
+  { href: '/approvazioni', label: 'Approvazioni', resource: 'quote_approval' },
   { href: '/amministrazione/utenti', label: 'Utenti', resource: 'user' },
   { href: '/amministrazione/configurazioni', label: 'Configurazioni', resource: 'settings' },
 ]

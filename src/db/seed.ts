@@ -123,6 +123,17 @@ const CONFIGURAZIONI = [
       'Punteggio oltre il quale un contatto viene segnalato come possibile duplicato. Nessuna fusione avviene mai in automatico.',
   },
   {
+    key: 'preventivi.soglia_margine_pct',
+    value: 20,
+    description:
+      'Percentuale minima di margine. Sotto questa soglia il preventivo non viene bloccato, ma richiede l approvazione della direzione.',
+  },
+  {
+    key: 'preventivi.giorni_validita',
+    value: 30,
+    description: 'Validita proposta per un nuovo preventivo, in giorni.',
+  },
+  {
     key: 'orari.servizio',
     value: { dal: 'lun', al: 'ven', dalle: '08:30', alle: '18:00' },
     description:

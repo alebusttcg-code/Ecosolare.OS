@@ -27,3 +27,9 @@ export const CHIAVI = {
   giorniDefaultProssimaAzione: 'pipeline.giorni_default_prossima_azione',
   giorniAlertOpportunitaFerma: 'pipeline.giorni_alert_opportunita_ferma',
 } as const
+
+export const CHIAVI_MARGINE = {
+  /** Percentuale minima sotto la quale un preventivo richiede approvazione. */
+  sogliaMarginePct: 'preventivi.soglia_margine_pct',
+  giorniValidita: 'preventivi.giorni_validita',
+} as const
