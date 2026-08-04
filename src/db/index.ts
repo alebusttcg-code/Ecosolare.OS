@@ -24,12 +24,25 @@ declare global {
 /** Su Vercel ogni invocazione e' un processo separato: il pool va tenuto minimo. */
 const inServerless = Boolean(process.env.VERCEL)
 
+/**
+ * Dimensione del pool.
+ *
+ * Sovrascrivibile con `DB_POOL_MAX` perche' il valore giusto dipende
+ * dall'ambiente: il pooler di Supabase ha un limite di connessioni per progetto,
+ * e certi database locali ne accettano una sola.
+ */
+function dimensionePool(): number {
+  const configurato = Number.parseInt(process.env.DB_POOL_MAX ?? '', 10)
+  if (Number.isFinite(configurato) && configurato > 0) return configurato
+  return inServerless ? 1 : 10
+}
+
 function buildDb() {
   const sql = postgres(env().DATABASE_URL, {
     // Con il pooler in transaction mode ogni connessione e' condivisa fra
     // richieste diverse: tenerne molte aperte per istanza esaurisce il pooler
     // senza dare alcun vantaggio.
-    max: inServerless ? 1 : 10,
+    max: dimensionePool(),
     // Supavisor in transaction mode NON supporta i prepared statement: senza
     // questa riga le query falliscono in produzione ma funzionano in locale,
     // che e' il modo peggiore di scoprire un problema.
