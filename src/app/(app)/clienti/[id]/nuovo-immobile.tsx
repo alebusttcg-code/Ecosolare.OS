@@ -42,7 +42,7 @@ export function NuovoImmobile({ contactId }: { contactId: string }) {
         })
       }}
       className="space-y-3 rounded-md border p-3"
-      style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+      style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
     >
       <Campo label="Nome" name="label" required errore={errors.label} placeholder="Abitazione principale" />
       <Campo label="Indirizzo" name="addressLine" required errore={errors.addressLine} />
@@ -57,13 +57,13 @@ export function NuovoImmobile({ contactId }: { contactId: string }) {
         <Campo label="POD" name="pod" errore={errors.pod} placeholder="IT001E…" />
       </div>
 
-      {errors._ ? <p className="text-xs text-red-600">{errors._}</p> : null}
+      {errors._ ? <p className="text-xs text-eco-red-400">{errors._}</p> : null}
 
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={inCorso}
-          className="rounded bg-eco-blue-500 px-3 py-1.5 text-xs font-medium text-white"
+          className="rounded bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-3 py-1.5 text-xs font-semibold text-eco-abisso"
         >
           {inCorso ? 'Salvataggio…' : 'Salva'}
         </button>

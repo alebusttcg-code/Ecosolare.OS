@@ -172,15 +172,17 @@ export function EditorPreventivo({
     <div className="space-y-4">
       <div
         className="overflow-x-auto rounded-lg border"
-        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       >
-        <table className="w-full text-sm">
+        {/* Larghezza minima: sotto questa soglia la descrizione diventa
+            illeggibile. Meglio far scorrere la tabella che comprimerla. */}
+        <table className="w-full min-w-[780px] text-sm">
           <thead>
             <tr
               className="border-b text-left text-xs"
               style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
             >
-              <th className="p-2 font-medium">Descrizione</th>
+              <th className="min-w-[220px] p-2 font-medium">Descrizione</th>
               <th className="w-20 p-2 font-medium">Q.tà</th>
               <th className="w-16 p-2 font-medium">U.m.</th>
               <th className="w-28 p-2 text-right font-medium">Prezzo</th>
@@ -213,7 +215,7 @@ export function EditorPreventivo({
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { description: e.target.value })}
                       className="w-full rounded border px-2 py-1 text-sm"
-                      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
                   <td className="p-1">
@@ -224,7 +226,7 @@ export function EditorPreventivo({
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { quantity: numero(e.target.value) })}
                       className="w-full rounded border px-2 py-1 text-right text-sm"
-                      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
                   <td className="p-1">
@@ -233,7 +235,7 @@ export function EditorPreventivo({
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { unit: e.target.value })}
                       className="w-full rounded border px-2 py-1 text-sm"
-                      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
                   <td className="p-1">
@@ -244,7 +246,7 @@ export function EditorPreventivo({
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { unitPrice: numero(e.target.value) })}
                       className="w-full rounded border px-2 py-1 text-right text-sm"
-                      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
                   {mostraCosti ? (
@@ -256,7 +258,7 @@ export function EditorPreventivo({
                         disabled={!modificabile}
                         onChange={(e) => aggiorna(r.chiave, { unitCost: numero(e.target.value) })}
                         className="w-full rounded border px-2 py-1 text-right text-sm"
-                        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                       />
                     </td>
                   ) : null}
@@ -268,7 +270,7 @@ export function EditorPreventivo({
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { discountPct: numero(e.target.value) })}
                       className="w-full rounded border px-2 py-1 text-right text-sm"
-                      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
                   <td className="p-1">
@@ -279,7 +281,7 @@ export function EditorPreventivo({
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { vatRate: numero(e.target.value) })}
                       className="w-full rounded border px-2 py-1 text-right text-sm"
-                      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
                   <td className="p-2 text-right tabular-nums">
@@ -316,7 +318,7 @@ export function EditorPreventivo({
               if (voce) aggiungiDaCatalogo(voce)
             }}
             className="rounded border px-3 py-1.5 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="">+ Aggiungi dal catalogo…</option>
             {catalogo.map((c) => (
@@ -339,7 +341,7 @@ export function EditorPreventivo({
       <div className="grid gap-4 md:grid-cols-2">
         <div
           className="space-y-2 rounded-lg border p-4 text-sm"
-          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+          style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         >
           <div className="flex items-center justify-between">
             <span>Sconto globale</span>
@@ -351,7 +353,7 @@ export function EditorPreventivo({
                 disabled={!modificabile}
                 onChange={(e) => setSconto(numero(e.target.value))}
                 className="w-20 rounded border px-2 py-1 text-right text-sm"
-                style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
               />
               %
             </span>
@@ -380,7 +382,7 @@ export function EditorPreventivo({
         ) : (
           <div
             className="rounded-lg border p-4 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <div className="font-medium">Marginalità</div>
             <p className="mt-2 text-xs" style={{ color: 'var(--testo-tenue)' }}>
@@ -393,14 +395,14 @@ export function EditorPreventivo({
       </div>
 
       {errore ? (
-        <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+        <p className="rounded-lg border p-3 text-sm" style={{ borderColor: 'rgba(224,133,133,0.42)', background: 'rgba(224,133,133,0.08)', color: '#f0c9c9' }}>
           {errore}
         </p>
       ) : null}
       {messaggio ? (
         <p
           className="rounded border p-3 text-sm"
-          style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+          style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
         >
           {messaggio}
         </p>
@@ -411,7 +413,7 @@ export function EditorPreventivo({
           type="button"
           onClick={salva}
           disabled={inCorso}
-          className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-eco-blue-600 disabled:opacity-50"
+          className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso hover:opacity-90 disabled:opacity-50"
         >
           {inCorso ? 'Salvataggio…' : 'Salva righe'}
         </button>

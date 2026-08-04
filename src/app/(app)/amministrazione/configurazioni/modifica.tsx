@@ -37,7 +37,7 @@ export function ModificaConfigurazione({ voce }: { voce: ConfigurazioneInElenco 
         })
       }}
       className="rounded-lg border p-4"
-      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
     >
       <div className="font-mono text-xs" style={{ color: 'var(--testo-tenue)' }}>
         {voce.key}
@@ -53,7 +53,7 @@ export function ModificaConfigurazione({ voce }: { voce: ConfigurazioneInElenco 
           className="flex-1 rounded border px-3 py-1.5 font-mono text-sm"
           style={{
             background: 'var(--superficie)',
-            borderColor: errore ? '#d92d20' : 'var(--bordo)',
+            borderColor: errore ? 'var(--color-eco-red-400)' : 'var(--bordo)',
           }}
         />
         <button
@@ -66,9 +66,9 @@ export function ModificaConfigurazione({ voce }: { voce: ConfigurazioneInElenco 
         </button>
       </div>
 
-      {errore ? <p className="mt-2 text-xs text-red-600">{errore}</p> : null}
+      {errore ? <p className="mt-2 text-xs text-eco-red-400">{errore}</p> : null}
       {salvato ? (
-        <p className="mt-2 text-xs" style={{ color: '#2b6a25' }}>
+        <p className="mt-2 text-xs" style={{ color: 'var(--color-eco-green-400)' }}>
           Salvato.
         </p>
       ) : null}

@@ -54,7 +54,7 @@ export function CambiaStato({
         value={destinazione}
         onChange={(e) => setDestinazione(e.target.value)}
         className="w-full rounded border px-3 py-2 text-sm"
-        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       >
         {stages
           .filter((s) => s.isActive || s.code === statoCorrente)
@@ -73,7 +73,7 @@ export function CambiaStato({
             type="date"
             defaultValue={fraGiorni(2)}
             className="w-full rounded border px-3 py-2 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           />
         </label>
       ) : null}
@@ -88,7 +88,7 @@ export function CambiaStato({
             className="w-full rounded border px-3 py-2 text-sm"
             style={{
               background: 'var(--superficie)',
-              borderColor: errors.lostReason ? '#d92d20' : 'var(--bordo)',
+              borderColor: errors.lostReason ? 'var(--color-eco-red-400)' : 'var(--bordo)',
             }}
           />
         </label>
@@ -98,11 +98,11 @@ export function CambiaStato({
         name="note"
         placeholder="Nota (facoltativa)"
         className="w-full rounded border px-3 py-2 text-sm"
-        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       />
 
       {Object.values(errors).map((messaggio) => (
-        <p key={messaggio} className="text-xs text-red-600">
+        <p key={messaggio} className="text-xs text-eco-red-400">
           {messaggio}
         </p>
       ))}
@@ -110,7 +110,7 @@ export function CambiaStato({
       <button
         type="submit"
         disabled={inCorso || destinazione === statoCorrente}
-        className="w-full rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+        className="w-full rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-40"
       >
         {inCorso ? 'Aggiornamento…' : 'Aggiorna stato'}
       </button>

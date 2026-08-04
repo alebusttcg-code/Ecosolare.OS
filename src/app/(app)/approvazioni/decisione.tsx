@@ -31,7 +31,7 @@ export function Decisione({ approvalId }: { approvalId: string }) {
         name="nota"
         placeholder="Nota sulla decisione (facoltativa)"
         className="w-full rounded border px-3 py-1.5 text-sm"
-        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       />
       <div className="flex gap-2">
         <button
@@ -40,7 +40,7 @@ export function Decisione({ approvalId }: { approvalId: string }) {
           value="approva"
           disabled={inCorso}
           className="rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          style={{ background: '#2b6a25' }}
+          style={{ background: 'linear-gradient(135deg, #a3c563 0%, #7fa348 100%)', color: '#050a14' }}
         >
           Approva
         </button>
@@ -55,7 +55,7 @@ export function Decisione({ approvalId }: { approvalId: string }) {
           Respingi
         </button>
       </div>
-      {errore ? <p className="text-xs text-red-600">{errore}</p> : null}
+      {errore ? <p className="text-xs text-eco-red-400">{errore}</p> : null}
     </form>
   )
 }

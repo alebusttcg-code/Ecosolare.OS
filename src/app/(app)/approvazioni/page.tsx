@@ -1,6 +1,6 @@
 import { and, desc, eq } from 'drizzle-orm'
 import Link from 'next/link'
-import { Card, Vuoto, formattaData } from '@/components/ui'
+import { Card, Intestazione, Vuoto, formattaData } from '@/components/ui'
 import { getDb } from '@/db'
 import { approvals, quoteVersions, quotes, users } from '@/db/schema'
 import { guard } from '@/lib/auth/session'
@@ -38,12 +38,11 @@ export default async function ApprovazioniPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Approvazioni</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          {righe.length} in attesa di decisione
-        </p>
-      </div>
+      <Intestazione
+        eyebrow="Direzione"
+        titolo="Approvazioni"
+        sottotitolo={`${righe.length} in attesa di decisione`}
+      />
 
       {righe.length === 0 ? (
         <Card>
@@ -59,7 +58,7 @@ export default async function ApprovazioniPage() {
                 <div>
                   <Link
                     href={`/preventivi/${r.versionId}`}
-                    className="text-sm font-medium text-eco-blue-500 hover:underline"
+                    className="text-sm font-medium text-eco-blue-300 hover:underline"
                   >
                     {r.quoteCode} — {r.quoteTitle} (v{r.versionNo})
                   </Link>
@@ -81,7 +80,7 @@ export default async function ApprovazioniPage() {
               {proprio ? (
                 <p
                   className="mt-4 rounded border p-3 text-xs"
-                  style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+                  style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
                 >
                   Hai presentato tu questa richiesta: deve deciderla qualcun altro. È il
                   senso stesso del passaggio di approvazione.

@@ -22,11 +22,11 @@ export function NuovoSopralluogo({ opportunityId }: { opportunityId: string }) {
             else setErrore(Object.values(esito.errors)[0] ?? 'Creazione non riuscita.')
           })
         }
-        className="text-xs text-eco-blue-500 hover:underline disabled:opacity-50"
+        className="text-xs text-eco-blue-300 hover:underline disabled:opacity-50"
       >
         + Nuovo sopralluogo
       </button>
-      {errore ? <p className="mt-1 text-xs text-red-600">{errore}</p> : null}
+      {errore ? <p className="mt-1 text-xs text-eco-red-400">{errore}</p> : null}
     </div>
   )
 }

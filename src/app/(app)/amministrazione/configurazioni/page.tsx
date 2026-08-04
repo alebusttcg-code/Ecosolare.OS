@@ -1,5 +1,5 @@
 import { asc } from 'drizzle-orm'
-import { Card, Vuoto } from '@/components/ui'
+import { Card, Intestazione, Vuoto } from '@/components/ui'
 import { getDb } from '@/db'
 import { appSettings, pipelineStages } from '@/db/schema'
 import { guard } from '@/lib/auth/session'
@@ -18,12 +18,11 @@ export default async function ConfigurazioniPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold">Configurazioni</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          Soglie, SLA e regole modificabili senza rilascio.
-        </p>
-      </div>
+      <Intestazione
+        eyebrow="Amministrazione"
+        titolo="Configurazioni"
+        sottotitolo="Soglie, SLA e regole modificabili senza rilascio."
+      />
 
       <div className="space-y-3">
         {voci.length === 0 ? (

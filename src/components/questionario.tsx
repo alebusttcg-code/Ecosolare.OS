@@ -82,7 +82,7 @@ function CampoQuestionario({
   soloLettura: boolean
   onChange: (valore: Risposta) => void
 }) {
-  const bordo = errore ? '#d92d20' : 'var(--bordo)'
+  const bordo = errore ? 'var(--color-eco-red-400)' : 'var(--bordo)'
   const stileInput = {
     background: 'var(--superficie)',
     borderColor: bordo,
@@ -97,7 +97,7 @@ function CampoQuestionario({
           ({campo.unit})
         </span>
       ) : null}
-      {campo.required ? <span className="text-red-600"> *</span> : null}
+      {campo.required ? <span className="text-eco-red-400"> *</span> : null}
     </span>
   )
 
@@ -108,7 +108,7 @@ function CampoQuestionario({
   ) : null
 
   const messaggioErrore = errore ? (
-    <span className="mt-1 block text-xs text-red-600">{errore}</span>
+    <span className="mt-1 block text-xs text-eco-red-400">{errore}</span>
   ) : null
 
   if (campo.type === 'booleano') {
@@ -127,10 +127,10 @@ function CampoQuestionario({
               onClick={() => onChange(valore === opzione.v ? null : opzione.v)}
               className="rounded-md border px-4 py-1.5 text-sm"
               style={{
-                borderColor: valore === opzione.v ? 'var(--color-eco-blue-500)' : bordo,
+                borderColor: valore === opzione.v ? 'var(--color-eco-blue-400)' : bordo,
                 background:
-                  valore === opzione.v ? 'var(--color-eco-blue-50)' : 'var(--superficie)',
-                color: valore === opzione.v ? 'var(--color-eco-blue-700)' : 'inherit',
+                  valore === opzione.v ? 'rgba(63,127,196,0.16)' : 'var(--superficie)',
+                color: valore === opzione.v ? 'var(--color-eco-blue-300)' : 'inherit',
               }}
             >
               {opzione.l}
@@ -189,9 +189,9 @@ function CampoQuestionario({
                 }
                 className="rounded-md border px-3 py-1.5 text-sm"
                 style={{
-                  borderColor: attivo ? 'var(--color-eco-blue-500)' : bordo,
-                  background: attivo ? 'var(--color-eco-blue-50)' : 'var(--superficie)',
-                  color: attivo ? 'var(--color-eco-blue-700)' : 'inherit',
+                  borderColor: attivo ? 'var(--color-eco-blue-400)' : bordo,
+                  background: attivo ? 'rgba(63,127,196,0.16)' : 'var(--superficie)',
+                  color: attivo ? 'var(--color-eco-blue-300)' : 'inherit',
                 }}
               >
                 {o.label}

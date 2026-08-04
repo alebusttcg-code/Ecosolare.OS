@@ -1,8 +1,11 @@
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { signIn } from '@/auth'
 import { getCurrentUser } from '@/lib/auth/session'
 
 export const metadata = { title: 'Accedi — EcoSolare OS' }
+
+const FLUSSO = ['Lead', 'Sopralluogo', 'Preventivo', 'Commessa', 'Cantiere', 'Margine']
 
 export default async function AccediPage({
   searchParams,
@@ -20,40 +23,71 @@ export default async function AccediPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
-      <div
-        className="w-full max-w-sm rounded-lg border p-8"
-        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
-      >
-        <div className="mb-8">
-          <h1 className="text-xl font-semibold">
-            <span className="text-eco-blue-500">Eco</span>
-            <span className="text-eco-gold-500">Solare</span>
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex justify-center">
+          <Image
+            src="/brand/ecosolare-logo.png"
+            alt="EcoSolare"
+            width={601}
+            height={193}
+            priority
+            className="h-14 w-auto"
+          />
+        </div>
+
+        <div className="pannello p-8">
+          <p className="eyebrow">Operating System</p>
+          <h1 className="mt-2 text-xl font-semibold tracking-tight">
+            Accesso riservato
           </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-            Sistema operativo aziendale
+          <div className="mt-4 filetto" />
+
+          {error ? (
+            <p
+              className="mt-6 rounded-lg border px-4 py-3 text-sm"
+              style={{
+                borderColor: 'rgba(224,133,133,0.4)',
+                background: 'rgba(224,133,133,0.08)',
+                color: '#e8a0a0',
+              }}
+            >
+              Accesso non riuscito. L&apos;account deve essere stato abilitato da un
+              amministratore.
+            </p>
+          ) : null}
+
+          <form action={accediConGoogle} className="mt-6">
+            <button
+              type="submit"
+              className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{
+                background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
+                color: '#050a14',
+              }}
+            >
+              Accedi con Google
+            </button>
+          </form>
+
+          <p
+            className="mt-6 text-xs leading-relaxed"
+            style={{ color: 'var(--testo-fioco)' }}
+          >
+            L&apos;accesso è riservato agli utenti abilitati. La verifica in due passaggi
+            è gestita dall&apos;account Google aziendale.
           </p>
         </div>
 
-        {error ? (
-          <p className="mb-6 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-            Accesso non riuscito. L&apos;account deve essere stato abilitato da un
-            amministratore.
-          </p>
-        ) : null}
-
-        <form action={accediConGoogle}>
-          <button
-            type="submit"
-            className="w-full rounded-md bg-eco-blue-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-eco-blue-600"
-          >
-            Accedi con Google
-          </button>
-        </form>
-
-        <p className="mt-6 text-xs leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
-          L&apos;accesso e riservato agli utenti abilitati. La verifica in due passaggi
-          e gestita dall&apos;account Google aziendale.
-        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs">
+          {FLUSSO.map((tappa, indice) => (
+            <span key={tappa} className="flex items-center gap-2">
+              <span style={{ color: indice > 3 ? '#d9a441' : '#5b9bd5' }}>{tappa}</span>
+              {indice < FLUSSO.length - 1 ? (
+                <span style={{ color: 'var(--testo-fioco)' }}>›</span>
+              ) : null}
+            </span>
+          ))}
+        </div>
       </div>
     </main>
   )

@@ -1,50 +1,155 @@
 @import 'tailwindcss';
 
 /**
- * Identita' visiva EcoSolare (§13 del blueprint).
- * Blu istituzionale, giallo solare, verde come accento secondario.
- * Interfaccia operativa: nessun effetto glow, nessuna animazione decorativa.
+ * Sistema visivo EcoSolare OS.
+ *
+ * Ricalcato sulla presentazione aziendale: fondo blu notte molto scuro, oro
+ * come accento principale, blu istituzionale per la navigazione, verde solo per
+ * gli esiti positivi. Filetti sottili invece di bordi spessi, pannelli
+ * traslucidi invece di riquadri pieni.
+ *
+ * Una differenza deliberata rispetto alle slide: qui i bagliori sono molto piu'
+ * contenuti. Un effetto che funziona per otto secondi su un proiettore diventa
+ * faticoso dopo otto ore di lavoro (§13 del brief).
  */
 @theme {
-  --color-eco-blue-50: #eef4fb;
-  --color-eco-blue-100: #d7e6f7;
-  --color-eco-blue-500: #2b6cb0;
-  --color-eco-blue-600: #235a94;
-  --color-eco-blue-700: #1b4778;
-  --color-eco-blue-900: #12314f;
+  /* Blu istituzionale del marchio */
+  --color-eco-blue-300: #7fb2e8;
+  --color-eco-blue-400: #5b9bd5;
+  --color-eco-blue-500: #3f7fc4;
+  --color-eco-blue-600: #2f66a8;
+  --color-eco-blue-700: #24507f;
 
-  --color-eco-gold-100: #fdf3d4;
-  --color-eco-gold-400: #e9b924;
-  --color-eco-gold-500: #d4a417;
+  /* Oro solare */
+  --color-eco-gold-200: #f2dda0;
+  --color-eco-gold-300: #e8c765;
+  --color-eco-gold-400: #d9a441;
+  --color-eco-gold-500: #c08d2c;
 
-  --color-eco-green-500: #7aa03c;
-  --color-eco-green-600: #648433;
+  /* Verde: solo esiti positivi, mai decorativo */
+  --color-eco-green-400: #a3c563;
+  --color-eco-green-500: #7fa348;
+
+  --color-eco-red-400: #e08585;
+
+  /* Superfici */
+  --color-eco-abisso: #050a14;
+  --color-eco-notte: #0a1220;
+  --color-eco-superficie: #0e1a2c;
+  --color-eco-elevata: #14243c;
+  --color-eco-filetto: #1e3350;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 :root {
-  --sfondo: #f7f8fa;
-  --superficie: #ffffff;
-  --testo: #1a1d21;
-  --testo-tenue: #5b6470;
-  --bordo: #dfe3e8;
+  --sfondo: #050a14;
+  --superficie: #0e1a2c;
+  --superficie-alta: #14243c;
+  --testo: #eef3fa;
+  --testo-tenue: #8ea3bd;
+  --testo-fioco: #5c7595;
+  --bordo: #1e3350;
+  --bordo-tenue: #16273e;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --sfondo: #12151a;
-    --superficie: #1a1e25;
-    --testo: #eef1f5;
-    --testo-tenue: #9aa4b2;
-    --bordo: #2b313a;
-  }
-}
+/* Il gestionale nasce scuro. Il tema chiaro arrivera' se qualcuno lo chiedera'
+   davvero: mantenerne due raddoppia il lavoro di ogni schermata. */
 
 body {
-  background: var(--sfondo);
+  background:
+    radial-gradient(1200px 600px at 15% -10%, #0d1c33 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, #14203a 0%, transparent 55%),
+    var(--sfondo);
+  background-attachment: fixed;
   color: var(--testo);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------------------------------------------------------------------------
+   Elementi ricorrenti del linguaggio visivo
+   --------------------------------------------------------------------------- */
+
+/** Etichetta di sezione: piccola, maiuscola, spaziata, oro. */
+.eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-eco-gold-400);
+  font-weight: 600;
+}
+
+/** Filetto orizzontale che sfuma, come nelle slide. */
+.filetto {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--color-eco-gold-400) 0%,
+    rgba(217, 164, 65, 0.35) 35%,
+    transparent 100%
+  );
+}
+
+.filetto-blu {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--color-eco-blue-400) 0%,
+    rgba(91, 155, 213, 0.3) 40%,
+    transparent 100%
+  );
+}
+
+/** Pannello traslucido con bordo sottile. */
+.pannello {
+  background: linear-gradient(
+    160deg,
+    rgba(20, 36, 60, 0.72) 0%,
+    rgba(14, 26, 44, 0.55) 100%
+  );
+  border: 1px solid var(--bordo);
+  border-radius: 0.875rem;
+  backdrop-filter: blur(6px);
+}
+
+/** Anello per le icone circolari. Il colore lo decide chi lo usa. */
+.anello {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1.5px solid currentColor;
+  box-shadow: 0 0 14px -4px currentColor;
+}
+
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #4e6480;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1c2d47;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #27405f;
+  background-clip: content-box;
 }

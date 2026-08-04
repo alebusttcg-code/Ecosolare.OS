@@ -55,24 +55,24 @@ export function FormNuovaOpportunita({
         })
       }}
       className="space-y-6 rounded-lg border p-6"
-      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
     >
       {errors._ ? (
-        <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+        <p className="rounded-lg border p-3 text-sm" style={{ borderColor: 'rgba(224,133,133,0.42)', background: 'rgba(224,133,133,0.08)', color: '#f0c9c9' }}>
           {errors._}
         </p>
       ) : null}
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium">
-          Cliente<span className="text-red-600"> *</span>
+          Cliente<span className="text-eco-red-400"> *</span>
         </span>
         <select
           name="contactId"
           required
           defaultValue={contattoPreselezionato ?? ''}
           className="w-full rounded-md border px-3 py-2 text-sm"
-          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+          style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         >
           <option value="">Seleziona…</option>
           {contatti.map((c) => (
@@ -83,11 +83,11 @@ export function FormNuovaOpportunita({
           ))}
         </select>
         {errors.contactId ? (
-          <span className="mt-1 block text-xs text-red-600">{errors.contactId}</span>
+          <span className="mt-1 block text-xs text-eco-red-400">{errors.contactId}</span>
         ) : null}
         <span className="mt-1 block text-xs" style={{ color: 'var(--testo-tenue)' }}>
           Il cliente non c&apos;è?{' '}
-          <Link href="/clienti/nuovo" className="text-eco-blue-500 hover:underline">
+          <Link href="/clienti/nuovo" className="text-eco-blue-300 hover:underline">
             Crealo prima
           </Link>
           .
@@ -100,7 +100,7 @@ export function FormNuovaOpportunita({
           <select
             name="businessLine"
             className="w-full rounded-md border px-3 py-2 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="fotovoltaico">Fotovoltaico</option>
             <option value="elettrico">Elettrico</option>
@@ -113,7 +113,7 @@ export function FormNuovaOpportunita({
           <select
             name="sourceId"
             className="w-full rounded-md border px-3 py-2 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="">Non indicata</option>
             {fonti.map((f) => (
@@ -145,7 +145,7 @@ export function FormNuovaOpportunita({
           <select
             name="ownerId"
             className="w-full rounded-md border px-3 py-2 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="">Io</option>
             {utenti.map((u) => (
@@ -159,7 +159,7 @@ export function FormNuovaOpportunita({
 
       <fieldset
         className="space-y-4 rounded-md border p-4"
-        style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+        style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
       >
         <legend className="px-2 text-sm font-medium">Prima azione</legend>
         <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
@@ -189,7 +189,7 @@ export function FormNuovaOpportunita({
           name="notes"
           rows={3}
           className="w-full rounded-md border px-3 py-2 text-sm"
-          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+          style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         />
       </label>
 

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
+import { Badge, Card, Intestazione, Vuoto, formattaData } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import { getAttivitaAperte } from '@/lib/queries/dashboard'
 import { CompletaAttivita } from './completa'
@@ -22,18 +22,17 @@ export default async function AttivitaPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Le tue attivita</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          {righe.length} aperte, dalla piu urgente
-        </p>
-      </div>
+      <Intestazione
+        eyebrow="Operativo"
+        titolo="Le tue attività"
+        sottotitolo={`${righe.length} aperte, dalla più urgente`}
+      />
 
       <Card>
         {righe.length === 0 ? (
           <Vuoto messaggio="Nessuna attivita aperta." />
         ) : (
-          <ul className="divide-y" style={{ borderColor: 'var(--bordo)' }}>
+          <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
             {righe.map((a) => (
               <li key={a.id} className="py-4 first:pt-0 last:pb-0">
                   <div className="flex items-start justify-between gap-4">
@@ -49,7 +48,7 @@ export default async function AttivitaPage() {
                             {' · '}
                             <Link
                               href={`/opportunita/${a.opportunityId}`}
-                              className="text-eco-blue-500 hover:underline"
+                              className="text-eco-blue-300 hover:underline"
                             >
                               {a.opportunityCode} {a.opportunityTitle}
                             </Link>

@@ -67,10 +67,10 @@ export function FormNuovoCliente() {
     <form
       action={(formData) => invia(formData, false)}
       className="space-y-6 rounded-lg border p-6"
-      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
     >
       {errors._ ? (
-        <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+        <p className="rounded-lg border p-3 text-sm" style={{ borderColor: 'rgba(224,133,133,0.42)', background: 'rgba(224,133,133,0.08)', color: '#f0c9c9' }}>
           {errors._}
         </p>
       ) : null}
@@ -90,7 +90,7 @@ export function FormNuovoCliente() {
           name="notes"
           rows={3}
           className="w-full rounded-md border px-3 py-2 text-sm"
-          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+          style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         />
       </label>
 
@@ -108,12 +108,12 @@ export function FormNuovoCliente() {
       {duplicati.length > 0 ? (
         <div
           className="rounded-lg border p-4"
-          style={{ borderColor: '#e8b924', background: '#fdf9ec' }}
+          style={{ borderColor: 'rgba(217,164,65,0.42)', background: 'rgba(217,164,65,0.08)' }}
         >
-          <h3 className="text-sm font-semibold" style={{ color: '#7a5c00' }}>
+          <h3 className="text-sm font-semibold" style={{ color: '#e8c765' }}>
             Possibile duplicato
           </h3>
-          <p className="mt-1 text-xs" style={{ color: '#7a5c00' }}>
+          <p className="mt-1 text-xs" style={{ color: '#e8c765' }}>
             Esistono contatti simili. Aprine uno per aggiungere lì la nuova richiesta,
             oppure conferma che si tratta di una persona diversa.
           </p>
@@ -122,11 +122,11 @@ export function FormNuovoCliente() {
               <li key={d.id} className="flex items-center justify-between gap-4 text-sm">
                 <Link
                   href={`/clienti/${d.id}`}
-                  className="font-medium text-eco-blue-500 hover:underline"
+                  className="font-medium text-eco-blue-300 hover:underline"
                 >
                   {d.nome}
                 </Link>
-                <span className="text-xs" style={{ color: '#7a5c00' }}>
+                <span className="text-xs" style={{ color: '#e8c765' }}>
                   {d.motivi.map((m) => ETICHETTA_MOTIVO[m] ?? m).join(', ')} · {d.score}/100
                 </span>
               </li>
@@ -138,7 +138,7 @@ export function FormNuovoCliente() {
               onClick={confermaCreazione}
               disabled={inCorso}
               className="rounded-md border px-4 py-2 text-sm font-medium"
-              style={{ borderColor: '#e8b924', color: '#7a5c00' }}
+              style={{ borderColor: '#e8b924', color: '#e8c765' }}
             >
               È una persona diversa, crea comunque
             </button>

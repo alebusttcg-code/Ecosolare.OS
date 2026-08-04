@@ -121,7 +121,7 @@ export function Prequalifica({
       {messaggio ? (
         <p
           className="rounded border p-3 text-sm"
-          style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+          style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
         >
           {messaggio}
         </p>
@@ -131,7 +131,7 @@ export function Prequalifica({
         type="button"
         onClick={salva}
         disabled={inCorso}
-        className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
       >
         {inCorso ? 'Salvataggio…' : 'Salva prequalifica'}
       </button>

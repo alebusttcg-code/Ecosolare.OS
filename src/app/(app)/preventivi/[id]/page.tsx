@@ -71,7 +71,7 @@ export default async function PreventivoPage({
         </div>
         <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
           {dati.quoteCode} · versione {dati.versione.versionNo} ·{' '}
-          <Link href={`/clienti/${dati.clienteId}`} className="text-eco-blue-500 hover:underline">
+          <Link href={`/clienti/${dati.clienteId}`} className="text-eco-blue-300 hover:underline">
             {[dati.clienteNome, dati.clienteCognome].filter(Boolean).join(' ')}
           </Link>
         </p>
@@ -80,7 +80,7 @@ export default async function PreventivoPage({
       {!modificabile ? (
         <p
           className="rounded-lg border p-3 text-sm"
-          style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+          style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
         >
           Questa versione non è modificabile: il cliente ha ricevuto questi numeri e devono
           restare ricostruibili. Per cambiare qualcosa, crea una nuova versione.
@@ -118,7 +118,7 @@ export default async function PreventivoPage({
                     className={
                       v.id === dati.versione.id
                         ? 'font-medium'
-                        : 'text-eco-blue-500 hover:underline'
+                        : 'text-eco-blue-300 hover:underline'
                     }
                   >
                     v{v.versionNo}

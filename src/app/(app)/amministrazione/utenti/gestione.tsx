@@ -52,7 +52,7 @@ function NuovoUtente() {
       <button
         type="button"
         onClick={() => setAperto(true)}
-        className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-eco-blue-600"
+        className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso hover:opacity-90"
       >
         Abilita un utente
       </button>
@@ -78,7 +78,7 @@ function NuovoUtente() {
         })
       }}
       className="space-y-4 rounded-lg border p-4"
-      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
     >
       <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
         Non serve una password: la persona entra con il proprio account Google aziendale.
@@ -89,7 +89,7 @@ function NuovoUtente() {
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-sm font-medium">
-            Email aziendale<span className="text-red-600"> *</span>
+            Email aziendale<span className="text-eco-red-400"> *</span>
           </span>
           <input
             name="email"
@@ -98,11 +98,11 @@ function NuovoUtente() {
             className="w-full rounded-md border px-3 py-2 text-sm"
             style={{
               background: 'var(--superficie)',
-              borderColor: errors.email ? '#d92d20' : 'var(--bordo)',
+              borderColor: errors.email ? 'var(--color-eco-red-400)' : 'var(--bordo)',
             }}
           />
           {errors.email ? (
-            <span className="mt-1 block text-xs text-red-600">{errors.email}</span>
+            <span className="mt-1 block text-xs text-eco-red-400">{errors.email}</span>
           ) : null}
         </label>
 
@@ -111,7 +111,7 @@ function NuovoUtente() {
           <input
             name="name"
             className="w-full rounded-md border px-3 py-2 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           />
         </label>
       </div>
@@ -122,7 +122,7 @@ function NuovoUtente() {
           value={ruolo}
           onChange={(e) => setRuolo(e.target.value as Role)}
           className="w-full rounded-md border px-3 py-2 text-sm"
-          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+          style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         >
           {RUOLI.map((r) => (
             <option key={r.value} value={r.value}>
@@ -137,13 +137,13 @@ function NuovoUtente() {
 
       <Capacita ruolo={ruolo} />
 
-      {errors._ ? <p className="text-xs text-red-600">{errors._}</p> : null}
+      {errors._ ? <p className="text-xs text-eco-red-400">{errors._}</p> : null}
 
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={inCorso}
-          className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white"
+          className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
         >
           {inCorso ? 'Creazione…' : 'Abilita'}
         </button>
@@ -226,7 +226,7 @@ function RigaUtente({
   return (
     <div
       className="rounded-lg border p-4"
-      style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+      style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
     >
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
@@ -280,7 +280,7 @@ function RigaUtente({
               onChange={(e) => setRuolo(e.target.value as Role)}
               disabled={eSeStesso}
               className="w-full rounded-md border px-3 py-2 text-sm disabled:opacity-50"
-              style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+              style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
             >
               {RUOLI.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -289,7 +289,7 @@ function RigaUtente({
               ))}
             </select>
             {errors.role ? (
-              <span className="mt-1 block text-xs text-red-600">{errors.role}</span>
+              <span className="mt-1 block text-xs text-eco-red-400">{errors.role}</span>
             ) : null}
           </label>
 
@@ -309,7 +309,7 @@ function RigaUtente({
             <span>Attivo</span>
           </label>
           {errors.isActive ? (
-            <span className="block text-xs text-red-600">{errors.isActive}</span>
+            <span className="block text-xs text-eco-red-400">{errors.isActive}</span>
           ) : null}
 
           {eSeStesso ? (
@@ -319,12 +319,12 @@ function RigaUtente({
             </p>
           ) : null}
 
-          {errors._ ? <p className="text-xs text-red-600">{errors._}</p> : null}
+          {errors._ ? <p className="text-xs text-eco-red-400">{errors._}</p> : null}
 
           <button
             type="submit"
             disabled={inCorso}
-            className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white"
+            className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
           >
             {inCorso ? 'Salvataggio…' : 'Salva'}
           </button>

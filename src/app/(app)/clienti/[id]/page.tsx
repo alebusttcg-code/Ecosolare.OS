@@ -51,7 +51,7 @@ export default async function SchedaClientePage({
             action={
               <Link
                 href={`/opportunita/nuova?cliente=${contatto.id}`}
-                className="text-xs text-eco-blue-500 hover:underline"
+                className="text-xs text-eco-blue-300 hover:underline"
               >
                 + Nuova opportunita
               </Link>
@@ -60,13 +60,13 @@ export default async function SchedaClientePage({
             {opportunita.length === 0 ? (
               <Vuoto messaggio="Nessuna opportunita per questo cliente." />
             ) : (
-              <ul className="divide-y" style={{ borderColor: 'var(--bordo)' }}>
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {opportunita.map((o) => (
                   <li key={o.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
                     <div>
                       <Link
                         href={`/opportunita/${o.id}`}
-                        className="text-sm font-medium text-eco-blue-500 hover:underline"
+                        className="text-sm font-medium text-eco-blue-300 hover:underline"
                       >
                         {o.title}
                       </Link>
@@ -90,7 +90,7 @@ export default async function SchedaClientePage({
             {attivita.length === 0 ? (
               <Vuoto messaggio="Nessuna attivita registrata." />
             ) : (
-              <ul className="divide-y" style={{ borderColor: 'var(--bordo)' }}>
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {attivita.map((a) => (
                   <li key={a.id} className="py-3 first:pt-0 last:pb-0">
                     <div className="flex items-center justify-between gap-4">

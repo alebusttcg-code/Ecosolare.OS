@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Badge, Card, Stat, Vuoto, formattaEuro } from '@/components/ui'
+import { Badge, Card, Intestazione, Stat, Vuoto, formattaEuro } from '@/components/ui'
 import { getCurrentUser } from '@/lib/auth/session'
 import { contaAttivitaScadute, getCruscotto } from '@/lib/queries/dashboard'
 
@@ -17,85 +17,125 @@ export default async function CruscottoPage() {
   const massimo = Math.max(1, ...dati.perStato.map((s) => s.totale))
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold">Cruscotto</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          Fase 1 — anagrafiche, pipeline e attivita.
-        </p>
-      </div>
+    <div>
+      <Intestazione
+        eyebrow="Direzione"
+        titolo="Cruscotto"
+        sottotitolo="Lead, pipeline e attività in un colpo solo."
+      />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Opportunita aperte" value={dati.aperte} />
-        <Stat label="Valore in pipeline" value={formattaEuro(dati.valoreAperto)} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="Opportunità aperte" value={dati.aperte} icona="◭" />
+        <Stat label="Valore in pipeline" value={formattaEuro(dati.valoreAperto)} icona="€" />
         <Stat
           label="Prossime azioni scadute"
           value={dati.inRitardo}
-          tone={dati.inRitardo > 0 ? 'attenzione' : 'neutro'}
+          tone={dati.inRitardo > 0 ? 'attenzione' : 'positivo'}
+          icona="!"
           hint={mieScadute > 0 ? `di cui tue: ${mieScadute}` : undefined}
         />
         <Stat
           label="Senza prossima azione"
           value={dati.senzaProssimaAzione}
-          tone={dati.senzaProssimaAzione > 0 ? 'critico' : 'neutro'}
+          tone={dati.senzaProssimaAzione > 0 ? 'critico' : 'positivo'}
+          icona="◇"
           hint="deve essere sempre zero"
         />
       </div>
 
       {dati.senzaProssimaAzione > 0 ? (
         <div
-          className="rounded-lg border p-4 text-sm"
-          style={{ borderColor: '#f5c2c0', background: '#fdecea', color: '#7a271a' }}
+          className="mt-6 rounded-xl border p-5"
+          style={{
+            borderColor: 'rgba(224,133,133,0.4)',
+            background: 'rgba(224,133,133,0.07)',
+          }}
         >
-          <strong>Anomalia di sistema.</strong> Ci sono {dati.senzaProssimaAzione}{' '}
-          opportunita aperte senza prossima azione. Secondo il criterio di accettazione 4
-          questo valore deve essere sempre zero: non e un arretrato da smaltire, e il
-          segnale che una regola non ha funzionato.
+          <p className="eyebrow" style={{ color: '#e8a0a0' }}>
+            Anomalia di sistema
+          </p>
+          <p className="mt-2 text-sm" style={{ color: '#f0c9c9' }}>
+            Ci sono {dati.senzaProssimaAzione} opportunità aperte senza prossima azione.
+            Secondo il criterio di accettazione 4 questo valore deve essere sempre zero:
+            non è un arretrato da smaltire, è il segnale che una regola non ha funzionato.
+          </p>
         </div>
       ) : null}
 
-      <Card
-        title="Pipeline per stato"
-        action={
-          <Link href="/opportunita" className="text-xs text-eco-blue-500 hover:underline">
-            Apri la pipeline
-          </Link>
-        }
-      >
-        {dati.perStato.every((s) => s.totale === 0) ? (
-          <Vuoto messaggio="Nessuna opportunita aperta. Inizia creando un cliente." />
-        ) : (
-          <ul className="space-y-2">
-            {dati.perStato.map((stato) => (
-              <li key={stato.code} className="flex items-center gap-3">
-                <span className="w-52 shrink-0 text-sm">{stato.label}</span>
-                <div className="h-2 flex-1 overflow-hidden rounded" style={{ background: 'var(--sfondo)' }}>
-                  <div
-                    className="h-full rounded bg-eco-blue-500"
-                    style={{ width: `${(stato.totale / massimo) * 100}%` }}
-                  />
-                </div>
-                <span className="w-8 text-right text-sm tabular-nums">{stato.totale}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card title="Misure in costruzione">
-        <div className="space-y-2 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          <p>
-            <Badge tone="attenzione">Baseline mancante</Badge>{' '}
-            Lo speed-to-lead sara confrontabile solo quando la baseline dello Sprint 0
-            sara compilata: {dati.senzaPrimaRisposta} opportunita aperte non hanno ancora
-            una prima risposta tracciata.
-          </p>
-          <p>
-            Conversione, tempo sopralluogo-preventivo e valore dei preventivi aperti
-            arrivano con la Fase 2.
-          </p>
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Card
+            title="Pipeline per stato"
+            action={
+              <Link
+                href="/opportunita"
+                className="text-xs transition-colors hover:text-eco-gold-300"
+                style={{ color: 'var(--color-eco-blue-300)' }}
+              >
+                Apri la pipeline →
+              </Link>
+            }
+          >
+            {dati.perStato.every((s) => s.totale === 0) ? (
+              <Vuoto messaggio="Nessuna opportunità aperta. Inizia creando un cliente." />
+            ) : (
+              <ul className="space-y-2.5">
+                {dati.perStato.map((stato) => (
+                  <li key={stato.code} className="flex items-center gap-4">
+                    <span
+                      className="w-48 shrink-0 truncate text-sm"
+                      style={{
+                        color: stato.totale > 0 ? 'var(--testo)' : 'var(--testo-fioco)',
+                      }}
+                    >
+                      {stato.label}
+                    </span>
+                    <div
+                      className="h-1.5 flex-1 overflow-hidden rounded-full"
+                      style={{ background: 'rgba(255,255,255,0.04)' }}
+                    >
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${(stato.totale / massimo) * 100}%`,
+                          background:
+                            'linear-gradient(90deg, #3f7fc4 0%, #d9a441 100%)',
+                        }}
+                      />
+                    </div>
+                    <span
+                      className="w-6 text-right text-sm tabular-nums"
+                      style={{
+                        color: stato.totale > 0 ? 'var(--testo)' : 'var(--testo-fioco)',
+                      }}
+                    >
+                      {stato.totale}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </div>
-      </Card>
+
+        <Card title="Misure in costruzione" accento="blu">
+          <div className="space-y-4 text-sm">
+            <div>
+              <Badge tone="attenzione">Baseline mancante</Badge>
+              <p className="mt-2 leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
+                Lo speed-to-lead sarà confrontabile solo quando la baseline dello Sprint 0
+                sarà compilata. {dati.senzaPrimaRisposta} opportunità aperte non hanno
+                ancora una prima risposta tracciata.
+              </p>
+            </div>
+            <div className="filetto-blu" />
+            <p className="leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
+              Conversione, tempo sopralluogo-preventivo e valore dei preventivi aperti
+              arrivano completando la Fase 2.
+            </p>
+          </div>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -210,9 +210,11 @@ async function main(): Promise<void> {
     .insert(quoteVersions)
     .values({
       quoteId: preventivo1!.id, versionNo: 1, status: 'inviato', sentAt: giorni(-6), validUntil: giorni(24),
-      revenueNet: '14164.00', costTotal: '9226.00', marginAmount: '4938.00', marginPct: '34.86',
-      vatAmount: '1522.24', grossTotal: '15686.24',
-      vatBreakdown: [{ aliquota: 10, imponibile: '13156.00', imposta: '1315.60' }, { aliquota: 22, imponibile: '1008.00', imposta: '221.76' }],
+      // Totali coerenti con le righe sottostanti: 9.314,00 di imponibile,
+      // 5.934,00 di costo, margine 36,29%.
+      revenueNet: '9314.00', costTotal: '5934.00', marginAmount: '3380.00', marginPct: '36.29',
+      vatAmount: '1106.36', grossTotal: '10420.36',
+      vatBreakdown: [{ aliquota: 10, imponibile: '7856.00', imposta: '785.60' }, { aliquota: 22, imponibile: '1458.00', imposta: '320.76' }],
       createdBy: commerciale!.id,
     })
     .returning()
@@ -230,7 +232,23 @@ async function main(): Promise<void> {
   const [preventivo2] = await db.insert(quotes).values({ code: 'PRV-2026-0002', opportunityId: opp[4]!.id, title: 'Impianto capannone 20 kW', createdBy: admin!.id }).returning()
   const [versione2] = await db
     .insert(quoteVersions)
-    .values({ quoteId: preventivo2!.id, versionNo: 1, status: 'bozza', createdBy: admin!.id })
+    .values({
+      quoteId: preventivo2!.id,
+      versionNo: 1,
+      status: 'bozza',
+      // Margine 27,6%: sopra la soglia del 20%, ma non di molto.
+      revenueNet: '13800.00',
+      costTotal: '9995.00',
+      marginAmount: '3805.00',
+      marginPct: '27.57',
+      vatAmount: '1653.60',
+      grossTotal: '15453.60',
+      vatBreakdown: [
+        { aliquota: 10, imponibile: '11520.00', imposta: '1152.00' },
+        { aliquota: 22, imponibile: '2280.00', imposta: '501.60' },
+      ],
+      createdBy: admin!.id,
+    })
     .returning()
   await db.update(quotes).set({ currentVersionId: versione2!.id }).where(eq(quotes.id, preventivo2!.id))
   await db.insert(quoteLines).values([

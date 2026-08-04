@@ -21,7 +21,7 @@ export function NuovoPreventivo({
       <button
         type="button"
         onClick={() => setAperto(true)}
-        className="text-xs text-eco-blue-500 hover:underline"
+        className="text-xs text-eco-blue-300 hover:underline"
       >
         + Nuovo preventivo
       </button>
@@ -48,16 +48,16 @@ export function NuovoPreventivo({
         required
         defaultValue={titoloProposto}
         className="rounded border px-2 py-1 text-xs"
-        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       />
       <button
         type="submit"
         disabled={inCorso}
-        className="rounded bg-eco-blue-500 px-2 py-1 text-xs font-medium text-white"
+        className="rounded bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-2 py-1 text-xs font-semibold text-eco-abisso"
       >
         Crea
       </button>
-      {errore ? <span className="text-xs text-red-600">{errore}</span> : null}
+      {errore ? <span className="text-xs text-eco-red-400">{errore}</span> : null}
     </form>
   )
 }

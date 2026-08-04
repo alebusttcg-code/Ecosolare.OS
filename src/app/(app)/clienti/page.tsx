@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
+import { Badge, Card, Intestazione, Vuoto, formattaData } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import { searchContacts } from '@/lib/queries/contacts'
 
@@ -21,20 +21,19 @@ export default async function ClientiPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Clienti</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-            {totale} {totale === 1 ? 'contatto' : 'contatti'}
-          </p>
-        </div>
-        <Link
-          href="/clienti/nuovo"
-          className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-eco-blue-600"
-        >
-          Nuovo cliente
-        </Link>
-      </div>
+      <Intestazione
+        eyebrow="Anagrafica"
+        titolo="Clienti"
+        sottotitolo={`${totale} ${totale === 1 ? 'contatto' : 'contatti'} in archivio`}
+        azione={
+          <Link
+            href="/clienti/nuovo"
+            className="rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso transition-opacity hover:opacity-90"
+          >
+            Nuovo cliente
+          </Link>
+        }
+      />
 
       <form className="flex gap-2">
         <input
@@ -42,7 +41,7 @@ export default async function ClientiPage({
           defaultValue={q}
           placeholder="Cerca per nome, email o telefono…"
           className="flex-1 rounded-md border px-3 py-2 text-sm"
-          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+          style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         />
         <button
           type="submit"
@@ -79,7 +78,7 @@ export default async function ClientiPage({
                   <td className="py-2.5">
                     <Link
                       href={`/clienti/${riga.id}`}
-                      className="font-medium text-eco-blue-500 hover:underline"
+                      className="font-medium text-eco-blue-300 hover:underline"
                     >
                       {[riga.firstName, riga.lastName].filter(Boolean).join(' ')}
                     </Link>

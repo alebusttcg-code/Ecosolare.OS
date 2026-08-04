@@ -98,7 +98,7 @@ export function CompilaSopralluogo({
     <div className="space-y-6">
       <div
         className="flex flex-wrap items-center gap-4 rounded-lg border p-4 text-sm"
-        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       >
         <div className="flex-1">
           <div className="flex items-center justify-between text-xs">
@@ -109,7 +109,7 @@ export function CompilaSopralluogo({
           </div>
           <div
             className="mt-1 h-2 overflow-hidden rounded"
-            style={{ background: 'var(--sfondo)' }}
+            style={{ background: 'rgba(255,255,255,0.04)' }}
           >
             <div
               className="h-full rounded"
@@ -117,18 +117,18 @@ export function CompilaSopralluogo({
                 width: `${completezza.percentuale}%`,
                 background:
                   mancanti.length === 0
-                    ? 'var(--color-eco-green-500)'
-                    : 'var(--color-eco-blue-500)',
+                    ? 'var(--color-eco-green-400)'
+                    : 'var(--color-eco-blue-400)',
               }}
             />
           </div>
         </div>
         {mancanti.length > 0 ? (
-          <span className="text-xs" style={{ color: '#b54708' }}>
+          <span className="text-xs" style={{ color: 'var(--color-eco-gold-300)' }}>
             {mancanti.length} obbligatori mancanti
           </span>
         ) : (
-          <span className="text-xs" style={{ color: '#2b6a25' }}>
+          <span className="text-xs" style={{ color: 'var(--color-eco-green-400)' }}>
             Pronto per la chiusura
           </span>
         )}
@@ -137,7 +137,7 @@ export function CompilaSopralluogo({
       {criticita.length > 0 ? (
         <div
           className="rounded-lg border p-4 text-sm"
-          style={{ borderColor: '#e8b924', background: '#fdf9ec', color: '#7a5c00' }}
+          style={{ borderColor: 'rgba(217,164,65,0.42)', background: 'rgba(217,164,65,0.08)', color: '#e8c765' }}
         >
           <strong>Criticità rilevate:</strong> {criticita.map((c) => c.label).join(', ')}.
           Verranno riportate nell attività di preventivazione.
@@ -146,7 +146,7 @@ export function CompilaSopralluogo({
 
       <div
         className="rounded-lg border p-6"
-        style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       >
         <Questionario
           definizione={definizione}
@@ -164,7 +164,7 @@ export function CompilaSopralluogo({
             disabled={completato}
             onChange={(e) => setNote(e.target.value)}
             className="w-full rounded-md border px-3 py-2 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           />
         </label>
       </div>
@@ -172,7 +172,7 @@ export function CompilaSopralluogo({
       {messaggio ? (
         <p
           className="rounded-lg border p-3 text-sm"
-          style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+          style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
         >
           {messaggio}
         </p>
@@ -193,7 +193,7 @@ export function CompilaSopralluogo({
             type="button"
             onClick={() => salva(true)}
             disabled={inCorso}
-            className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
           >
             Completa sopralluogo
           </button>

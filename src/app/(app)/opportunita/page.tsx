@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Badge, Card, Vuoto, formattaData, formattaEuro } from '@/components/ui'
+import { Badge, Card, Intestazione, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import { listOpportunities } from '@/lib/queries/opportunities'
 
@@ -19,20 +19,19 @@ export default async function OpportunitaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Opportunita aperte</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-            {righe.length} in pipeline
-          </p>
-        </div>
-        <Link
-          href="/opportunita/nuova"
-          className="rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-eco-blue-600"
-        >
-          Nuova opportunita
-        </Link>
-      </div>
+      <Intestazione
+        eyebrow="Commerciale"
+        titolo="Opportunità aperte"
+        sottotitolo={`${righe.length} in pipeline`}
+        azione={
+          <Link
+            href="/opportunita/nuova"
+            className="rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso transition-opacity hover:opacity-90"
+          >
+            Nuova opportunità
+          </Link>
+        }
+      />
 
       {righe.length === 0 ? (
         <Card>
@@ -42,7 +41,7 @@ export default async function OpportunitaPage() {
         <div className="space-y-6">
           {[...perStato.entries()].map(([stato, elenco]) => (
             <Card key={stato} title={`${stato} (${elenco.length})`}>
-              <ul className="divide-y" style={{ borderColor: 'var(--bordo)' }}>
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {elenco.map((o) => (
                     <li
                       key={o.id}
@@ -51,7 +50,7 @@ export default async function OpportunitaPage() {
                       <div className="min-w-0">
                         <Link
                           href={`/opportunita/${o.id}`}
-                          className="text-sm font-medium text-eco-blue-500 hover:underline"
+                          className="text-sm font-medium text-eco-blue-300 hover:underline"
                         >
                           {o.title}
                         </Link>

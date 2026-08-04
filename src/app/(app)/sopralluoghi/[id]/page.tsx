@@ -69,7 +69,7 @@ export default async function SopralluogoPage({
       {completato ? (
         <p
           className="rounded-lg border p-3 text-sm"
-          style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+          style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
         >
           Il sopralluogo è chiuso e non è più modificabile. I dati raccolti alimentano la
           preventivazione.

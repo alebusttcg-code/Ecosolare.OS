@@ -71,7 +71,7 @@ export function CompletaAttivita({
         })
       }}
       className="mt-3 space-y-3 rounded-md border p-3"
-      style={{ borderColor: 'var(--bordo)', background: 'var(--sfondo)' }}
+      style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
     >
       <label className="block">
         <span className="mb-1 block text-xs font-medium">Esito</span>
@@ -79,7 +79,7 @@ export function CompletaAttivita({
           name="outcome"
           placeholder="Com'e andata?"
           className="w-full rounded border px-2 py-1.5 text-sm"
-          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+          style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         />
       </label>
 
@@ -92,7 +92,7 @@ export function CompletaAttivita({
             <select
               name="kind"
               className="rounded border px-2 py-1.5 text-sm"
-              style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+              style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
             >
               {TIPI.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -105,7 +105,7 @@ export function CompletaAttivita({
               required
               placeholder="Cosa fare"
               className="col-span-2 rounded border px-2 py-1.5 text-sm"
-              style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+              style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
             />
           </div>
           <input
@@ -114,18 +114,18 @@ export function CompletaAttivita({
             required
             defaultValue={fraGiorni(2)}
             className="rounded border px-2 py-1.5 text-sm"
-            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+            style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           />
         </div>
       ) : null}
 
-      {errore ? <p className="text-xs text-red-600">{errore}</p> : null}
+      {errore ? <p className="text-xs text-eco-red-400">{errore}</p> : null}
 
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={inCorso}
-          className="rounded bg-eco-blue-500 px-3 py-1.5 text-xs font-medium text-white"
+          className="rounded bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-3 py-1.5 text-xs font-semibold text-eco-abisso"
         >
           {inCorso ? 'Salvataggio…' : 'Conferma'}
         </button>

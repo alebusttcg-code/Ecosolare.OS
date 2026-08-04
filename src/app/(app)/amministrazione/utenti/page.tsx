@@ -1,3 +1,4 @@
+import { Intestazione } from '@/components/ui'
 import { asc } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { users } from '@/db/schema'
@@ -24,12 +25,11 @@ export default async function UtentiPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Utenti</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          {elenco.length} abilitati. Nessuno puo accedere senza essere in questo elenco.
-        </p>
-      </div>
+      <Intestazione
+        eyebrow="Amministrazione"
+        titolo="Utenti"
+        sottotitolo={`${elenco.length} abilitati. Nessuno può accedere senza essere in questo elenco.`}
+      />
 
       <GestioneUtenti utenti={elenco} utenteCorrenteId={utente.id} />
     </div>

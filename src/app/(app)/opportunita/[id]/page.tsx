@@ -105,7 +105,7 @@ export default async function OpportunitaDettaglioPage({
         </div>
         <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
           {opp.code} ·{' '}
-          <Link href={`/clienti/${riga.clienteId}`} className="text-eco-blue-500 hover:underline">
+          <Link href={`/clienti/${riga.clienteId}`} className="text-eco-blue-300 hover:underline">
             {[riga.clienteNome, riga.clienteCognome].filter(Boolean).join(' ')}
           </Link>{' '}
           · {opp.businessLine}
@@ -123,12 +123,12 @@ export default async function OpportunitaDettaglioPage({
                     {prossima.kind} · scade {formattaData(prossima.dueAt)}
                   </div>
                 </div>
-                <Link href="/attivita" className="text-xs text-eco-blue-500 hover:underline">
+                <Link href="/attivita" className="text-xs text-eco-blue-300 hover:underline">
                   Vai alle attivita
                 </Link>
               </div>
             ) : stato?.isOpen ? (
-              <p className="text-sm text-red-700">
+              <p className="text-sm text-eco-red-400">
                 Nessuna prossima azione su un opportunita aperta: e un anomalia da
                 correggere subito.
               </p>
@@ -160,7 +160,7 @@ export default async function OpportunitaDettaglioPage({
             {sopralluoghi.length === 0 ? (
               <Vuoto messaggio="Nessun sopralluogo per questa opportunita." />
             ) : (
-              <ul className="divide-y" style={{ borderColor: 'var(--bordo)' }}>
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {sopralluoghi.map((s) => (
                   <li
                     key={s.id}
@@ -169,7 +169,7 @@ export default async function OpportunitaDettaglioPage({
                     <div>
                       <Link
                         href={`/sopralluoghi/${s.id}`}
-                        className="text-sm font-medium text-eco-blue-500 hover:underline"
+                        className="text-sm font-medium text-eco-blue-300 hover:underline"
                       >
                         {s.templateName}
                       </Link>
@@ -196,7 +196,7 @@ export default async function OpportunitaDettaglioPage({
             {preventivi.length === 0 ? (
               <Vuoto messaggio="Nessun preventivo per questa opportunita." />
             ) : (
-              <ul className="divide-y" style={{ borderColor: 'var(--bordo)' }}>
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {preventivi.map((p) => (
                   <li
                     key={p.id}
@@ -206,7 +206,7 @@ export default async function OpportunitaDettaglioPage({
                       {p.versionId ? (
                         <Link
                           href={`/preventivi/${p.versionId}`}
-                          className="text-sm font-medium text-eco-blue-500 hover:underline"
+                          className="text-sm font-medium text-eco-blue-300 hover:underline"
                         >
                           {p.title}
                         </Link>

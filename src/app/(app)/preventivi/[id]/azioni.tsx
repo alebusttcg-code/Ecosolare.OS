@@ -69,14 +69,14 @@ export function AzioniPreventivo({
           type="button"
           onClick={invia}
           disabled={inCorso}
-          className="w-full rounded-md bg-eco-blue-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
         >
           {stato === 'approvato' ? 'Invia (approvato)' : 'Invia al cliente'}
         </button>
       ) : null}
 
       {stato === 'in_approvazione' ? (
-        <p className="rounded border p-3 text-xs" style={{ borderColor: '#e8b924', background: '#fdf9ec', color: '#7a5c00' }}>
+        <p className="rounded border p-3 text-xs" style={{ borderColor: 'rgba(217,164,65,0.42)', background: 'rgba(217,164,65,0.08)', color: '#e8c765' }}>
           In attesa di approvazione dalla direzione.
         </p>
       ) : null}
@@ -88,7 +88,7 @@ export function AzioniPreventivo({
             onClick={() => registraEsito('accettato')}
             disabled={inCorso}
             className="w-full rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            style={{ background: '#2b6a25' }}
+            style={{ background: 'linear-gradient(135deg, #a3c563 0%, #7fa348 100%)', color: '#050a14' }}
           >
             Il cliente ha accettato
           </button>
@@ -102,7 +102,7 @@ export function AzioniPreventivo({
                 required
                 placeholder="Motivo del rifiuto"
                 className="w-full rounded border px-3 py-1.5 text-sm"
-                style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
               />
               <button
                 type="submit"
@@ -138,7 +138,7 @@ export function AzioniPreventivo({
         </button>
       ) : null}
 
-      {errore ? <p className="text-xs text-red-600">{errore}</p> : null}
+      {errore ? <p className="text-xs text-eco-red-400">{errore}</p> : null}
       {messaggio ? (
         <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
           {messaggio}
