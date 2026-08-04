@@ -82,7 +82,7 @@ export function Prequalifica({
         <button
           type="button"
           onClick={() => setAperto(true)}
-          className="shrink-0 rounded border px-3 py-1 text-xs"
+          className="bottone-fantasma shrink-0 rounded-lg border px-3 py-1 text-xs"
           style={{ borderColor: 'var(--bordo)' }}
         >
           {punteggioSalvato ? 'Rivedi' : 'Compila'}
@@ -105,7 +105,7 @@ export function Prequalifica({
         <button
           type="button"
           onClick={() => setAperto(false)}
-          className="shrink-0 rounded border px-3 py-1 text-xs"
+          className="bottone-fantasma shrink-0 rounded-lg border px-3 py-1 text-xs"
           style={{ borderColor: 'var(--bordo)' }}
         >
           Chiudi
@@ -131,7 +131,7 @@ export function Prequalifica({
         type="button"
         onClick={salva}
         disabled={inCorso}
-        className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
+        className="bottone-oro rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
       >
         {inCorso ? 'Salvataggio…' : 'Salva prequalifica'}
       </button>

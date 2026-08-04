@@ -95,7 +95,7 @@ function NuovoUtente() {
             name="email"
             type="email"
             required
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
             style={{
               background: 'var(--superficie)',
               borderColor: errors.email ? 'var(--color-eco-red-400)' : 'var(--bordo)',
@@ -110,7 +110,7 @@ function NuovoUtente() {
           <span className="mb-1 block text-sm font-medium">Nome</span>
           <input
             name="name"
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
             style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           />
         </label>
@@ -121,7 +121,7 @@ function NuovoUtente() {
         <select
           value={ruolo}
           onChange={(e) => setRuolo(e.target.value as Role)}
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
           style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         >
           {RUOLI.map((r) => (
@@ -143,14 +143,14 @@ function NuovoUtente() {
         <button
           type="submit"
           disabled={inCorso}
-          className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
+          className="bottone-oro rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
         >
           {inCorso ? 'Creazione…' : 'Abilita'}
         </button>
         <button
           type="button"
           onClick={() => setAperto(false)}
-          className="rounded-md border px-4 py-2 text-sm"
+          className="bottone-fantasma rounded-lg border px-4 py-2 text-sm"
           style={{ borderColor: 'var(--bordo)' }}
         >
           Annulla
@@ -244,7 +244,7 @@ function RigaUtente({
         <button
           type="button"
           onClick={() => setAperto(!aperto)}
-          className="shrink-0 rounded border px-3 py-1 text-xs"
+          className="bottone-fantasma shrink-0 rounded-lg border px-3 py-1 text-xs"
           style={{ borderColor: 'var(--bordo)' }}
         >
           {aperto ? 'Chiudi' : 'Modifica'}
@@ -324,7 +324,7 @@ function RigaUtente({
           <button
             type="submit"
             disabled={inCorso}
-            className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
+            className="bottone-oro rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
           >
             {inCorso ? 'Salvataggio…' : 'Salva'}
           </button>

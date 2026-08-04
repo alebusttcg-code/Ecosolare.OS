@@ -51,7 +51,7 @@ export default async function SchedaClientePage({
             action={
               <Link
                 href={`/opportunita/nuova?cliente=${contatto.id}`}
-                className="text-xs text-eco-blue-300 hover:underline"
+                className="text-xs text-eco-blue-300 hover:underline collega"
               >
                 + Nuova opportunita
               </Link>
@@ -62,11 +62,11 @@ export default async function SchedaClientePage({
             ) : (
               <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {opportunita.map((o) => (
-                  <li key={o.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                  <li key={o.id} className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0">
                     <div>
                       <Link
                         href={`/opportunita/${o.id}`}
-                        className="text-sm font-medium text-eco-blue-300 hover:underline"
+                        className="text-sm font-medium text-eco-blue-300 hover:underline collega"
                       >
                         {o.title}
                       </Link>
@@ -92,7 +92,7 @@ export default async function SchedaClientePage({
             ) : (
               <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {attivita.map((a) => (
-                  <li key={a.id} className="py-3 first:pt-0 last:pb-0">
+                  <li key={a.id} className="riga rounded-md py-3 first:pt-0 last:pb-0">
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-sm">{a.subject}</span>
                       <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>

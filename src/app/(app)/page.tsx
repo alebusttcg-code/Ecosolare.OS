@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Badge, Card, Intestazione, Stat, Vuoto, formattaEuro } from '@/components/ui'
+import { Badge, Card, Intestazione, Stat, Vuoto, ritardo } from '@/components/ui'
 import { getCurrentUser } from '@/lib/auth/session'
 import { contaAttivitaScadute, getCruscotto } from '@/lib/queries/dashboard'
 
@@ -25,14 +25,21 @@ export default async function CruscottoPage() {
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Opportunità aperte" value={dati.aperte} icona="◭" />
-        <Stat label="Valore in pipeline" value={formattaEuro(dati.valoreAperto)} icona="€" />
+        <Stat label="Opportunità aperte" value={dati.aperte} icona="◭" indice={0} />
+        <Stat
+          label="Valore in pipeline"
+          value={Number.parseFloat(dati.valoreAperto ?? '0') || 0}
+          formato="euro"
+          icona="€"
+          indice={1}
+        />
         <Stat
           label="Prossime azioni scadute"
           value={dati.inRitardo}
           tone={dati.inRitardo > 0 ? 'attenzione' : 'positivo'}
           icona="!"
           hint={mieScadute > 0 ? `di cui tue: ${mieScadute}` : undefined}
+          indice={2}
         />
         <Stat
           label="Senza prossima azione"
@@ -40,6 +47,7 @@ export default async function CruscottoPage() {
           tone={dati.senzaProssimaAzione > 0 ? 'critico' : 'positivo'}
           icona="◇"
           hint="deve essere sempre zero"
+          indice={3}
         />
       </div>
 
@@ -65,11 +73,12 @@ export default async function CruscottoPage() {
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card
+            indice={1}
             title="Pipeline per stato"
             action={
               <Link
                 href="/opportunita"
-                className="text-xs transition-colors hover:text-eco-gold-300"
+                className="collega text-xs transition-colors hover:text-eco-gold-300"
                 style={{ color: 'var(--color-eco-blue-300)' }}
               >
                 Apri la pipeline →
@@ -80,8 +89,11 @@ export default async function CruscottoPage() {
               <Vuoto messaggio="Nessuna opportunità aperta. Inizia creando un cliente." />
             ) : (
               <ul className="space-y-2.5">
-                {dati.perStato.map((stato) => (
-                  <li key={stato.code} className="flex items-center gap-4">
+                {dati.perStato.map((stato, indice) => (
+                  <li
+                    key={stato.code}
+                    className="riga flex items-center gap-4 rounded-md py-0.5"
+                  >
                     <span
                       className="w-48 shrink-0 truncate text-sm"
                       style={{
@@ -95,11 +107,16 @@ export default async function CruscottoPage() {
                       style={{ background: 'rgba(255,255,255,0.04)' }}
                     >
                       <div
-                        className="h-full rounded-full"
+                        className="barra-cresce h-full rounded-full"
                         style={{
                           width: `${(stato.totale / massimo) * 100}%`,
                           background:
                             'linear-gradient(90deg, #3f7fc4 0%, #d9a441 100%)',
+                          boxShadow:
+                            stato.totale > 0
+                              ? '0 0 12px -2px rgba(217,164,65,0.55)'
+                              : 'none',
+                          ...ritardo(indice, 45),
                         }}
                       />
                     </div>
@@ -118,7 +135,7 @@ export default async function CruscottoPage() {
           </Card>
         </div>
 
-        <Card title="Misure in costruzione" accento="blu">
+        <Card title="Misure in costruzione" accento="blu" indice={2}>
           <div className="space-y-4 text-sm">
             <div>
               <Badge tone="attenzione">Baseline mancante</Badge>

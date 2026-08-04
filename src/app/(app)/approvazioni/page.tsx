@@ -58,7 +58,7 @@ export default async function ApprovazioniPage() {
                 <div>
                   <Link
                     href={`/preventivi/${r.versionId}`}
-                    className="text-sm font-medium text-eco-blue-300 hover:underline"
+                    className="text-sm font-medium text-eco-blue-300 hover:underline collega"
                   >
                     {r.quoteCode} — {r.quoteTitle} (v{r.versionNo})
                   </Link>

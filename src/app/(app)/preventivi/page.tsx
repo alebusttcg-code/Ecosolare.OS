@@ -92,13 +92,13 @@ export default async function PreventiviPage() {
                   return (
                     <tr
                       key={r.versionId}
-                      className="border-b last:border-0"
+                      className="riga border-b last:border-0"
                       style={{ borderColor: 'var(--bordo-tenue)' }}
                     >
                       <td className="py-3">
                         <Link
                           href={`/preventivi/${r.versionId}`}
-                          className="font-medium transition-colors hover:text-eco-gold-300"
+                          className="collega font-medium transition-colors hover:text-eco-gold-300"
                           style={{ color: 'var(--color-eco-blue-300)' }}
                         >
                           {r.title}

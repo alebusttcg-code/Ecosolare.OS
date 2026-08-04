@@ -30,7 +30,7 @@ export function Decisione({ approvalId }: { approvalId: string }) {
       <input
         name="nota"
         placeholder="Nota sulla decisione (facoltativa)"
-        className="w-full rounded border px-3 py-1.5 text-sm"
+        className="w-full rounded-lg border px-3 py-1.5 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
         style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       />
       <div className="flex gap-2">
@@ -49,7 +49,7 @@ export function Decisione({ approvalId }: { approvalId: string }) {
           name="azione"
           value="respingi"
           disabled={inCorso}
-          className="rounded-md border px-4 py-2 text-sm disabled:opacity-50"
+          className="bottone-fantasma rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
           style={{ borderColor: 'var(--bordo)' }}
         >
           Respingi

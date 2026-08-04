@@ -1,10 +1,17 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { Contatore } from './contatore'
 
 /**
- * Primitive di interfaccia, allineate al linguaggio visivo della presentazione:
- * pannelli traslucidi, filetti sottili, oro come accento, verde solo per gli
- * esiti positivi.
+ * Primitive di interfaccia.
+ *
+ * Profondita' e movimento seguono una regola sola: rispondono a cio' che
+ * l'utente fa, non intrattengono da soli. Le classi di animazione stanno in
+ * globals.css, qui si applicano.
  */
+
+/** Ritardo per lo scaglionamento d'ingresso. */
+export const ritardo = (indice: number, passo = 60): CSSProperties =>
+  ({ '--ritardo': `${indice * passo}ms` }) as CSSProperties
 
 export function Intestazione({
   eyebrow,
@@ -18,7 +25,7 @@ export function Intestazione({
   azione?: ReactNode
 }) {
   return (
-    <div className="mb-8">
+    <div className="rivela mb-8">
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0">
           {eyebrow ? <p className="mb-1.5 eyebrow">{eyebrow}</p> : null}
@@ -31,7 +38,7 @@ export function Intestazione({
         </div>
         {azione ? <div className="shrink-0">{azione}</div> : null}
       </div>
-      <div className="mt-4 filetto" />
+      <div className="mt-4 filetto barra-cresce" />
     </div>
   )
 }
@@ -40,11 +47,16 @@ export function Card({
   title,
   action,
   accento = 'neutro',
+  interattivo = false,
+  indice = 0,
   children,
 }: {
   title?: string
   action?: ReactNode
   accento?: 'neutro' | 'blu' | 'oro' | 'verde' | 'rosso'
+  /** Solo per i pannelli che portano da qualche parte: si sollevano al hover. */
+  interattivo?: boolean
+  indice?: number
   children: ReactNode
 }) {
   const bordi: Record<string, string> = {
@@ -56,7 +68,10 @@ export function Card({
   }
 
   return (
-    <section className="pannello" style={{ borderColor: bordi[accento] }}>
+    <section
+      className={`pannello rivela ${interattivo ? 'pannello-interattivo' : ''}`}
+      style={{ borderColor: bordi[accento], ...ritardo(indice) }}
+    >
       {title ? (
         <header
           className="flex items-center justify-between gap-4 border-b px-5 py-3.5"
@@ -74,15 +89,19 @@ export function Card({
 export function Stat({
   label,
   value,
+  formato = 'intero',
   hint,
   tone = 'neutro',
   icona,
+  indice = 0,
 }: {
   label: string
-  value: string | number
+  value: number
+  formato?: 'intero' | 'euro'
   hint?: string
   tone?: 'neutro' | 'positivo' | 'attenzione' | 'critico'
   icona?: string
+  indice?: number
 }) {
   const colori: Record<string, string> = {
     neutro: 'var(--color-eco-blue-300)',
@@ -93,7 +112,7 @@ export function Stat({
   const colore = colori[tone] ?? colori.neutro!
 
   return (
-    <div className="pannello px-5 py-4">
+    <div className="pannello rivela px-5 py-4" style={ritardo(indice)}>
       <div className="flex items-start justify-between gap-3">
         <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
           {label}
@@ -109,10 +128,10 @@ export function Stat({
         ) : null}
       </div>
       <div
-        className="mt-2 text-3xl font-semibold tabular-nums tracking-tight"
+        className="mt-2 text-3xl font-semibold tracking-tight"
         style={{ color: tone === 'neutro' ? 'var(--testo)' : colore }}
       >
-        {value}
+        <Contatore valore={value} formato={formato} />
       </div>
       {hint ? (
         <div className="mt-1 text-xs" style={{ color: 'var(--testo-fioco)' }}>
@@ -141,8 +160,13 @@ export function Badge({
 
   return (
     <span
-      className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap"
-      style={{ background: s.bg, color: s.fg, borderColor: s.bd }}
+      className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-shadow duration-200"
+      style={{
+        background: s.bg,
+        color: s.fg,
+        borderColor: s.bd,
+        boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.05)`,
+      }}
     >
       {children}
     </span>
@@ -186,7 +210,7 @@ export function Campo({
         required={required}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full rounded-lg border px-3 py-2 text-sm transition-colors outline-none focus:border-eco-blue-500"
+        className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
         style={{
           background: 'rgba(5,10,20,0.6)',
           borderColor: errore ? 'var(--color-eco-red-400)' : 'var(--bordo)',
@@ -220,7 +244,7 @@ export function Bottone({
         type={type}
         name={name}
         value={value}
-        className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-white/5"
+        className="bottone-fantasma rounded-lg border px-4 py-2 text-sm font-medium"
         style={{ borderColor: 'var(--bordo)' }}
       >
         {children}
@@ -233,9 +257,10 @@ export function Bottone({
       type={type}
       name={name}
       value={value}
-      className="rounded-lg px-4 py-2 text-sm font-semibold text-eco-abisso transition-opacity hover:opacity-90"
+      className="bottone-oro rounded-lg px-4 py-2 text-sm font-semibold"
       style={{
         background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
+        color: '#050a14',
       }}
     >
       {children}

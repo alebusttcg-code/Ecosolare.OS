@@ -69,7 +69,7 @@ export function AzioniPreventivo({
           type="button"
           onClick={invia}
           disabled={inCorso}
-          className="w-full rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
+          className="bottone-oro w-full rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
         >
           {stato === 'approvato' ? 'Invia (approvato)' : 'Invia al cliente'}
         </button>
@@ -101,13 +101,13 @@ export function AzioniPreventivo({
                 name="motivo"
                 required
                 placeholder="Motivo del rifiuto"
-                className="w-full rounded border px-3 py-1.5 text-sm"
+                className="w-full rounded-lg border px-3 py-1.5 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
                 style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
               />
               <button
                 type="submit"
                 disabled={inCorso}
-                className="w-full rounded-md border px-4 py-2 text-sm"
+                className="bottone-fantasma w-full rounded-lg border px-4 py-2 text-sm"
                 style={{ borderColor: 'var(--bordo)' }}
               >
                 Registra il rifiuto
@@ -117,7 +117,7 @@ export function AzioniPreventivo({
             <button
               type="button"
               onClick={() => setMostraRifiuto(true)}
-              className="w-full rounded-md border px-4 py-2 text-sm"
+              className="bottone-fantasma w-full rounded-lg border px-4 py-2 text-sm"
               style={{ borderColor: 'var(--bordo)' }}
             >
               Il cliente ha rifiutato
@@ -131,7 +131,7 @@ export function AzioniPreventivo({
           type="button"
           onClick={nuovaVersione}
           disabled={inCorso}
-          className="w-full rounded-md border px-4 py-2 text-sm disabled:opacity-50"
+          className="bottone-fantasma w-full rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
           style={{ borderColor: 'var(--bordo)' }}
         >
           Crea nuova versione

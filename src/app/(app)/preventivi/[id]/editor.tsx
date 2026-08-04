@@ -208,13 +208,13 @@ export function EditorPreventivo({
               </tr>
             ) : (
               righe.map((r, indice) => (
-                <tr key={r.chiave} className="border-b last:border-0" style={{ borderColor: 'var(--bordo)' }}>
+                <tr key={r.chiave} className="riga border-b last:border-0" style={{ borderColor: 'var(--bordo)' }}>
                   <td className="p-1">
                     <input
                       value={r.description}
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { description: e.target.value })}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="w-full rounded-md border px-2 py-1 text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
                       style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
@@ -225,7 +225,7 @@ export function EditorPreventivo({
                       value={r.quantity}
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { quantity: numero(e.target.value) })}
-                      className="w-full rounded border px-2 py-1 text-right text-sm"
+                      className="w-full rounded-md border px-2 py-1 text-right text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
                       style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
@@ -234,7 +234,7 @@ export function EditorPreventivo({
                       value={r.unit}
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { unit: e.target.value })}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      className="w-full rounded-md border px-2 py-1 text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
                       style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
@@ -245,7 +245,7 @@ export function EditorPreventivo({
                       value={r.unitPrice}
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { unitPrice: numero(e.target.value) })}
-                      className="w-full rounded border px-2 py-1 text-right text-sm"
+                      className="w-full rounded-md border px-2 py-1 text-right text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
                       style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
@@ -257,7 +257,7 @@ export function EditorPreventivo({
                         value={r.unitCost ?? 0}
                         disabled={!modificabile}
                         onChange={(e) => aggiorna(r.chiave, { unitCost: numero(e.target.value) })}
-                        className="w-full rounded border px-2 py-1 text-right text-sm"
+                        className="w-full rounded-md border px-2 py-1 text-right text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
                         style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                       />
                     </td>
@@ -269,7 +269,7 @@ export function EditorPreventivo({
                       value={r.discountPct}
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { discountPct: numero(e.target.value) })}
-                      className="w-full rounded border px-2 py-1 text-right text-sm"
+                      className="w-full rounded-md border px-2 py-1 text-right text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
                       style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
@@ -280,7 +280,7 @@ export function EditorPreventivo({
                       value={r.vatRate}
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { vatRate: numero(e.target.value) })}
-                      className="w-full rounded border px-2 py-1 text-right text-sm"
+                      className="w-full rounded-md border px-2 py-1 text-right text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
                       style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
                     />
                   </td>
@@ -317,7 +317,7 @@ export function EditorPreventivo({
               const voce = catalogo.find((c) => c.id === e.target.value)
               if (voce) aggiungiDaCatalogo(voce)
             }}
-            className="rounded border px-3 py-1.5 text-sm"
+            className="bottone-fantasma rounded-lg border px-3 py-1.5 text-sm"
             style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="">+ Aggiungi dal catalogo…</option>
@@ -330,7 +330,7 @@ export function EditorPreventivo({
           <button
             type="button"
             onClick={aggiungiLibera}
-            className="rounded border px-3 py-1.5 text-sm"
+            className="bottone-fantasma rounded-lg border px-3 py-1.5 text-sm"
             style={{ borderColor: 'var(--bordo)' }}
           >
             + Riga libera

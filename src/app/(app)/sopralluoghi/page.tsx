@@ -51,12 +51,12 @@ export default async function SopralluoghiPage() {
             {righe.map((r) => (
               <li
                 key={r.id}
-                className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
+                className="riga flex items-center justify-between gap-4 rounded-md py-3.5 first:pt-0 last:pb-0"
               >
                 <div className="min-w-0">
                   <Link
                     href={`/sopralluoghi/${r.id}`}
-                    className="text-sm font-medium transition-colors hover:text-eco-gold-300"
+                    className="collega text-sm font-medium transition-colors hover:text-eco-gold-300"
                     style={{ color: 'var(--color-eco-blue-300)' }}
                   >
                     {[r.clienteNome, r.clienteCognome].filter(Boolean).join(' ')}

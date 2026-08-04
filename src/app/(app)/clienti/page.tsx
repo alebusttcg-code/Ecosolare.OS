@@ -28,7 +28,7 @@ export default async function ClientiPage({
         azione={
           <Link
             href="/clienti/nuovo"
-            className="rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso transition-opacity hover:opacity-90"
+            className="bottone-oro rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
           >
             Nuovo cliente
           </Link>
@@ -45,7 +45,7 @@ export default async function ClientiPage({
         />
         <button
           type="submit"
-          className="rounded-md border px-4 py-2 text-sm"
+          className="bottone-fantasma rounded-lg border px-4 py-2 text-sm"
           style={{ borderColor: 'var(--bordo)' }}
         >
           Cerca
@@ -74,11 +74,11 @@ export default async function ClientiPage({
             </thead>
             <tbody>
               {righe.map((riga) => (
-                <tr key={riga.id} className="border-b last:border-0" style={{ borderColor: 'var(--bordo)' }}>
+                <tr key={riga.id} className="riga border-b last:border-0" style={{ borderColor: 'var(--bordo)' }}>
                   <td className="py-2.5">
                     <Link
                       href={`/clienti/${riga.id}`}
-                      className="font-medium text-eco-blue-300 hover:underline"
+                      className="font-medium text-eco-blue-300 hover:underline collega"
                     >
                       {[riga.firstName, riga.lastName].filter(Boolean).join(' ')}
                     </Link>

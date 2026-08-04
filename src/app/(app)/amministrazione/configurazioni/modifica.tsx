@@ -59,7 +59,7 @@ export function ModificaConfigurazione({ voce }: { voce: ConfigurazioneInElenco 
         <button
           type="submit"
           disabled={inCorso}
-          className="rounded border px-3 py-1.5 text-sm"
+          className="bottone-fantasma rounded-lg border px-3 py-1.5 text-sm"
           style={{ borderColor: 'var(--bordo)' }}
         >
           {inCorso ? '…' : 'Salva'}

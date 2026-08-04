@@ -26,7 +26,7 @@ export default async function OpportunitaPage() {
         azione={
           <Link
             href="/opportunita/nuova"
-            className="rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso transition-opacity hover:opacity-90"
+            className="bottone-oro rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
           >
             Nuova opportunità
           </Link>
@@ -45,12 +45,12 @@ export default async function OpportunitaPage() {
                 {elenco.map((o) => (
                     <li
                       key={o.id}
-                      className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                      className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
                     >
                       <div className="min-w-0">
                         <Link
                           href={`/opportunita/${o.id}`}
-                          className="text-sm font-medium text-eco-blue-300 hover:underline"
+                          className="text-sm font-medium text-eco-blue-300 hover:underline collega"
                         >
                           {o.title}
                         </Link>

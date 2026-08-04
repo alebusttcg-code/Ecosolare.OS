@@ -21,7 +21,7 @@ export function NuovoPreventivo({
       <button
         type="button"
         onClick={() => setAperto(true)}
-        className="text-xs text-eco-blue-300 hover:underline"
+        className="text-xs text-eco-blue-300 hover:underline collega"
       >
         + Nuovo preventivo
       </button>
@@ -53,7 +53,7 @@ export function NuovoPreventivo({
       <button
         type="submit"
         disabled={inCorso}
-        className="rounded bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-2 py-1 text-xs font-semibold text-eco-abisso"
+        className="bottone-oro rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-2 py-1 text-xs font-semibold text-eco-abisso"
       >
         Crea
       </button>

@@ -46,14 +46,15 @@ export function Sidebar({
       }}
     >
       <div className="px-5 pb-5 pt-6">
-        <Link href="/" className="block">
+        <Link href="/" className="group block">
           <Image
             src="/brand/ecosolare-logo.png"
             alt="EcoSolare"
             width={601}
             height={193}
             priority
-            className="h-9 w-auto"
+            className="h-9 w-auto transition-all duration-300 group-hover:brightness-110"
+            style={{ filter: 'drop-shadow(0 2px 8px rgba(217,164,65,0.18))' }}
           />
         </Link>
         <div className="mt-4 filetto" />
@@ -117,22 +118,41 @@ function Gruppo({
           <li key={voce.href}>
             <Link
               href={voce.href}
-              className="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors"
+              className="group relative flex items-center gap-3 overflow-hidden rounded-lg px-3 py-2 text-sm transition-all duration-200 hover:bg-white/[0.045] hover:pl-4"
               style={{
-                background: attiva ? 'rgba(63,127,196,0.14)' : 'transparent',
+                background: attiva
+                  ? 'linear-gradient(90deg, rgba(63,127,196,0.18) 0%, rgba(63,127,196,0.04) 100%)'
+                  : undefined,
                 color: attiva ? 'var(--testo)' : 'var(--testo-tenue)',
+                boxShadow: attiva
+                  ? 'inset 0 1px 0 0 rgba(255,255,255,0.06)'
+                  : undefined,
               }}
             >
-              {attiva ? (
+              {/* Filetto oro sulla voce attiva; sulle altre compare al hover. */}
+              <span
+                className="absolute inset-y-1.5 left-0 w-[2px] rounded-full transition-transform duration-300 ease-out"
+                style={{
+                  background: attiva
+                    ? 'linear-gradient(180deg, #e8c765, #d9a441)'
+                    : 'rgba(91,155,213,0.55)',
+                  transform: attiva ? 'scaleY(1)' : 'scaleY(0)',
+                  transformOrigin: 'center',
+                }}
+                aria-hidden
+              />
+              {!attiva ? (
                 <span
-                  className="absolute inset-y-1.5 left-0 w-0.5 rounded-full"
-                  style={{ background: 'var(--color-eco-gold-400)' }}
+                  className="absolute inset-y-1.5 left-0 w-[2px] origin-center scale-y-0 rounded-full bg-eco-blue-400/60 transition-transform duration-300 ease-out group-hover:scale-y-100"
+                  aria-hidden
                 />
               ) : null}
+
               <span
-                className="w-5 text-center text-base leading-none"
+                className="w-5 text-center text-base leading-none transition-all duration-200 group-hover:scale-110"
                 style={{
                   color: attiva ? 'var(--color-eco-gold-400)' : 'var(--testo-fioco)',
+                  filter: attiva ? 'drop-shadow(0 0 6px rgba(217,164,65,0.5))' : undefined,
                 }}
                 aria-hidden
               >

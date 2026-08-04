@@ -103,16 +103,80 @@ body {
   );
 }
 
-/** Pannello traslucido con bordo sottile. */
+/* ---------------------------------------------------------------------------
+   Profondita'
+
+   Tre livelli sovrapposti, non un'ombra sola:
+     1. filo di luce interno in alto  -> il bordo superiore prende luce
+     2. ombra ravvicinata             -> stacca l'elemento dal fondo
+     3. ombra ampia e diffusa         -> da' la distanza
+   E' quello che rende un pannello "appoggiato" invece che "disegnato".
+   --------------------------------------------------------------------------- */
+
 .pannello {
+  position: relative;
   background: linear-gradient(
     160deg,
-    rgba(20, 36, 60, 0.72) 0%,
-    rgba(14, 26, 44, 0.55) 100%
+    rgba(24, 42, 68, 0.78) 0%,
+    rgba(12, 23, 40, 0.62) 100%
   );
   border: 1px solid var(--bordo);
   border-radius: 0.875rem;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 2px 6px -2px rgba(0, 0, 0, 0.5),
+    0 18px 40px -28px rgba(0, 0, 0, 0.9);
+  transition:
+    border-color 220ms ease,
+    box-shadow 260ms ease,
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/** Riflesso obliquo appena percettibile sul bordo superiore. */
+.pannello::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    140deg,
+    rgba(217, 164, 65, 0.28) 0%,
+    rgba(91, 155, 213, 0.14) 30%,
+    transparent 60%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+  transition: opacity 260ms ease;
+  pointer-events: none;
+}
+
+.pannello:hover {
+  border-color: rgba(91, 155, 213, 0.34);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.09),
+    0 4px 10px -3px rgba(0, 0, 0, 0.55),
+    0 26px 56px -30px rgba(0, 0, 0, 0.95);
+}
+
+.pannello:hover::before {
+  opacity: 0.85;
+}
+
+/** Solo i pannelli che portano da qualche parte si sollevano. */
+.pannello-interattivo:hover {
+  transform: translateY(-3px);
+  border-color: rgba(217, 164, 65, 0.42);
+}
+
+.pannello-interattivo:active {
+  transform: translateY(-1px);
+  transition-duration: 90ms;
 }
 
 /** Anello per le icone circolari. Il colore lo decide chi lo usa. */
@@ -122,7 +186,252 @@ body {
   justify-content: center;
   border-radius: 9999px;
   border: 1.5px solid currentColor;
-  box-shadow: 0 0 14px -4px currentColor;
+  box-shadow:
+    0 0 14px -4px currentColor,
+    inset 0 0 12px -8px currentColor;
+  transition:
+    box-shadow 260ms ease,
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pannello:hover .anello {
+  transform: scale(1.06);
+  box-shadow:
+    0 0 22px -4px currentColor,
+    inset 0 0 14px -6px currentColor;
+}
+
+/* ---------------------------------------------------------------------------
+   Movimento
+
+   Regola: **il movimento risponde, non intrattiene.** Ogni animazione qui
+   sotto e' innescata da un'azione dell'utente o dall'apertura di una schermata,
+   e nessuna va in ciclo continuo. Un'interfaccia che si muove da sola distrae
+   chi ci lavora otto ore al giorno.
+   --------------------------------------------------------------------------- */
+
+@keyframes eco-sali {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes eco-entra {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes eco-cresci {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes eco-luccichio {
+  from {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(320%) skewX(-18deg);
+  }
+}
+
+/** Ingresso di una schermata. `--ritardo` permette lo scaglionamento. */
+.rivela {
+  animation: eco-sali 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--ritardo, 0ms);
+}
+
+.rivela-rapido {
+  animation: eco-entra 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--ritardo, 0ms);
+}
+
+/** Barre che crescono da sinistra all'apertura della pagina. */
+.barra-cresce {
+  transform-origin: left center;
+  animation: eco-cresci 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--ritardo, 0ms);
+}
+
+/** Riga di elenco: accento che scorre dentro al passaggio del mouse. */
+.riga {
+  position: relative;
+  transition:
+    background-color 180ms ease,
+    padding-left 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.riga::before {
+  content: '';
+  position: absolute;
+  left: -0.75rem;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #e8c765, #d9a441);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.riga:hover {
+  background-color: rgba(91, 155, 213, 0.05);
+  padding-left: 0.5rem;
+}
+
+.riga:hover::before {
+  transform: scaleY(1);
+}
+
+/* Nelle tabelle resta solo l'evidenziazione: su una riga di tabella il
+   padding non e' animabile e lo pseudo-elemento posizionato non e'
+   affidabile fra browser. */
+tr.riga {
+  position: static;
+  transition: background-color 160ms ease;
+}
+
+tr.riga::before {
+  display: none;
+}
+
+tr.riga:hover {
+  padding-left: 0;
+  background-color: rgba(91, 155, 213, 0.06);
+}
+
+/**
+ * Bottone principale: passaggio di luce al hover.
+ *
+ * `inline-flex` non e' estetica: su un elemento inline — e i collegamenti lo
+ * sono — `overflow: hidden` viene ignorato, e il riflesso uscirebbe dal bottone
+ * restando visibile accanto a esso.
+ */
+.bottone-oro {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition:
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 240ms ease;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35),
+    0 6px 18px -8px rgba(217, 164, 65, 0.7);
+}
+
+.bottone-oro::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+}
+
+.bottone-oro:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.45),
+    0 10px 26px -10px rgba(217, 164, 65, 0.85);
+}
+
+.bottone-oro:hover::after {
+  animation: eco-luccichio 720ms ease-out;
+}
+
+.bottone-oro:active {
+  transform: translateY(0);
+}
+
+/** Bottone secondario e comandi discreti. */
+.bottone-fantasma {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bottone-fantasma:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(91, 155, 213, 0.4);
+  transform: translateY(-1px);
+}
+
+/** Collegamenti testuali. */
+.collega {
+  position: relative;
+  transition: color 180ms ease;
+}
+
+.collega::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.collega:hover::after {
+  transform: scaleX(1);
+}
+
+/* Chi ha ridotto le animazioni a livello di sistema le ha ridotte anche qui.
+   Non e' una cortesia: per alcune persone il movimento provoca malessere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .pannello-interattivo:hover,
+  .bottone-oro:hover,
+  .bottone-fantasma:hover {
+    transform: none;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-eco-gold-400);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 input,

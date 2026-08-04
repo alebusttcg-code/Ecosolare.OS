@@ -59,7 +59,7 @@ export default async function ConfigurazioniPage() {
           </thead>
           <tbody>
             {stati.map((s) => (
-              <tr key={s.code} className="border-b last:border-0" style={{ borderColor: 'var(--bordo)' }}>
+              <tr key={s.code} className="riga border-b last:border-0" style={{ borderColor: 'var(--bordo)' }}>
                 <td className="py-2">{s.label}</td>
                 <td className="py-2 font-mono text-xs" style={{ color: 'var(--testo-tenue)' }}>
                   {s.code}

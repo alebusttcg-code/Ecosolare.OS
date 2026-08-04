@@ -105,7 +105,7 @@ export default async function OpportunitaDettaglioPage({
         </div>
         <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
           {opp.code} ·{' '}
-          <Link href={`/clienti/${riga.clienteId}`} className="text-eco-blue-300 hover:underline">
+          <Link href={`/clienti/${riga.clienteId}`} className="text-eco-blue-300 hover:underline collega">
             {[riga.clienteNome, riga.clienteCognome].filter(Boolean).join(' ')}
           </Link>{' '}
           · {opp.businessLine}
@@ -123,7 +123,7 @@ export default async function OpportunitaDettaglioPage({
                     {prossima.kind} · scade {formattaData(prossima.dueAt)}
                   </div>
                 </div>
-                <Link href="/attivita" className="text-xs text-eco-blue-300 hover:underline">
+                <Link href="/attivita" className="text-xs text-eco-blue-300 hover:underline collega">
                   Vai alle attivita
                 </Link>
               </div>
@@ -164,12 +164,12 @@ export default async function OpportunitaDettaglioPage({
                 {sopralluoghi.map((s) => (
                   <li
                     key={s.id}
-                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                    className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
                   >
                     <div>
                       <Link
                         href={`/sopralluoghi/${s.id}`}
-                        className="text-sm font-medium text-eco-blue-300 hover:underline"
+                        className="text-sm font-medium text-eco-blue-300 hover:underline collega"
                       >
                         {s.templateName}
                       </Link>
@@ -200,13 +200,13 @@ export default async function OpportunitaDettaglioPage({
                 {preventivi.map((p) => (
                   <li
                     key={p.id}
-                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                    className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
                   >
                     <div>
                       {p.versionId ? (
                         <Link
                           href={`/preventivi/${p.versionId}`}
-                          className="text-sm font-medium text-eco-blue-300 hover:underline"
+                          className="text-sm font-medium text-eco-blue-300 hover:underline collega"
                         >
                           {p.title}
                         </Link>
@@ -234,7 +234,7 @@ export default async function OpportunitaDettaglioPage({
             ) : (
               <ul className="divide-y text-sm" style={{ borderColor: 'var(--bordo)' }}>
                 {storico.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
+                  <li key={s.id} className="riga flex items-center justify-between gap-4 rounded-md py-2.5 first:pt-0 last:pb-0">
                     <div>
                       <span style={{ color: 'var(--testo-tenue)' }}>
                         {etichetta(s.fromStage)} →{' '}

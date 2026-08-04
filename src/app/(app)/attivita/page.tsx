@@ -34,7 +34,7 @@ export default async function AttivitaPage() {
         ) : (
           <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
             {righe.map((a) => (
-              <li key={a.id} className="py-4 first:pt-0 last:pb-0">
+              <li key={a.id} className="riga rounded-md py-4 first:pt-0 last:pb-0">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -48,7 +48,7 @@ export default async function AttivitaPage() {
                             {' · '}
                             <Link
                               href={`/opportunita/${a.opportunityId}`}
-                              className="text-eco-blue-300 hover:underline"
+                              className="text-eco-blue-300 hover:underline collega"
                             >
                               {a.opportunityCode} {a.opportunityTitle}
                             </Link>

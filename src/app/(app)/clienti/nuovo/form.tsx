@@ -89,7 +89,7 @@ export function FormNuovoCliente() {
         <textarea
           name="notes"
           rows={3}
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
           style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         />
       </label>
@@ -122,7 +122,7 @@ export function FormNuovoCliente() {
               <li key={d.id} className="flex items-center justify-between gap-4 text-sm">
                 <Link
                   href={`/clienti/${d.id}`}
-                  className="font-medium text-eco-blue-300 hover:underline"
+                  className="font-medium text-eco-blue-300 hover:underline collega"
                 >
                   {d.nome}
                 </Link>

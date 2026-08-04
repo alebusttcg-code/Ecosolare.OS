@@ -71,7 +71,7 @@ export default async function PreventivoPage({
         </div>
         <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
           {dati.quoteCode} · versione {dati.versione.versionNo} ·{' '}
-          <Link href={`/clienti/${dati.clienteId}`} className="text-eco-blue-300 hover:underline">
+          <Link href={`/clienti/${dati.clienteId}`} className="text-eco-blue-300 hover:underline collega">
             {[dati.clienteNome, dati.clienteCognome].filter(Boolean).join(' ')}
           </Link>
         </p>

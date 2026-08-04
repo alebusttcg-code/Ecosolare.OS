@@ -71,7 +71,7 @@ export function FormNuovaOpportunita({
           name="contactId"
           required
           defaultValue={contattoPreselezionato ?? ''}
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
           style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         >
           <option value="">Seleziona…</option>
@@ -87,7 +87,7 @@ export function FormNuovaOpportunita({
         ) : null}
         <span className="mt-1 block text-xs" style={{ color: 'var(--testo-tenue)' }}>
           Il cliente non c&apos;è?{' '}
-          <Link href="/clienti/nuovo" className="text-eco-blue-300 hover:underline">
+          <Link href="/clienti/nuovo" className="text-eco-blue-300 hover:underline collega">
             Crealo prima
           </Link>
           .
@@ -99,7 +99,7 @@ export function FormNuovaOpportunita({
           <span className="mb-1 block text-sm font-medium">Linea di business</span>
           <select
             name="businessLine"
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
             style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="fotovoltaico">Fotovoltaico</option>
@@ -112,7 +112,7 @@ export function FormNuovaOpportunita({
           <span className="mb-1 block text-sm font-medium">Fonte</span>
           <select
             name="sourceId"
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
             style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="">Non indicata</option>
@@ -144,7 +144,7 @@ export function FormNuovaOpportunita({
           <span className="mb-1 block text-sm font-medium">Responsabile</span>
           <select
             name="ownerId"
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
             style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="">Io</option>
@@ -188,7 +188,7 @@ export function FormNuovaOpportunita({
         <textarea
           name="notes"
           rows={3}
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"
           style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         />
       </label>

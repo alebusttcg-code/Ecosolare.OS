@@ -14,7 +14,7 @@ export function NuovoImmobile({ contactId }: { contactId: string }) {
       <button
         type="button"
         onClick={() => setAperto(true)}
-        className="w-full rounded border border-dashed px-3 py-2 text-xs"
+        className="bottone-fantasma w-full rounded-lg border border-dashed px-3 py-2 text-xs"
         style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
       >
         + Aggiungi immobile
@@ -63,14 +63,14 @@ export function NuovoImmobile({ contactId }: { contactId: string }) {
         <button
           type="submit"
           disabled={inCorso}
-          className="rounded bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-3 py-1.5 text-xs font-semibold text-eco-abisso"
+          className="bottone-oro rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-3 py-1.5 text-xs font-semibold text-eco-abisso"
         >
           {inCorso ? 'Salvataggio…' : 'Salva'}
         </button>
         <button
           type="button"
           onClick={() => setAperto(false)}
-          className="rounded border px-3 py-1.5 text-xs"
+          className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
           style={{ borderColor: 'var(--bordo)' }}
         >
           Annulla
