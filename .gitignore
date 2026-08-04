@@ -1,0 +1,35 @@
+# Dipendenze
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+build/
+dist/
+
+# Ambiente — nessun segreto nel repository
+.env
+.env.*
+!.env.example
+
+# Test e cache
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# Editor e sistema
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Log
+*.log
+npm-debug.log*
+
+# Dati locali — mai versionare dati reali di clienti
+/tmp/
+*.local.csv
+docs/baseline-kpi-compilato*.csv
