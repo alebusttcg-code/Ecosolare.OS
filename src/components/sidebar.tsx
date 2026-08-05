@@ -9,7 +9,7 @@ export interface VoceMenu {
   readonly href: string
   readonly label: string
   readonly icona: string
-  readonly gruppo: 'operativo' | 'amministrazione'
+  readonly gruppo: 'direzione' | 'ciclo' | 'lavoro' | 'amministrazione'
 }
 
 /**
@@ -33,12 +33,18 @@ export function Sidebar({
 }) {
   const percorso = usePathname()
 
-  const operative = voci.filter((v) => v.gruppo === 'operativo')
-  const amministrative = voci.filter((v) => v.gruppo === 'amministrazione')
+  /** Le aree, nell'ordine in cui si attraversano lavorando. */
+  const gruppi = [
+    { codice: 'direzione' as const, titolo: null },
+    { codice: 'ciclo' as const, titolo: 'Ciclo di lavoro' },
+    { codice: 'lavoro' as const, titolo: 'Da fare' },
+    { codice: 'amministrazione' as const, titolo: 'Amministrazione' },
+  ].map((g) => ({ ...g, voci: voci.filter((v) => v.gruppo === g.codice) }))
+    .filter((g) => g.voci.length > 0)
 
   return (
     <aside
-      className="fixed inset-y-0 left-0 z-20 flex w-60 flex-col border-r"
+      className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r"
       style={{
         borderColor: 'var(--bordo-tenue)',
         background:
@@ -62,16 +68,16 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-4">
-        <Gruppo voci={operative} percorso={percorso} />
-
-        {amministrative.length > 0 ? (
-          <>
-            <p className="mb-2 mt-6 px-3 eyebrow" style={{ color: 'var(--testo-fioco)' }}>
-              Amministrazione
-            </p>
-            <Gruppo voci={amministrative} percorso={percorso} />
-          </>
-        ) : null}
+        {gruppi.map((g, indice) => (
+          <div key={g.codice} className={indice > 0 ? 'mt-6' : undefined}>
+            {g.titolo ? (
+              <p className="mb-2 px-3 eyebrow" style={{ color: 'var(--testo-fioco)' }}>
+                {g.titolo}
+              </p>
+            ) : null}
+            <Gruppo voci={g.voci} percorso={percorso} />
+          </div>
+        ))}
       </nav>
 
       <div className="border-t px-4 py-4" style={{ borderColor: 'var(--bordo-tenue)' }}>
