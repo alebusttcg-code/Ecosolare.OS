@@ -27,7 +27,7 @@ const ETICHETTA_RUOLO: Record<Role, string> = {
  * l'accesso insegna che il sistema non è affidabile.
  */
 const VOCI: readonly (VoceMenu & { resource: Resource })[] = [
-  { href: '/', label: 'Cruscotto', icona: '◈', gruppo: 'direzione', resource: 'dashboard' },
+  { href: '/', label: 'Dashboard', icona: '◈', gruppo: 'direzione', resource: 'dashboard' },
   { href: '/metriche', label: 'Metriche commerciali', icona: '▦', gruppo: 'direzione', resource: 'dashboard' },
 
   { href: '/clienti', label: 'Clienti', icona: '◐', gruppo: 'ciclo', resource: 'contact' },

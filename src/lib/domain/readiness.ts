@@ -269,7 +269,7 @@ export function calcolaReadiness(
       {
         tipo: 'acconto',
         gravita: 'bloccante',
-        descrizione: 'Acconto non ancora incassato',
+        descrizione: 'Manca l’OK amministrativo sull’acconto',
         responsabile: null,
         da: null,
       },

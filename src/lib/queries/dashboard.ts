@@ -2,7 +2,7 @@ import { and, count, eq, isNotNull, isNull, lt, sql, sum } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { activities, opportunities, pipelineStages } from '@/db/schema'
 
-export interface CruscottoDati {
+export interface DashboardDati {
   readonly aperte: number
   readonly valoreAperto: string | null
   readonly senzaProssimaAzione: number
@@ -18,7 +18,7 @@ export interface CruscottoDati {
  * deve valere SEMPRE ZERO. Non e' un indicatore da monitorare, e' una spia:
  * se si accende, c'e' un difetto nel sistema, non un arretrato da smaltire.
  */
-export async function getCruscotto(): Promise<CruscottoDati> {
+export async function getDashboard(): Promise<DashboardDati> {
   const db = getDb()
   const adesso = new Date()
 

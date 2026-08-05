@@ -1292,11 +1292,147 @@ export const paymentMilestones = pgTable(
     dueAt: timestamp('due_at', { withTimezone: true }),
     invoicedAt: timestamp('invoiced_at', { withTimezone: true }),
     paidAt: timestamp('paid_at', { withTimezone: true }),
+
+    /**
+     * OK amministrativo: il via libera al cantiere.
+     *
+     * Si concede alla ricezione della contabile del cliente. NON coincide con
+     * l'incasso verificato: la contabile dice cosa il cliente afferma di aver
+     * fatto, l'estratto conto dice cosa e' successo. La riconciliazione serve
+     * proprio a confrontare i due.
+     */
+    adminOkAt: timestamp('admin_ok_at', { withTimezone: true }),
+    adminOkBy: uuid('admin_ok_by').references(() => users.id, { onDelete: 'set null' }),
+    adminOkNote: text('admin_ok_note'),
+
     notes: text('notes'),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index('payment_milestones_project_idx').on(table.projectId, table.sortOrder)],
+)
+
+/* ========================================================================== */
+/*  Controllo amministrativo e riconciliazione bancaria                        */
+/* ========================================================================== */
+
+/**
+ * Contabile di pagamento ricevuta dal cliente.
+ *
+ * È il documento che fa scattare l'OK amministrativo. Resta agli atti perché
+ * quando l'estratto conto non conferma l'incasso, la prima domanda è «cosa ci
+ * aveva mandato il cliente».
+ */
+export const paymentReceipts = pgTable(
+  'payment_receipts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    milestoneId: uuid('milestone_id')
+      .notNull()
+      .references(() => paymentMilestones.id, { onDelete: 'cascade' }),
+
+    storageKey: text('storage_key').notNull(),
+    filename: text('filename').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    checksum: text('checksum'),
+
+    uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('payment_receipts_milestone_idx').on(table.milestoneId)],
+)
+
+/** Estratto conto caricato per il controllo periodico. */
+export const bankStatements = pgTable(
+  'bank_statements',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    label: text('label').notNull(),
+
+    storageKey: text('storage_key').notNull(),
+    filename: text('filename').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+
+    periodFrom: timestamp('period_from', { withTimezone: true }),
+    periodTo: timestamp('period_to', { withTimezone: true }),
+
+    /** Quante righe sono state lette e quante scartate: si dichiara sempre. */
+    importedRows: integer('imported_rows').notNull().default(0),
+    skippedRows: integer('skipped_rows').notNull().default(0),
+    /** Colonne riconosciute ed elenco delle righe scartate, con il motivo. */
+    parseReport: jsonb('parse_report'),
+
+    uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('bank_statements_uploaded_idx').on(table.uploadedAt)],
+)
+
+export const bankTransactions = pgTable(
+  'bank_transactions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    statementId: uuid('statement_id')
+      .notNull()
+      .references(() => bankStatements.id, { onDelete: 'cascade' }),
+    rowNumber: integer('row_number').notNull(),
+    valueDate: timestamp('value_date', { withTimezone: true }).notNull(),
+    description: text('description').notNull(),
+    /** Positivo in entrata, negativo in uscita. */
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+  },
+  (table) => [
+    index('bank_tx_statement_idx').on(table.statementId),
+    index('bank_tx_date_idx').on(table.valueDate),
+  ],
+)
+
+export const reconciliationOutcome = pgEnum('reconciliation_outcome', [
+  'abbinato',
+  'importo_diverso',
+  'solo_importo',
+  'non_trovato',
+])
+
+/**
+ * Esito del confronto fra un OK amministrativo e l'estratto conto.
+ *
+ * Si conserva invece di ricalcolarlo ogni volta perché serve a ricordare cosa
+ * è già stato verificato a mano: senza, ogni caricamento riproporrebbe gli
+ * stessi allarmi già chiariti.
+ */
+export const reconciliationChecks = pgTable(
+  'reconciliation_checks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    statementId: uuid('statement_id')
+      .notNull()
+      .references(() => bankStatements.id, { onDelete: 'cascade' }),
+    milestoneId: uuid('milestone_id')
+      .notNull()
+      .references(() => paymentMilestones.id, { onDelete: 'cascade' }),
+    transactionId: uuid('transaction_id').references(() => bankTransactions.id, {
+      onDelete: 'set null',
+    }),
+
+    outcome: reconciliationOutcome('outcome').notNull(),
+    nameMatch: text('name_match').notNull(),
+    /** Centesimi: positivo se in banca è arrivato di più dell'atteso. */
+    difference: numeric('difference', { precision: 14, scale: 2 }),
+
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    reviewedBy: uuid('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+    reviewNote: text('review_note'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('reconciliation_statement_idx').on(table.statementId),
+    index('reconciliation_outcome_idx').on(table.outcome),
+    uniqueIndex('reconciliation_unico_idx').on(table.statementId, table.milestoneId),
+  ],
 )
 
 /* -------------------------------------------------------------------------- */
@@ -1339,3 +1475,7 @@ export type ProjectPractice = typeof projectPractices.$inferSelect
 export type Supplier = typeof suppliers.$inferSelect
 export type ProjectMaterial = typeof projectMaterials.$inferSelect
 export type PaymentMilestone = typeof paymentMilestones.$inferSelect
+export type PaymentReceipt = typeof paymentReceipts.$inferSelect
+export type BankStatement = typeof bankStatements.$inferSelect
+export type BankTransaction = typeof bankTransactions.$inferSelect
+export type ReconciliationCheck = typeof reconciliationChecks.$inferSelect

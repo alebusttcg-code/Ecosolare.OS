@@ -1,16 +1,16 @@
 import Link from 'next/link'
 import { Badge, Card, Intestazione, Stat, Vuoto, ritardo } from '@/components/ui'
 import { getCurrentUser } from '@/lib/auth/session'
-import { contaAttivitaScadute, getCruscotto } from '@/lib/queries/dashboard'
+import { contaAttivitaScadute, getDashboard } from '@/lib/queries/dashboard'
 
-export const metadata = { title: 'Cruscotto — EcoSolare OS' }
+export const metadata = { title: 'Dashboard — EcoSolare OS' }
 
-export default async function CruscottoPage() {
+export default async function DashboardPage() {
   const utente = await getCurrentUser()
   if (!utente) return null
 
   const [dati, mieScadute] = await Promise.all([
-    getCruscotto(),
+    getDashboard(),
     contaAttivitaScadute(utente.id),
   ])
 
@@ -20,7 +20,7 @@ export default async function CruscottoPage() {
     <div>
       <Intestazione
         eyebrow="Direzione"
-        titolo="Cruscotto"
+        titolo="Dashboard"
         sottotitolo="Lead, pipeline e attività in un colpo solo."
       />
 

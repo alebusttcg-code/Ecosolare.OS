@@ -398,8 +398,10 @@ export async function ricalcolaReadinessInterno(projectId: string): Promise<void
     })),
     verificaTecnicaCompletata: commessa.technicalCheckDoneAt !== null,
     clienteHaConfermato: commessa.clientConfirmedAt !== null,
+    // Conta l'OK AMMINISTRATIVO, non lo stato «incassato»: e' l'ok che da'
+    // il via al cantiere, ed e' cio' che il controllo bancario poi verifica.
     accontoIncassato:
-      acconti.length === 0 ? null : acconti.every((a) => a.status === 'incassato'),
+      acconti.length === 0 ? null : acconti.every((a) => a.adminOkAt !== null),
   }
 
   const esito = calcolaReadiness(dati, new Date())
