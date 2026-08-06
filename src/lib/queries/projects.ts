@@ -6,6 +6,7 @@ import {
   documentFiles,
   documentRequirements,
   paymentMilestones,
+  paymentReceipts,
   projectMaterials,
   projectPractices,
   projectStages,
@@ -112,7 +113,7 @@ export async function getProjectDetail(id: string) {
 
   if (!riga) return null
 
-  const [documenti, files, materiali, pratiche, task, pagamenti, storico, stati] =
+  const [documenti, files, materiali, pratiche, task, pagamenti, contabili, storico, stati] =
     await Promise.all([
     db
       .select()
@@ -150,10 +151,29 @@ export async function getProjectDetail(id: string) {
       .where(eq(projectTasks.projectId, id))
       .orderBy(asc(projectTasks.sortOrder)),
     db
-      .select()
+      .select({
+        milestone: paymentMilestones,
+        concessoDa: users.name,
+        concessoDaEmail: users.email,
+      })
       .from(paymentMilestones)
+      .leftJoin(users, eq(users.id, paymentMilestones.adminOkBy))
       .where(eq(paymentMilestones.projectId, id))
       .orderBy(asc(paymentMilestones.sortOrder)),
+    db
+      .select({
+        id: paymentReceipts.id,
+        milestoneId: paymentReceipts.milestoneId,
+        filename: paymentReceipts.filename,
+        sizeBytes: paymentReceipts.sizeBytes,
+      })
+      .from(paymentReceipts)
+      .innerJoin(
+        paymentMilestones,
+        eq(paymentMilestones.id, paymentReceipts.milestoneId),
+      )
+      .where(eq(paymentMilestones.projectId, id))
+      .orderBy(desc(paymentReceipts.uploadedAt)),
     db
       .select()
       .from(projectStatusHistory)
@@ -190,7 +210,11 @@ export async function getProjectDetail(id: string) {
       ...t,
       inRitardo: t.completedAt === null && t.dueAt !== null && t.dueAt.getTime() < adesso,
     })),
-    pagamenti,
+    pagamenti: pagamenti.map((p) => ({
+      ...p.milestone,
+      concessoDa: p.concessoDa ?? p.concessoDaEmail,
+      contabili: contabili.filter((c) => c.milestoneId === p.milestone.id),
+    })),
     storico,
     stati,
     bloccanti: blocchi.filter((b) => b.gravita === 'bloccante'),

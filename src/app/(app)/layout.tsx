@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { signOut } from '@/auth'
 import { Sidebar, type VoceMenu } from '@/components/sidebar'
 import { TransizionePagina } from '@/components/transizione'
-import { can, type Resource, type Role } from '@/lib/auth/policy'
+import { can, type Action, type Resource, type Role } from '@/lib/auth/policy'
 import { getCurrentUser } from '@/lib/auth/session'
 
 const ETICHETTA_RUOLO: Record<Role, string> = {
@@ -26,7 +26,12 @@ const ETICHETTA_RUOLO: Record<Role, string> = {
  * quello avviene comunque nel backend (ADR-006) — ma una voce che poi nega
  * l'accesso insegna che il sistema non è affidabile.
  */
-const VOCI: readonly (VoceMenu & { resource: Resource })[] = [
+/**
+ * `azione` serve dove leggere non basta per rendere utile la voce: il controllo
+ * bancario e' uno strumento operativo, e mostrarlo a chi puo' solo consultare
+ * gli incassi sarebbe una voce che non porta a nulla.
+ */
+const VOCI: readonly (VoceMenu & { resource: Resource; azione?: Action })[] = [
   { href: '/', label: 'Dashboard', icona: '◈', gruppo: 'direzione', resource: 'dashboard' },
   { href: '/metriche', label: 'Metriche commerciali', icona: '▦', gruppo: 'direzione', resource: 'dashboard' },
 
@@ -37,6 +42,7 @@ const VOCI: readonly (VoceMenu & { resource: Resource })[] = [
   { href: '/commesse', label: 'Cantieri e commesse', icona: '◫', gruppo: 'ciclo', resource: 'project' },
 
   { href: '/attivita', label: 'Le mie attività', icona: '✓', gruppo: 'lavoro', resource: 'activity' },
+  { href: '/banca', label: 'Controllo bancario', icona: '⚖', gruppo: 'lavoro', resource: 'invoice', azione: 'update' },
   { href: '/approvazioni', label: 'Approvazioni', icona: '⚑', gruppo: 'lavoro', resource: 'quote_approval' },
 
   { href: '/amministrazione/utenti', label: 'Utenti', icona: '◇', gruppo: 'amministrazione', resource: 'user' },
@@ -52,7 +58,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     await signOut({ redirectTo: '/accedi' })
   }
 
-  const voci = VOCI.filter((v) => can(utente, 'read', v.resource)).map(
+  const voci = VOCI.filter((v) => can(utente, v.azione ?? 'read', v.resource)).map(
     ({ href, label, icona, gruppo }) => ({ href, label, icona, gruppo }),
   )
 

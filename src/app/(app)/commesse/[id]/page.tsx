@@ -5,6 +5,7 @@ import { guard } from '@/lib/auth/session'
 import type { StatoPianificabilita } from '@/lib/domain/readiness'
 import { getProjectDetail } from '@/lib/queries/projects'
 import { CaricaDocumento } from './carica'
+import { OkAmministrativo } from './ok-amministrativo'
 import {
   ControlloConferma,
   ControlloDocumento,
@@ -291,7 +292,8 @@ export default async function CommessaPage({
             ) : (
               <ul className="space-y-3">
                 {dati.pagamenti.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-3">
+                  <li key={p.id}>
+                    <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-sm">{p.label}</div>
                       <div className="text-xs tabular-nums" style={{ color: 'var(--testo-fioco)' }}>
@@ -300,6 +302,15 @@ export default async function CommessaPage({
                       </div>
                     </div>
                     <ControlloPagamento milestoneId={p.id} stato={p.status} />
+                    </div>
+                    {p.blocksStart ? (
+                      <OkAmministrativo
+                        milestoneId={p.id}
+                        concessoIl={p.adminOkAt}
+                        concessoDa={p.concessoDa}
+                        contabili={p.contabili}
+                      />
+                    ) : null}
                   </li>
                 ))}
               </ul>
