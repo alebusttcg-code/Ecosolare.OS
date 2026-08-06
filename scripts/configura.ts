@@ -58,12 +58,22 @@ function verificaConnessione(url: string): string[] {
     problemi.push('Non sembra una stringa di connessione PostgreSQL.')
     return problemi
   }
+  // Va detto per primo: e' il caso in cui si crede di aver configurato Supabase
+  // e invece si sta ancora usando il database di prova sul proprio computer.
+  if (/localhost|127\.0\.0\.1/.test(url)) {
+    problemi.push(
+      'Questo è il database LOCALE di prova, non Supabase. Se stai configurando Supabase, incolla la stringa presa da Connect → Transaction pooler.',
+    )
+    return problemi
+  }
   if (url.includes(':5432')) {
     problemi.push(
       'Stai usando la porta 5432 (connessione diretta). Serve il Transaction pooler, porta 6543.',
     )
+  } else if (!url.includes(':6543')) {
+    problemi.push('La porta non è 6543: controlla di aver copiato il Transaction pooler.')
   }
-  if (url.includes('supabase') && !url.includes('pooler')) {
+  if (!url.includes('pooler')) {
     problemi.push(
       'L’host non contiene «pooler»: hai copiato la connessione diretta invece del Transaction pooler.',
     )
@@ -71,8 +81,15 @@ function verificaConnessione(url: string): string[] {
   if (url.includes('[YOUR-PASSWORD]') || url.includes('[PASSWORD]')) {
     problemi.push('Devi sostituire il segnaposto della password con quella vera.')
   }
-  // Caratteri che vanno codificati nella parte password dell'URL.
-  const password = url.match(/postgres(?:ql)?:\/\/[^:]+:([^@]*)@/)?.[1] ?? ''
+  // La password è tutto ciò che sta fra i due punti e l'ULTIMA chiocciola:
+  // fermarsi alla prima farebbe sfuggire proprio le password che contengono
+  // una chiocciola, cioè il caso che questo controllo esiste per trovare.
+  const dopoSchema = url.replace(/^postgres(?:ql)?:\/\//, '')
+  const ultimaChiocciola = dopoSchema.lastIndexOf('@')
+  const credenziali = ultimaChiocciola === -1 ? '' : dopoSchema.slice(0, ultimaChiocciola)
+  const duePunti = credenziali.indexOf(':')
+  const password = duePunti === -1 ? '' : credenziali.slice(duePunti + 1)
+
   if (/[@/?#[\]]/.test(password)) {
     problemi.push(
       'La password contiene caratteri (@ / ? # [ ]) che vanno codificati, altrimenti la connessione fallisce. Il modo più semplice è cambiarla su Supabase usando solo lettere e numeri.',
@@ -101,9 +118,15 @@ ${c.fioco('Quello che scrivi resta in .env.local, che non entra mai nel reposito
   console.log(`Su Supabase: ${c.oro('Connect')} → ${c.oro('Transaction pooler')} → copia la stringa.`)
   console.log(c.fioco('Deve contenere «pooler» e finire con «:6543/postgres».\n'))
 
+  // Il valore locale NON viene proposto come predefinito: premendo Invio si
+  // finirebbe per confermarlo senza accorgersene, che e' esattamente il modo
+  // in cui si crede di aver configurato Supabase e invece non e' cambiato nulla.
+  const precedente = esistente.DATABASE_URL ?? ''
+  const proposto = /localhost|127\.0\.0\.1/.test(precedente) ? undefined : precedente
+
   let database = ''
   for (;;) {
-    database = await chiedi('Stringa di connessione', esistente.DATABASE_URL)
+    database = await chiedi('Stringa di connessione', proposto)
     if (!database) {
       console.log(c.rosso('Serve per forza. Riprova.\n'))
       continue
