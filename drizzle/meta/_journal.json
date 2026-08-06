@@ -50,6 +50,13 @@
       "when": 1785928304799,
       "tag": "0006_controllo_amministrativo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786009791451,
+      "tag": "0007_blindatura_rls_fase3",
+      "breakpoints": true
     }
   ]
 }

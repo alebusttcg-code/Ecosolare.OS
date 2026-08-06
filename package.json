@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env.local src/db/migrate.ts",
+    "db:verifica": "tsx --env-file-if-exists=.env.local scripts/verifica-db.ts",
     "db:seed": "tsx --env-file-if-exists=.env.local src/db/seed.ts",
     "demo": "tsx --env-file-if-exists=.env.local scripts/demo.ts",
     "check": "npm run lint && npm run typecheck && npm run test"

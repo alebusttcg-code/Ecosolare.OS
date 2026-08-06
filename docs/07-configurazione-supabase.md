@@ -42,13 +42,18 @@ e [D-009](01-registro-decisioni.md).
 3. Copia la stringa. Deve avere questa forma:
 
 ```
-postgresql://postgres.abcdefghijklm:LA_TUA_PASSWORD@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
+postgresql://postgres.<ref-progetto>:<password>@aws-<n>-<regione>.pooler.supabase.com:6543/postgres
 ```
+
+**Usa il pulsante di copia, non riscriverla a mano.** Il prefisso (`aws-0`, `aws-1`…)
+e la regione dipendono da dove è ospitato il tuo progetto: se non corrispondono,
+la connessione fallisce con `tenant or user not found`, che non lascia intuire
+la causa.
 
 **Controlla due cose:**
 
 - la porta è **6543** — non 5432;
-- l'host contiene **`pooler`** e **`eu-central-1`**.
+- l'host contiene **`pooler`**.
 
 > **Perché il pooler e non la connessione diretta.** Su Vercel ogni richiesta è un
 > processo a sé: con le connessioni dirette il database le esaurisce in fretta. Il
@@ -167,6 +172,7 @@ se ha un account Google del dominio.
 
 | Sintomo | Causa quasi certa |
 |---|---|
+| `tenant or user not found` | l'host non corrisponde alla regione del progetto. **Non ricostruire la stringa a mano**: copiala dal pulsante di Supabase, perché il prefisso (`aws-0`, `aws-1`…) e la regione cambiano da progetto a progetto |
 | `password authentication failed` | password con caratteri speciali non codificati, o password sbagliata |
 | `Connection terminated` / timeout | stai usando la porta 5432 invece di 6543 |
 | `prepared statement ... already exists` | stringa di connessione diretta invece del pooler |
