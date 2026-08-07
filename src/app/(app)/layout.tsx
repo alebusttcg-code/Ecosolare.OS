@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { signOut } from '@/auth'
 import { Sidebar, type VoceMenu } from '@/components/sidebar'
 import { TransizionePagina } from '@/components/transizione'
+import { esci } from '@/lib/actions/auth'
 import { can, type Action, type Resource, type Role } from '@/lib/auth/policy'
 import { getCurrentUser } from '@/lib/auth/session'
 
@@ -53,10 +53,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const utente = await getCurrentUser()
   if (!utente) redirect('/accedi')
 
-  async function esci() {
-    'use server'
-    await signOut({ redirectTo: '/accedi' })
-  }
+  // Finche' la password e' quella assegnata dall'amministratore, la sessione
+  // non identifica ancora la persona: nessun dato prima del cambio.
+  if (utente.mustChangePassword) redirect('/cambia-password')
 
   const voci = VOCI.filter((v) => can(utente, v.azione ?? 'read', v.resource)).map(
     ({ href, label, icona, gruppo }) => ({ href, label, icona, gruppo }),

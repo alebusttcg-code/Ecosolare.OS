@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
+import { ArchivioSupabase, supabaseStorageConfigurato } from './supabase'
 
 /**
  * Archiviazione dei documenti.
@@ -96,7 +97,15 @@ class ArchivioSuDisco implements Archivio {
 
 let archivio: Archivio | undefined
 
+/**
+ * L'archivio in uso.
+ *
+ * Supabase Storage se configurato, disco altrimenti. La scelta è automatica e
+ * non ha un interruttore: un interruttore permetterebbe di girare in
+ * produzione sul disco, che su Vercel significa perdere i documenti al deploy
+ * successivo senza che nessun errore lo segnali.
+ */
 export function getArchivio(): Archivio {
-  archivio ??= new ArchivioSuDisco()
+  archivio ??= supabaseStorageConfigurato() ? new ArchivioSupabase() : new ArchivioSuDisco()
   return archivio
 }

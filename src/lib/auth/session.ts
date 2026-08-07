@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { auth } from '@/auth'
+import { sessioneCorrente } from '@/auth'
 import { getDb } from '@/db'
 import { users } from '@/db/schema'
 import { recordAccessDenied } from '@/lib/audit'
@@ -15,6 +15,8 @@ export interface CurrentUser extends PolicySubject {
   readonly id: string
   readonly email: string
   readonly name: string | null
+  /** Vero finché la persona usa la password iniziale assegnata dall'amministratore. */
+  readonly mustChangePassword: boolean
 }
 
 /**
@@ -26,12 +28,11 @@ export interface CurrentUser extends PolicySubject {
  * e' che una revoca ha effetto immediato.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const session = await auth()
-  const id = session?.user?.id
-  if (!id) return null
+  const sessione = await sessioneCorrente()
+  if (!sessione) return null
 
   const utente = await getDb().query.users.findFirst({
-    where: eq(users.id, id),
+    where: eq(users.id, sessione.userId),
     columns: {
       id: true,
       email: true,
@@ -40,6 +41,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       canViewCosts: true,
       isFieldOnly: true,
       isActive: true,
+      mustChangePassword: true,
     },
   })
 

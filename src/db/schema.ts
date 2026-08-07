@@ -13,7 +13,6 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
-import type { AdapterAccountType } from 'next-auth/adapters'
 
 /* -------------------------------------------------------------------------- */
 /*  Ruoli e capacita' — D-007                                                  */
@@ -46,6 +45,31 @@ export const users = pgTable(
     role: userRole('role').notNull().default('commerciale'),
 
     /**
+     * Accesso con email e password (D-003a rivista).
+     *
+     * `password_hash` è nullo finché un amministratore non assegna la password
+     * iniziale: un utente senza impronta non può entrare in nessun modo, il che
+     * rende innocua la riga creata ma non ancora consegnata alla persona.
+     */
+    passwordHash: text('password_hash'),
+    passwordUpdatedAt: timestamp('password_updated_at', { withTimezone: true }),
+    /**
+     * La password iniziale la conosce anche chi l'ha generata: finché non viene
+     * cambiata non identifica la persona, quindi il sistema costringe a
+     * cambiarla prima di mostrare qualunque dato.
+     */
+    mustChangePassword: boolean('must_change_password').notNull().default(true),
+
+    /**
+     * Blocco progressivo dei tentativi. Sul database e non in memoria perché
+     * l'applicazione gira su più istanze: un contatore per processo si
+     * azzererebbe cambiando istanza, cioè non conterebbe nulla.
+     */
+    failedLoginAttempts: integer('failed_login_attempts').notNull().default(0),
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+
+    /**
      * Capacita' (D-007). Sono flag sul singolo utente, non ruoli:
      * e' cio' che evita di moltiplicare i ruoli a ogni eccezione.
      */
@@ -68,16 +92,23 @@ export const users = pgTable(
 )
 
 /* -------------------------------------------------------------------------- */
-/*  Tabelle richieste da Auth.js (adapter Drizzle)                             */
+/*  Sessioni e identità federate                                               */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Identità presso un provider esterno (Google e simili).
+ *
+ * Oggi non è usata: l'accesso avviene con email e password. Resta in schema
+ * perché il ritorno al login federato è previsto, e ricreare la tabella
+ * costerebbe una migrazione in più senza alcun beneficio.
+ */
 export const accounts = pgTable(
   'accounts',
   {
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    type: text('type').$type<AdapterAccountType>().notNull(),
+    type: text('type').notNull(),
     provider: text('provider').notNull(),
     providerAccountId: text('provider_account_id').notNull(),
     refresh_token: text('refresh_token'),
@@ -93,13 +124,31 @@ export const accounts = pgTable(
   ],
 )
 
-export const sessions = pgTable('sessions', {
-  sessionToken: text('session_token').primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  expires: timestamp('expires', { withTimezone: true }).notNull(),
-})
+/**
+ * Sessioni attive.
+ *
+ * `session_token` contiene l'IMPRONTA SHA-256 del valore nel cookie, non il
+ * valore. Chi ottenesse una copia in sola lettura del database — un backup, un
+ * dump, un log di query — non potrebbe impersonare nessuno.
+ *
+ * Sessioni sul database e non JWT: la disattivazione di un utente deve avere
+ * effetto immediato, non alla scadenza di un token che non possiamo revocare.
+ */
+export const sessions = pgTable(
+  'sessions',
+  {
+    sessionToken: text('session_token').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expires: timestamp('expires', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Servono a riconoscere una sessione da revocare guardando l'elenco. */
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+  },
+  (table) => [index('sessions_user_idx').on(table.userId)],
+)
 
 export const verificationTokens = pgTable(
   'verification_tokens',
@@ -109,6 +158,62 @@ export const verificationTokens = pgTable(
     expires: timestamp('expires', { withTimezone: true }).notNull(),
   },
   (table) => [primaryKey({ columns: [table.identifier, table.token] })],
+)
+
+/* -------------------------------------------------------------------------- */
+/*  Outbox transazionale — ADR-005                                             */
+/* -------------------------------------------------------------------------- */
+
+export const outboxStatus = pgEnum('outbox_status', [
+  'in_attesa',
+  'in_corso',
+  'completato',
+  'fallito',
+])
+
+/**
+ * Effetti da produrre fuori dal database.
+ *
+ * Il problema che risolve: chiamare Google Drive dentro la firma di un
+ * contratto lega la riuscita della firma alla disponibilita' di Drive. Se Drive
+ * e' lento, la firma e' lenta; se Drive e' giu', la firma fallisce. E se la
+ * chiamata riesce ma la transazione poi va in errore, la cartella resta creata
+ * senza contratto che la giustifichi.
+ *
+ * Qui la riga si scrive NELLA STESSA TRANSAZIONE del fatto che la genera: o
+ * esistono entrambi, o nessuno dei due. L'effetto arriva poco dopo, e se non
+ * arriva resta scritto che doveva arrivare — che e' l'unica differenza
+ * importante rispetto a una chiamata perduta nel nulla.
+ */
+export const outboxEvents = pgTable(
+  'outbox_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    /** Es. `drive.cartella_cliente`, `drive.copia_documento`. */
+    type: text('type').notNull(),
+    payload: jsonb('payload').notNull(),
+
+    /**
+     * Chiave di deduplica: rende l'accodamento idempotente. Senza, due firme
+     * ravvicinate o un tentativo ripetuto creerebbero due cartelle per lo
+     * stesso cliente, e nessuna delle due sarebbe «quella giusta».
+     */
+    dedupKey: text('dedup_key'),
+
+    status: outboxStatus('status').notNull().default('in_attesa'),
+    attempts: integer('attempts').notNull().default(0),
+    /** Non prima di questo momento: e' cio' che realizza l'attesa crescente. */
+    availableAt: timestamp('available_at', { withTimezone: true }).notNull().defaultNow(),
+    lastError: text('last_error'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('outbox_da_fare_idx').on(table.status, table.availableAt),
+    uniqueIndex('outbox_dedup_idx').on(table.dedupKey),
+  ],
 )
 
 /* -------------------------------------------------------------------------- */
@@ -276,6 +381,15 @@ export const contacts = pgTable(
 
     sourceId: uuid('source_id').references(() => leadSources.id, { onDelete: 'set null' }),
     notes: text('notes'),
+
+    /**
+     * Cartella del cliente su Google Drive (D-011).
+     *
+     * Nulla finche' il contatto e' un lead: la cartella nasce alla firma del
+     * contratto, quando il lead diventa cliente. Averla qui e non sui progetti
+     * e' cio' che tiene insieme i documenti di un cliente con piu' commesse.
+     */
+    driveFolderId: text('drive_folder_id'),
 
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -955,6 +1069,9 @@ export const projects = pgTable(
     /** Da quando la commessa è ferma: alimenta il KPI «giorni di blocco». */
     blockedSince: timestamp('blocked_since', { withTimezone: true }),
 
+    /** Sottocartella della commessa dentro quella del cliente (D-011). */
+    driveFolderId: text('drive_folder_id'),
+
     technicalCheckDoneAt: timestamp('technical_check_done_at', { withTimezone: true }),
     clientConfirmedAt: timestamp('client_confirmed_at', { withTimezone: true }),
 
@@ -1136,6 +1253,13 @@ export const documentFiles = pgTable(
     mimeType: text('mime_type').notNull(),
     sizeBytes: integer('size_bytes').notNull(),
     checksum: text('checksum'),
+
+    /**
+     * Copia su Drive (D-011). Nullo significa «non ancora copiato»: la copia
+     * avviene in coda, quindi c'e' sempre una finestra in cui il file esiste
+     * nell'archivio ma non su Drive. L'archivio resta la fonte di verita'.
+     */
+    driveFileId: text('drive_file_id'),
 
     /** Chi l'ha caricato: interno, cliente via link firmato, automazione. */
     source: text('source').notNull().default('interno'),
@@ -1479,3 +1603,5 @@ export type PaymentReceipt = typeof paymentReceipts.$inferSelect
 export type BankStatement = typeof bankStatements.$inferSelect
 export type BankTransaction = typeof bankTransactions.$inferSelect
 export type ReconciliationCheck = typeof reconciliationChecks.$inferSelect
+export type OutboxEvent = typeof outboxEvents.$inferSelect
+export type NewOutboxEvent = typeof outboxEvents.$inferInsert

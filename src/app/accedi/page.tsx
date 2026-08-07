@@ -1,25 +1,14 @@
 import Image from 'next/image'
 import { redirect } from 'next/navigation'
-import { signIn } from '@/auth'
 import { getCurrentUser } from '@/lib/auth/session'
+import { ModuloAccesso } from './modulo'
 
 export const metadata = { title: 'Accedi — EcoSolare OS' }
 
 const FLUSSO = ['Lead', 'Sopralluogo', 'Preventivo', 'Commessa', 'Cantiere', 'Margine']
 
-export default async function AccediPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>
-}) {
+export default async function AccediPage() {
   if (await getCurrentUser()) redirect('/')
-
-  const { error } = await searchParams
-
-  async function accediConGoogle() {
-    'use server'
-    await signIn('google', { redirectTo: '/' })
-  }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
@@ -42,39 +31,15 @@ export default async function AccediPage({
           </h1>
           <div className="mt-4 filetto" />
 
-          {error ? (
-            <p
-              className="mt-6 rounded-lg border px-4 py-3 text-sm"
-              style={{
-                borderColor: 'rgba(224,133,133,0.4)',
-                background: 'rgba(224,133,133,0.08)',
-                color: '#e8a0a0',
-              }}
-            >
-              Accesso non riuscito. L&apos;account deve essere stato abilitato da un
-              amministratore.
-            </p>
-          ) : null}
-
-          <form action={accediConGoogle} className="mt-6">
-            <button
-              type="submit"
-              className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{
-                background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
-                color: '#050a14',
-              }}
-            >
-              Accedi con Google
-            </button>
-          </form>
+          <ModuloAccesso />
 
           <p
             className="mt-6 text-xs leading-relaxed"
             style={{ color: 'var(--testo-fioco)' }}
           >
-            L&apos;accesso è riservato agli utenti abilitati. La verifica in due passaggi
-            è gestita dall&apos;account Google aziendale.
+            Le credenziali le assegna un amministratore. Se hai dimenticato la
+            password, chiedigli di rigenerarla: nessuno può leggerla, nemmeno il
+            sistema.
           </p>
         </div>
 

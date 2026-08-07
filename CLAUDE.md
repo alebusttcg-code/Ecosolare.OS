@@ -22,6 +22,10 @@ Le decisioni di prodotto sono nel [registro decisioni](docs/01-registro-decision
 - **Niente valori normativi nel codice** (aliquote, detrazioni, soglie): sono
   configurazioni con validità temporale.
 - **Validare ogni input con Zod** al confine (form, API, webhook).
+- **Nessuna chiamata a un servizio esterno dentro una transazione.** Gli effetti
+  fuori dal database (Drive, email, calendario) si accodano con `accoda` nella
+  stessa transazione del fatto che li genera, e li esegue la coda (ADR-005).
+  Ogni gestore deve essere idempotente e sollevare per farsi ritentare.
 - `@electric-sql/pglite` è solo per i test, isolato in `src/db/testing.ts`:
   non importarlo dal codice applicativo (ADR-010).
 
@@ -30,11 +34,14 @@ Le decisioni di prodotto sono nel [registro decisioni](docs/01-registro-decision
 ```
 src/
   app/            rotte Next (App Router)
-  auth.ts         configurazione Auth.js
+  auth.ts         sessioni (cookie e tabella `sessions`)
   db/             schema, connessione, migrazioni, helper di test
   env.ts          variabili d'ambiente validate
-  lib/auth/       policy layer (puro) e sessione
+  lib/auth/       policy layer (puro), sessione, password
   lib/audit.ts    scrittura audit log
+  lib/outbox/     coda degli effetti esterni (ADR-005)
+  lib/drive/      client Google Drive e gestori della coda
+  lib/storage/    archivio documenti (disco in sviluppo, Supabase altrove)
 drizzle/          migrazioni SQL versionate
 docs/             blueprint, decisioni, ADR, materiali Sprint 0
 ```
@@ -45,6 +52,8 @@ docs/             blueprint, decisioni, ADR, materiali Sprint 0
 npm run check     # lint + typecheck + test — da eseguire prima di ogni commit
 npm run dev       # richiede DATABASE_URL
 npm run db:generate && npm run db:migrate
+npm run amministratore   # crea il primo utente e stampa la password
+npm run outbox           # smaltisce la coda: in locale non lo fa nessun altro
 ```
 
 ## Lingua

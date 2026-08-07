@@ -25,9 +25,11 @@ import {
 } from '@/db/schema'
 import { PIANO_PAGAMENTI, PRATICHE_FV } from '@/db/templates/commessa'
 import { recordEntityChange } from '@/lib/audit'
+import { TIPO_CARTELLA_CLIENTE } from '@/lib/drive/gestori'
 import { guard } from '@/lib/auth/session'
 import { importoAStringa, importoDaEuro } from '@/lib/domain/money'
 import { calcolaReadiness, type DatiCommessa } from '@/lib/domain/readiness'
+import { accoda } from '@/lib/outbox'
 import type { ActionResult } from './opportunities'
 
 function errori(issues: readonly z.core.$ZodIssue[]): Record<string, string> {
@@ -320,6 +322,19 @@ export async function signContractAndOpenProject(
       toStage: 'vinto',
       note: `Contratto ${codiceContratto}`,
       changedBy: utente.id,
+    })
+
+    /*
+     * Da qui in poi il contatto è un cliente, e gli spetta una cartella su
+     * Drive (D-011). L'evento nasce dentro la transazione: o esistono la
+     * commessa e l'intenzione di creare la cartella, o nessuna delle due.
+     * La chiamata a Drive avviene dopo, in coda — se Drive è giù, la firma
+     * del contratto non deve fallire per questo.
+     */
+    await accoda(tx, {
+      type: TIPO_CARTELLA_CLIENTE,
+      payload: { projectId: commessaId },
+      dedupKey: `${TIPO_CARTELLA_CLIENTE}:${commessaId}`,
     })
 
     return { projectId: commessaId, projectCode: commessa!.code }

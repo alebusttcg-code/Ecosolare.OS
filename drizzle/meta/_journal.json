@@ -57,6 +57,20 @@
       "when": 1786009791451,
       "tag": "0007_blindatura_rls_fase3",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786097986035,
+      "tag": "0008_accesso_con_password",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786123469201,
+      "tag": "0009_outbox_e_drive",
+      "breakpoints": true
     }
   ]
 }

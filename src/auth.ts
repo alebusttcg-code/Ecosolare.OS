@@ -1,116 +1,135 @@
-import { DrizzleAdapter } from '@auth/drizzle-adapter'
-import { count, eq } from 'drizzle-orm'
-import NextAuth from 'next-auth'
-import Google from 'next-auth/providers/google'
+import { createHash, randomBytes } from 'node:crypto'
+import { and, eq, gt, lt } from 'drizzle-orm'
+import { cookies } from 'next/headers'
 import { getDb } from '@/db'
-import { accounts, sessions, users, verificationTokens } from '@/db/schema'
-import { env } from '@/env'
+import { sessions } from '@/db/schema'
 
 /**
- * Autenticazione — D-003a.
+ * Sessioni.
  *
- * Due proprieta' che vanno tenute in questo ordine di importanza:
+ * Perché scritte a mano invece di usare Auth.js: il provider `Credentials` di
+ * Auth.js non è compatibile con `strategy: 'database'`, obbliga ai JWT. Un JWT
+ * non è revocabile, quindi un utente disattivato resterebbe dentro fino alla
+ * scadenza — e la revoca immediata è un requisito (US-01.1), non una
+ * preferenza. Fra riscrivere questo file e rinunciare alla revoca, questo file.
  *
- *  1. NESSUNA AUTO-REGISTRAZIONE. Un account Google valido del dominio non basta
- *     per entrare: l'utente deve essere stato creato da un amministratore.
- *     Senza questa regola, chiunque nel dominio aziendale entrerebbe nel gestionale
- *     con ruolo di default.
- *  2. La verifica in due passaggi e' delegata a Google Workspace, dove va imposta
- *     come obbligatoria per gli amministratori. Non la reimplementiamo qui.
+ * Due regole tengono in piedi tutto il resto:
  *
- * L'unica eccezione alla regola 1 e' il primo accesso in assoluto, che crea
- * l'amministratore iniziale: senza, non esisterebbe nessuno che possa creare
- * gli altri.
+ *  1. Nel cookie c'è un valore casuale; nel database c'è solo la sua impronta
+ *     SHA-256. Un dump del database non permette di impersonare nessuno.
+ *  2. La sessione dice solo CHI è l'utente. Ruolo, capacità e stato attivo si
+ *     rileggono dal database a ogni richiesta (`src/lib/auth/session.ts`):
+ *     una revoca ha effetto al colpo successivo.
  */
-export const { handlers, auth, signIn, signOut } = NextAuth(() => {
-  const config = env()
 
-  return {
-    adapter: DrizzleAdapter(getDb(), {
-      usersTable: users,
-      accountsTable: accounts,
-      sessionsTable: sessions,
-      verificationTokensTable: verificationTokens,
-    }),
+const COOKIE = 'ecosolare.sessione'
 
-    session: {
-      // Sessioni su database, non JWT: la disattivazione di un utente deve
-      // avere effetto immediato, non alla scadenza del token (US-01.1).
-      strategy: 'database',
-      maxAge: 60 * 60 * 12,
-    },
+/** Inattività oltre la quale la sessione non vale più. */
+const DURATA_MS = 12 * 60 * 60 * 1000
 
-    providers: [
-      Google({
-        clientId: config.AUTH_GOOGLE_ID,
-        clientSecret: config.AUTH_GOOGLE_SECRET,
-      }),
-    ],
+/**
+ * Il cookie dura più della sessione: l'autorità sulla scadenza è la riga nel
+ * database, che è l'unica revocabile. Un cookie più corto scollegherebbe
+ * l'utente senza che nessuno possa impedirlo o prolungarlo.
+ */
+const COOKIE_MAX_AGE_S = 30 * 24 * 60 * 60
 
-    pages: {
-      signIn: '/accedi',
-      error: '/accedi',
-    },
+function impronta(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
 
-    callbacks: {
-      async signIn({ user, profile }) {
-        const email = user.email ?? profile?.email
-        if (!email) return false
+/**
+ * Apre una sessione e imposta il cookie.
+ *
+ * Da chiamare solo da una server action o da un route handler: altrove Next non
+ * permette di scrivere cookie.
+ */
+export async function creaSessione(params: {
+  userId: string
+  ipAddress?: string | undefined
+  userAgent?: string | undefined
+}): Promise<void> {
+  const token = randomBytes(32).toString('base64url')
 
-        // Restrizione di dominio (D-003a).
-        const dominio = config.ALLOWED_EMAIL_DOMAIN?.trim().toLowerCase()
-        if (dominio && !email.toLowerCase().endsWith(`@${dominio}`)) {
-          return false
-        }
+  await getDb()
+    .insert(sessions)
+    .values({
+      sessionToken: impronta(token),
+      userId: params.userId,
+      expires: new Date(Date.now() + DURATA_MS),
+      ipAddress: params.ipAddress ?? null,
+      userAgent: params.userAgent?.slice(0, 400) ?? null,
+    })
 
-        // Google conferma l'identita', ma non l'autorizzazione a entrare.
-        if (profile && profile.email_verified === false) return false
+  const store = await cookies()
+  store.set(COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: COOKIE_MAX_AGE_S,
+  })
+}
 
-        const db = getDb()
-        const esistente = await db.query.users.findFirst({
-          where: eq(users.email, email),
-          columns: { id: true, isActive: true },
-        })
+/**
+ * L'id dell'utente collegato, o `null`.
+ *
+ * Prolunga la sessione quando è passata oltre metà della sua durata: senza,
+ * chi lavora tutto il giorno verrebbe scollegato a metà di un preventivo.
+ * Si aggiorna solo la riga, mai il cookie: questa funzione viene chiamata
+ * anche durante il rendering, dove scrivere cookie non è permesso.
+ */
+export async function sessioneCorrente(): Promise<{ userId: string } | null> {
+  const token = (await cookies()).get(COOKIE)?.value
+  if (!token) return null
 
-        if (esistente) return esistente.isActive
+  const chiave = impronta(token)
+  const adesso = new Date()
 
-        // Bootstrap del primo amministratore: consentito solo se il database
-        // non contiene ancora nessun utente.
-        const bootstrap = config.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase()
-        if (!bootstrap || email.toLowerCase() !== bootstrap) return false
+  const sessione = await getDb().query.sessions.findFirst({
+    where: and(eq(sessions.sessionToken, chiave), gt(sessions.expires, adesso)),
+    columns: { userId: true, expires: true },
+  })
+  if (!sessione) return null
 
-        const [totale] = await db.select({ value: count() }).from(users)
-        return (totale?.value ?? 0) === 0
-      },
-
-      session({ session, user }) {
-        // Il ruolo e le capacita' viaggiano nella sessione per comodita' della UI,
-        // ma non sono la fonte di verita': ogni endpoint li rilegge dal database
-        // prima di decidere (vedere src/lib/auth/session.ts).
-        session.user.id = user.id
-        session.user.role = user.role
-        session.user.canViewCosts = user.canViewCosts
-        session.user.isFieldOnly = user.isFieldOnly
-        session.user.isActive = user.isActive
-        return session
-      },
-    },
-
-    events: {
-      async createUser({ user }) {
-        const bootstrap = config.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase()
-        if (!bootstrap || !user.email || user.id === undefined) return
-        if (user.email.toLowerCase() !== bootstrap) return
-
-        // L'utente appena creato dal bootstrap nasce con i default piu'
-        // restrittivi: qui lo si promuove ad amministratore.
-        await getDb()
-          .update(users)
-          .set({ role: 'amministratore', canViewCosts: true, updatedAt: new Date() })
-          .where(eq(users.id, user.id))
-      },
-    },
-
-    trustHost: true,
+  const restante = sessione.expires.getTime() - adesso.getTime()
+  if (restante < DURATA_MS / 2) {
+    await getDb()
+      .update(sessions)
+      .set({ expires: new Date(adesso.getTime() + DURATA_MS) })
+      .where(eq(sessions.sessionToken, chiave))
   }
-})
+
+  return { userId: sessione.userId }
+}
+
+/** Chiude la sessione corrente: riga cancellata e cookie rimosso. */
+export async function chiudiSessione(): Promise<void> {
+  const store = await cookies()
+  const token = store.get(COOKIE)?.value
+
+  if (token) {
+    await getDb().delete(sessions).where(eq(sessions.sessionToken, impronta(token)))
+  }
+  store.delete(COOKIE)
+}
+
+/**
+ * Chiude tutte le sessioni di un utente.
+ *
+ * Serve dopo un cambio password e dopo una disattivazione: senza, chi ha rubato
+ * la password resta collegato proprio mentre il legittimo proprietario crede di
+ * avere risolto.
+ */
+export async function chiudiSessioniDi(userId: string): Promise<void> {
+  await getDb().delete(sessions).where(eq(sessions.userId, userId))
+}
+
+/** Sessioni scadute: nessuno le userà più, ma restano finché non si cancellano. */
+export async function eliminaSessioniScadute(): Promise<number> {
+  const eliminate = await getDb()
+    .delete(sessions)
+    .where(lt(sessions.expires, new Date()))
+    .returning({ token: sessions.sessionToken })
+  return eliminate.length
+}

@@ -73,30 +73,16 @@ sostituiti i valori.
 # La stringa del Transaction pooler copiata al passo 2
 DATABASE_URL=postgresql://postgres.xxx:PASSWORD@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
 
-# Lascia quello che c'è già: è stato generato in modo sicuro
-AUTH_SECRET=...
-
-# Dal passo 5
-AUTH_GOOGLE_ID=
-AUTH_GOOGLE_SECRET=
-
-# La tua email aziendale: al primo accesso ti crea come amministratore
-ADMIN_BOOTSTRAP_EMAIL=federico@ecosolare.it
-
 # Lascia quello che c'è
 INTAKE_TOKEN=...
 ```
 
+Non serve altro. L'accesso avviene con email e password, e il token di sessione è
+un valore casuale confrontato con il database, non un token firmato: non c'è alcun
+segreto di autenticazione da configurare.
+
 **Una riga da cancellare:** `DB_POOL_MAX=1` serviva al database locale, che accetta
 una connessione sola. Con Supabase **va tolta** — il valore predefinito è più adatto.
-
-Se vuoi limitare il dominio di accesso, aggiungi anche:
-
-```bash
-ALLOWED_EMAIL_DOMAIN=ecosolare.it
-```
-
-Così solo gli account di quel dominio possono accedere. Consigliato in produzione.
 
 ---
 
@@ -137,21 +123,18 @@ avvisi «RLS disabled in public», qualcosa non ha funzionato: fermati e scrivim
 
 ---
 
-## 5. Credenziali Google per l'accesso
+## 5. Creare il tuo utente
 
-1. Vai su **console.cloud.google.com**, accedi con l'account Workspace di EcoSolare.
-2. Crea un progetto, per esempio `EcoSolare OS`.
-3. **APIs & Services → OAuth consent screen**:
-   - tipo **Internal** (se avete Workspace) — così solo il vostro dominio può accedere;
-   - nome applicazione: `EcoSolare OS`, email di assistenza: la tua.
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
-   - tipo **Web application**;
-   - **Authorized redirect URIs**, aggiungi:
-     ```
-     http://localhost:3000/api/auth/callback/google
-     ```
-   - quando andremo online aggiungerai anche quello di Vercel, senza toccare il resto.
-5. Copia **Client ID** e **Client secret** in `.env.local`.
+```bash
+npm run amministratore
+```
+
+Chiede l'email che vuoi usare per entrare e stampa **una password generata**.
+Annotala subito: nel database ne resta solo l'impronta, quindi non è recuperabile.
+Se la perdi, rilancia lo stesso comando e ne genera un'altra.
+
+L'email può essere qualunque indirizzo: non c'è nessun vincolo di dominio e nessun
+collegamento con Google.
 
 ---
 
@@ -161,37 +144,127 @@ avvisi «RLS disabled in public», qualcosa non ha funzionato: fermati e scrivim
 npm run dev
 ```
 
-Apri `http://localhost:3000` e accedi con Google.
+Apri `http://localhost:3000`, inserisci email e password. Al primo ingresso il
+sistema ti obbliga a sceglierne una nuova: quella generata la conosceva anche il
+comando che l'ha creata, quindi finché non la cambi non identifica te.
 
-Il primo accesso ti crea come **amministratore**, e solo perché il database è vuoto
-e la tua email combacia con `ADMIN_BOOTSTRAP_EMAIL`. Da quel momento **non esiste
-auto-registrazione**: chiunque altro deve essere abilitato da te in *Utenti*, anche
-se ha un account Google del dominio.
+Da quel momento **non esiste auto-registrazione**: chiunque altro va abilitato da te
+in *Utenti*, dove il sistema genera anche la sua password iniziale e te la mostra
+una volta sola perché tu gliela comunichi.
 
 ### Se qualcosa non funziona
 
 | Sintomo | Causa quasi certa |
 |---|---|
 | `tenant or user not found` | l'host non corrisponde alla regione del progetto. **Non ricostruire la stringa a mano**: copiala dal pulsante di Supabase, perché il prefisso (`aws-0`, `aws-1`…) e la regione cambiano da progetto a progetto |
-| `password authentication failed` | password con caratteri speciali non codificati, o password sbagliata |
+| `password authentication failed` | password del **database** con caratteri speciali non codificati, o sbagliata |
 | `Connection terminated` / timeout | stai usando la porta 5432 invece di 6543 |
 | `prepared statement ... already exists` | stringa di connessione diretta invece del pooler |
-| Accesso rifiutato dopo il login Google | email diversa da `ADMIN_BOOTSTRAP_EMAIL`, oppure ci sono già utenti nel database |
-| `redirect_uri_mismatch` | l'URI su Google Cloud non combacia esattamente, barra finale compresa |
+| «Email o password non corretti» | l'utente non esiste, è disattivato, oppure la password è sbagliata: il messaggio è volutamente lo stesso nei tre casi |
+| «Troppi tentativi falliti» | cinque errori di fila. L'attesa raddoppia a ogni tentativo successivo, fino a mezz'ora. Un amministratore può sbloccare rigenerando la password |
 
 ---
 
-## 7. Cosa resta fuori, per ora
+## 7. Archivio dei documenti su Supabase Storage
 
-- **I documenti caricati restano sul disco locale** (`.archivio/`). Su Vercel il disco
-  è temporaneo: prima di andare online serve attivare **Supabase Storage**, che è già
-  previsto e si aggancia senza riscrivere nulla.
-- **Vercel** non è ancora configurato: se ne parla quando il funzionamento in locale
-  contro Supabase è verificato.
+Finché queste variabili mancano, i file caricati restano nella cartella
+`.archivio/` sul disco. Va bene in sviluppo; **su Vercel il disco è temporaneo e
+i documenti sparirebbero al deploy successivo.**
+
+1. Su Supabase: *Storage* → **New bucket** → nome `documenti`, e **lascia
+   «Public bucket» disattivato**. Sono documenti di clienti: un bucket pubblico
+   li rende leggibili a chiunque indovini una chiave.
+2. *Project Settings* → *API* → copia l'URL del progetto e la chiave
+   **`service_role`**.
+
+```bash
+SUPABASE_URL=https://<ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role>
+SUPABASE_STORAGE_BUCKET=documenti
+```
+
+> La chiave `service_role` **scavalca RLS**: sta solo sul server, e non va mai
+> messa in una variabile con prefisso `NEXT_PUBLIC_`. L'accesso ai file passa
+> sempre da `/api/documenti/[id]`, che verifica i permessi prima di servire i byte.
+
+**I backup del database non coprono lo Storage.** Il point-in-time recovery di
+Supabase riguarda PostgreSQL: se un file viene cancellato dallo Storage, è perso.
+La copia su Drive del punto seguente attenua il problema, ma non è un backup.
 
 ---
 
-## 8. Prima di inserire dati di clienti veri
+## 8. Cartella automatica su Google Drive
+
+Alla firma di un contratto il sistema crea `<Cliente> / <codice commessa>` in un
+Drive condiviso e vi copia i documenti caricati. L'archivio di riferimento resta
+Supabase: Drive è una copia ([ADR-011](adr/011-drive-specchio-non-archivio.md)).
+
+**Serve un Drive condiviso, non una cartella del tuo Drive personale.** Un
+service account non ha spazio proprio e non può possedere file in un «Il mio
+Drive»: con una cartella personale ogni creazione fallisce con *storage quota
+exceeded*.
+
+1. **Google Cloud Console** → nuovo progetto (o quello esistente) → *APIs &
+   Services* → abilita **Google Drive API**.
+2. *Credentials* → **Create credentials** → *Service account*. Creato, apri la
+   scheda *Keys* → **Add key** → *JSON*: scarica il file.
+3. In **Google Drive** crea un *Drive condiviso* (menu a sinistra → *Drive
+   condivisi* → *Nuovo*). Aprilo, **Gestisci membri**, aggiungi l'indirizzo del
+   service account (`...@....iam.gserviceaccount.com`) come **Gestore dei
+   contenuti**.
+4. L'id del Drive condiviso è nell'URL: `drive.google.com/drive/folders/<id>`.
+
+```bash
+GOOGLE_DRIVE_ID=<id del Drive condiviso>
+GOOGLE_SERVICE_ACCOUNT_EMAIL=<client_email dal file JSON>
+GOOGLE_SERVICE_ACCOUNT_KEY="<private_key dal file JSON, con gli a capo come \n>"
+```
+
+### Far girare la coda
+
+La cartella non nasce dentro la firma del contratto: nasce poco dopo, da una coda
+([ADR-005](adr/005-outbox-transazionale.md)). Se Drive è lento o giù, la firma
+funziona lo stesso e la cartella arriva quando Drive torna.
+
+In locale la coda va smaltita a mano:
+
+```bash
+npm run outbox
+```
+
+In produzione ci pensa il cron in `vercel.json`, ogni cinque minuti. Serve:
+
+```bash
+MAINTENANCE_TOKEN=<openssl rand -hex 32>
+```
+
+e lo stesso valore va messo su Vercel anche come `CRON_SECRET`, che è ciò che
+Vercel invia quando lancia il cron.
+
+### Se qualcosa non va
+
+| Sintomo | Causa quasi certa |
+|---|---|
+| `storage quota exceeded` | stai usando una cartella del Drive personale invece di un Drive condiviso |
+| `File not found: <id>` | il service account non è membro del Drive condiviso, oppure lo è come semplice lettore |
+| `invalid_grant` | la chiave privata ha perso gli a capo: devono essere scritti come `\n` |
+| L'evento resta «in attesa» | nessuno chiama la coda: `npm run outbox` in locale, cron in produzione |
+| La cartella non compare mai | guarda `last_error` nella tabella `outbox_events`: il motivo è scritto lì |
+
+---
+
+## 9. Cosa resta fuori, per ora
+
+- **La verifica in due passaggi non c'è.** Era delegata a Google Workspace e con
+  l'accesso a password è venuta meno ([D-003a-bis](01-registro-decisioni.md)).
+- **Un evento che fallisce definitivamente non avvisa nessuno**: resta `fallito`
+  in `outbox_events` e va cercato.
+- **Vercel** non è ancora configurato: se ne parla quando il funzionamento in
+  locale contro Supabase è verificato.
+
+---
+
+## 10. Prima di inserire dati di clienti veri
 
 Nel momento in cui entra la prima anagrafica reale, questo smette di essere un
 ambiente di prova. Servono quattro adempimenti, tutti fattibili senza consulente

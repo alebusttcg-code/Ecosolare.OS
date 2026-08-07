@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Badge } from '@/components/ui'
-import { createUser, updateUser } from '@/lib/actions/admin'
+import { createUser, resetPassword, updateUser } from '@/lib/actions/admin'
 import type { Role } from '@/lib/auth/policy'
 
 const RUOLI: readonly { value: Role; label: string; descrizione: string }[] = [
@@ -45,7 +45,20 @@ function NuovoUtente() {
   const [aperto, setAperto] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [ruolo, setRuolo] = useState<Role>('commerciale')
+  const [credenziali, setCredenziali] = useState<{ email: string; password: string } | null>(
+    null,
+  )
   const [inCorso, avvia] = useTransition()
+
+  if (credenziali) {
+    return (
+      <CredenzialiGenerate
+        email={credenziali.email}
+        password={credenziali.password}
+        onChiudi={() => setCredenziali(null)}
+      />
+    )
+  }
 
   if (!aperto) {
     return (
@@ -63,9 +76,10 @@ function NuovoUtente() {
     <form
       action={(formData) => {
         setErrors({})
+        const email = String(formData.get('email') ?? '')
         avvia(async () => {
           const esito = await createUser({
-            email: String(formData.get('email') ?? ''),
+            email,
             name: String(formData.get('name') ?? '') || undefined,
             role: ruolo,
             canViewCosts: formData.get('canViewCosts') === 'on',
@@ -74,6 +88,7 @@ function NuovoUtente() {
           if (esito.ok) {
             setAperto(false)
             setRuolo('commerciale')
+            setCredenziali({ email, password: esito.data.passwordIniziale })
           } else setErrors(esito.errors)
         })
       }}
@@ -81,9 +96,9 @@ function NuovoUtente() {
       style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
     >
       <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-        Non serve una password: la persona entra con il proprio account Google aziendale.
-        Questa abilitazione è ciò che glielo consente — senza, l&apos;accesso viene
-        rifiutato.
+        La password iniziale la genera il sistema e te la mostra una volta sola: dovrai
+        comunicarla alla persona, che la cambierà al primo accesso. Non è recuperabile
+        in seguito, ma si può rigenerare.
       </p>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -157,6 +172,65 @@ function NuovoUtente() {
         </button>
       </div>
     </form>
+  )
+}
+
+/**
+ * Le credenziali appena generate, mostrate una volta sola.
+ *
+ * Restano a schermo finché non si chiude esplicitamente il riquadro: un
+ * messaggio che sparisce da solo farebbe perdere la password, e riaverla
+ * significa rigenerarla.
+ */
+function CredenzialiGenerate({
+  email,
+  password,
+  onChiudi,
+}: {
+  email: string
+  password: string
+  onChiudi: () => void
+}) {
+  const [copiato, setCopiato] = useState(false)
+
+  return (
+    <div
+      className="space-y-3 rounded-lg border p-4"
+      style={{ borderColor: 'rgba(232,199,101,0.45)', background: 'rgba(232,199,101,0.07)' }}
+    >
+      <p className="text-sm font-semibold">Credenziali da consegnare</p>
+
+      <div className="space-y-1 font-mono text-sm">
+        <div>{email}</div>
+        <div className="text-eco-gold-300 select-all">{password}</div>
+      </div>
+
+      <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+        Questa password non sarà più visibile: nel database ne resta solo l&apos;impronta.
+        Comunicala a voce o su un canale diverso dall&apos;email di accesso. Al primo
+        ingresso il sistema le chiederà di sceglierne una nuova.
+      </p>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            void navigator.clipboard.writeText(password).then(() => setCopiato(true))
+          }}
+          className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
+          style={{ borderColor: 'var(--bordo)' }}
+        >
+          {copiato ? 'Copiata' : 'Copia password'}
+        </button>
+        <button
+          type="button"
+          onClick={onChiudi}
+          className="rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-3 py-1.5 text-xs font-semibold text-eco-abisso"
+        >
+          Fatto, l&apos;ho annotata
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -330,6 +404,57 @@ function RigaUtente({
           </button>
         </form>
       ) : null}
+
+      {aperto ? <RigeneraPassword utente={utente} /> : null}
+    </div>
+  )
+}
+
+/**
+ * Rigenerazione della password. Separata dal modulo dei permessi perché non è
+ * una modifica come le altre: chiude tutte le sessioni della persona e la
+ * lascia fuori finché non riceve la nuova password.
+ */
+function RigeneraPassword({ utente }: { utente: UtenteInElenco }) {
+  const [nuova, setNuova] = useState<string | null>(null)
+  const [errore, setErrore] = useState<string | null>(null)
+  const [inCorso, avvia] = useTransition()
+
+  if (nuova) {
+    return (
+      <div className="mt-4">
+        <CredenzialiGenerate
+          email={utente.email}
+          password={nuova}
+          onChiudi={() => setNuova(null)}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--bordo)' }}>
+      <button
+        type="button"
+        disabled={inCorso}
+        onClick={() => {
+          setErrore(null)
+          avvia(async () => {
+            const esito = await resetPassword({ userId: utente.id })
+            if (esito.ok) setNuova(esito.data.passwordIniziale)
+            else setErrore(esito.errors._ ?? 'Operazione non riuscita.')
+          })
+        }}
+        className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
+        style={{ borderColor: 'var(--bordo)' }}
+      >
+        {inCorso ? 'Rigenerazione…' : 'Rigenera la password'}
+      </button>
+      <p className="mt-1 text-xs" style={{ color: 'var(--testo-tenue)' }}>
+        Chiude tutte le sue sessioni aperte. Da usare quando la password è stata
+        dimenticata o si sospetta che qualcun altro la conosca.
+      </p>
+      {errore ? <p className="mt-1 text-xs text-eco-red-400">{errore}</p> : null}
     </div>
   )
 }

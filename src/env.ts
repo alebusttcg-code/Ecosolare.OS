@@ -13,21 +13,48 @@ const schema = z.object({
 
   DATABASE_URL: z.string().min(1, 'DATABASE_URL e obbligatoria'),
 
-  AUTH_SECRET: z.string().min(32, 'AUTH_SECRET deve essere di almeno 32 caratteri'),
-  AUTH_GOOGLE_ID: z.string().min(1),
-  AUTH_GOOGLE_SECRET: z.string().min(1),
-
-  /** Vuoto = nessuna restrizione di dominio. Sconsigliato in produzione. */
-  ALLOWED_EMAIL_DOMAIN: z.string().optional(),
-
-  /** Serve solo alla creazione del primo amministratore. */
-  ADMIN_BOOTSTRAP_EMAIL: z.email().optional().or(z.literal('')),
+  /*
+   * Non serve alcun segreto per le sessioni: il token di sessione e' un valore
+   * casuale confrontato con il database, non un JWT firmato. Non c'e' niente
+   * da firmare, quindi non c'e' niente da tenere segreto oltre al database.
+   */
 
   /**
    * Segreto condiviso con i form del sito e le landing per l'endpoint di intake.
    * Se assente, l'endpoint risponde 503: meglio disattivo che aperto.
    */
   INTAKE_TOKEN: z.string().min(24).optional().or(z.literal('')),
+
+  /**
+   * Segreto che protegge gli endpoint di manutenzione (`/api/manutenzione/*`),
+   * chiamati da un pianificatore e non da una persona. Se assente rispondono
+   * 503: un endpoint che elabora la coda e' un endpoint che va protetto.
+   */
+  MAINTENANCE_TOKEN: z.string().min(24).optional().or(z.literal('')),
+
+  /* --- Archivio dei documenti (Supabase Storage) ------------------------- */
+  /**
+   * Se assenti si usa il disco locale, che va bene solo in sviluppo: su Vercel
+   * il disco e' effimero e i file caricati sparirebbero al deploy successivo.
+   */
+  SUPABASE_URL: z.string().optional().or(z.literal('')),
+  /**
+   * Chiave di servizio: **scavalca RLS**. Sta solo sul server e non deve mai
+   * finire in una variabile con prefisso NEXT_PUBLIC_.
+   */
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional().or(z.literal('')),
+  SUPABASE_STORAGE_BUCKET: z.string().default('documenti'),
+
+  /* --- Copia su Google Drive (D-011) ------------------------------------ */
+  /**
+   * Id del **Drive condiviso**. Un service account non ha spazio proprio: con
+   * una cartella di un Drive personale ogni creazione fallisce per quota.
+   * Se queste tre variabili mancano, la copia su Drive resta disattivata e il
+   * resto funziona normalmente.
+   */
+  GOOGLE_DRIVE_ID: z.string().optional().or(z.literal('')),
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional().or(z.literal('')),
+  GOOGLE_SERVICE_ACCOUNT_KEY: z.string().optional().or(z.literal('')),
 })
 
 export type Env = z.infer<typeof schema>

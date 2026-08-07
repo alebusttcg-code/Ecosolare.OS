@@ -109,7 +109,7 @@ async function main(): Promise<void> {
   console.log(`
 ${c.oro('Configurazione di EcoSolare OS')}
 
-Ti chiedo quattro cose. Segreti e token li genero io.
+Ti chiedo una cosa sola: il database. Segreti e token li genero io.
 ${c.fioco('Quello che scrivi resta in .env.local, che non entra mai nel repository.')}
 `)
 
@@ -141,29 +141,7 @@ ${c.fioco('Quello che scrivi resta in .env.local, che non entra mai nel reposito
     console.log('')
   }
 
-  /* 2. Amministratore ------------------------------------------------------ */
-  console.log(c.blu('\n2. Primo amministratore\n'))
-  console.log(c.fioco('La tua email aziendale: al primo accesso ti crea come amministratore.\n'))
-  const admin = await chiedi('Email', esistente.ADMIN_BOOTSTRAP_EMAIL)
-
-  const dominioProposto = admin.includes('@') ? admin.split('@')[1] : ''
-  console.log(c.fioco('\nLimitare l’accesso a un solo dominio è consigliato in produzione.'))
-  const dominio = await chiedi(
-    'Dominio ammesso (vuoto = nessun limite)',
-    esistente.ALLOWED_EMAIL_DOMAIN || dominioProposto,
-  )
-
-  /* 3. Google -------------------------------------------------------------- */
-  console.log(c.blu('\n3. Accesso con Google\n'))
-  console.log('Google Cloud Console → APIs & Services → Credentials → OAuth client ID.')
-  console.log(c.fioco('URI di reindirizzamento: http://localhost:3000/api/auth/callback/google'))
-  console.log(c.fioco('Puoi lasciare vuoto ora e rilanciare questo comando dopo.\n'))
-
-  const googleId = await chiedi('Client ID', esistente.AUTH_GOOGLE_ID)
-  const googleSecret = await chiedi('Client secret', esistente.AUTH_GOOGLE_SECRET)
-
-  /* 4. Segreti generati ---------------------------------------------------- */
-  const authSecret = esistente.AUTH_SECRET || randomBytes(32).toString('base64')
+  /* 2. Segreti generati ---------------------------------------------------- */
   const intakeToken = esistente.INTAKE_TOKEN || randomBytes(32).toString('hex')
 
   const contenuto = `# Generato da: npm run configura
@@ -171,36 +149,21 @@ ${c.fioco('Quello che scrivi resta in .env.local, che non entra mai nel reposito
 
 DATABASE_URL=${database}
 
-AUTH_SECRET=${authSecret}
-AUTH_GOOGLE_ID=${googleId}
-AUTH_GOOGLE_SECRET=${googleSecret}
-${dominio ? `ALLOWED_EMAIL_DOMAIN=${dominio}` : '# ALLOWED_EMAIL_DOMAIN='}
-
-ADMIN_BOOTSTRAP_EMAIL=${admin}
-
 # Segreto condiviso con i form del sito per l'endpoint /api/intake
 INTAKE_TOKEN=${intakeToken}
 `
 
   writeFileSync(PERCORSO, contenuto, { mode: 0o600 })
 
-  const mancanti = [
-    !googleId || !googleSecret ? 'credenziali Google' : null,
-  ].filter(Boolean)
-
   console.log(`
 ${c.verde('✓')} ${PERCORSO} scritto.
 
 ${c.blu('Adesso:')}
 
-  npm run db:migrate   ${c.fioco('crea le tabelle')}
-  npm run db:seed      ${c.fioco('stati, fonti, soglie, checklist')}
-  npm run dev          ${c.fioco('e accedi con Google')}
-${
-  mancanti.length > 0
-    ? `\n${c.oro('Mancano ancora: ' + mancanti.join(', '))}. Rilancia questo comando quando le hai.`
-    : ''
-}
+  npm run db:migrate      ${c.fioco('crea le tabelle')}
+  npm run db:seed         ${c.fioco('stati, fonti, soglie, checklist')}
+  npm run amministratore  ${c.fioco('crea il tuo utente e stampa la password')}
+  npm run dev
 ${c.fioco('\nDopo le migrazioni, su Supabase verifica che ogni tabella risulti «RLS enabled».')}
 `)
 

@@ -42,10 +42,25 @@ Non esiste oggi un budget né una scadenza definita.
 
 L'azienda usa Google Workspace. Ne discendono tre decisioni.
 
-**D-003a — Login con Google (SSO) come metodo primario**
+**D-003a — Login con Google (SSO) come metodo primario** — *rivista, vedere D-003a-bis*
 - Accesso con account Google limitato al dominio aziendale.
 - Fallback email + password per chi non ha un account Workspace (tipicamente installatori o collaboratori esterni).
 - **La verifica in due passaggi viene delegata a Google Workspace**, dove va attivata come obbligatoria per gli amministratori. Questo soddisfa il requisito MFA del brief senza costruire un secondo sistema di autenticazione, ed è più sicuro perché centralizzato.
+
+**D-003a-bis — Email e password, credenziali assegnate dall'amministratore** (rivede D-003a)
+- L'accesso avviene con un indirizzo email qualunque e una password: nessun vincolo di dominio, nessun collegamento con Google.
+- **Le credenziali le assegna un amministratore**, che le comunica alla persona. Il sistema genera la password iniziale, la mostra una volta sola e obbliga a cambiarla al primo accesso.
+- Impronte con scrypt; blocco progressivo dopo cinque tentativi falliti.
+- Sessioni sul database, non JWT: la disattivazione di un utente ha effetto immediato.
+
+*Motivo:* non tutte le persone che devono entrare hanno un account Workspace del dominio, e attendere che ne abbiano uno bloccherebbe l'avvio. Il codice per Google resta previsto e le tabelle restano in schema: si potrà affiancare senza migrazioni.
+
+*Conseguenza da tenere presente:* la verifica in due passaggi non è più delegata a Google, quindi **oggi non c'è MFA**. Il requisito del brief resta aperto e va ripreso prima di trattare dati di clienti veri in produzione.
+
+**D-011 — Cartella su Drive alla firma del contratto**
+- Alla firma nasce automaticamente `<Cliente> / <codice commessa — titolo>` in un Drive condiviso.
+- I documenti caricati nel gestionale vengono copiati lì; l'archivio di riferimento resta Supabase Storage.
+- Dettagli e motivazione: [ADR-011](adr/011-drive-specchio-non-archivio.md).
 
 **D-003b — Google Calendar: sincronizzazione a senso unico + lettura disponibilità**
 - Il sistema **scrive** su Google Calendar gli appuntamenti che crea (sopralluoghi, cantieri, interventi).

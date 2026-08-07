@@ -3,9 +3,11 @@
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { chiudiSessioniDi } from '@/auth'
 import { getDb } from '@/db'
 import { appSettings, users } from '@/db/schema'
-import { recordEntityChange } from '@/lib/audit'
+import { recordAudit, recordEntityChange } from '@/lib/audit'
+import { calcolaImpronta, generaPasswordIniziale } from '@/lib/auth/password'
 import { guard } from '@/lib/auth/session'
 import type { ActionResult } from './opportunities'
 
@@ -26,15 +28,19 @@ const nuovoUtenteSchema = z.object({
 })
 
 /**
- * Crea un utente abilitato all'accesso.
+ * Crea un utente abilitato all'accesso e ne genera la password iniziale.
  *
- * Non esiste password: la persona entra con il proprio account Google del
- * dominio aziendale. Questa riga e' cio' che glielo consente — senza, il login
- * viene rifiutato (nessuna auto-registrazione, D-003a).
+ * La password torna in chiaro UNA VOLTA SOLA, qui: nel database resta solo
+ * l'impronta, quindi non e' recuperabile in seguito. Se va persa, si rigenera
+ * con `resetPassword`. E' voluto: una password che il sistema puo' rileggere e'
+ * una password che chiunque acceda al sistema puo' rileggere.
+ *
+ * Nasce con `mustChangePassword`: finche' e' quella generata, la conosce anche
+ * chi l'ha creata, quindi non identifica ancora la persona.
  */
 export async function createUser(
   input: z.input<typeof nuovoUtenteSchema>,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: string; passwordIniziale: string }>> {
   const utente = await guard('create', 'user')
 
   const parsed = nuovoUtenteSchema.safeParse(input)
@@ -50,12 +56,17 @@ export async function createUser(
     return { ok: false, errors: { email: 'Esiste gia un utente con questa email.' } }
   }
 
+  const passwordIniziale = generaPasswordIniziale()
+
   const [creato] = await getDb()
     .insert(users)
     .values({
       email,
       name: dati.name ?? null,
       role: dati.role,
+      passwordHash: await calcolaImpronta(passwordIniziale),
+      passwordUpdatedAt: new Date(),
+      mustChangePassword: true,
       // is_field_only ha senso solo sul ruolo cantiere: altrove sarebbe una
       // restrizione senza significato che confonde chi legge la scheda utente.
       canViewCosts: dati.canViewCosts,
@@ -76,7 +87,61 @@ export async function createUser(
   })
 
   revalidatePath('/amministrazione/utenti')
-  return { ok: true, data: creato }
+  return { ok: true, data: { id: creato.id, passwordIniziale } }
+}
+
+/**
+ * Rigenera la password di un utente.
+ *
+ * Chiude anche tutte le sue sessioni: il motivo per cui si rigenera una
+ * password e' quasi sempre il sospetto che qualcun altro la conosca, e in quel
+ * caso lasciare aperte le sessioni gia' avviate non risolve nulla.
+ */
+export async function resetPassword(
+  input: { userId: string },
+): Promise<ActionResult<{ passwordIniziale: string }>> {
+  const utente = await guard('update', 'user')
+
+  const parsed = z.object({ userId: z.uuid() }).safeParse(input)
+  if (!parsed.success) return { ok: false, errors: errori(parsed.error.issues) }
+
+  const db = getDb()
+  const bersaglio = await db.query.users.findFirst({
+    where: eq(users.id, parsed.data.userId),
+    columns: { id: true, email: true },
+  })
+  if (!bersaglio) return { ok: false, errors: { _: 'Utente non trovato.' } }
+
+  const passwordIniziale = generaPasswordIniziale()
+  await db
+    .update(users)
+    .set({
+      passwordHash: await calcolaImpronta(passwordIniziale),
+      passwordUpdatedAt: new Date(),
+      mustChangePassword: true,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      updatedAt: new Date(),
+      updatedBy: utente.id,
+    })
+    .where(eq(users.id, bersaglio.id))
+
+  await chiudiSessioniDi(bersaglio.id)
+
+  await recordAudit({
+    actorType: 'user',
+    actorId: utente.id,
+    actorLabel: utente.email,
+    action: 'update',
+    entityType: 'user',
+    entityId: bersaglio.id,
+    field: 'password',
+    // Il valore non entra mai nell'audit: il registro e' consultabile.
+    newValue: '(rigenerata dall’amministratore)',
+  })
+
+  revalidatePath('/amministrazione/utenti')
+  return { ok: true, data: { passwordIniziale } }
 }
 
 const aggiornaUtenteSchema = z.object({
@@ -122,6 +187,13 @@ export async function updateUser(
     .update(users)
     .set({ ...modifiche, updatedAt: new Date(), updatedBy: utente.id })
     .where(eq(users.id, dati.userId))
+
+  // `getCurrentUser` gia' rifiuta un utente disattivato a ogni richiesta, ma
+  // lasciare in piedi la riga di sessione significa che la disattivazione
+  // dipende da un controllo applicativo. Cancellarla la rende un fatto.
+  if (precedente.isActive && !dati.isActive) {
+    await chiudiSessioniDi(dati.userId)
+  }
 
   await recordEntityChange({
     actorId: utente.id,

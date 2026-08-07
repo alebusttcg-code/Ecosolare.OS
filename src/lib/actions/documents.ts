@@ -6,6 +6,8 @@ import { getDb } from '@/db'
 import { documentFiles, documentRequirements } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
+import { TIPO_COPIA_DOCUMENTO } from '@/lib/drive/gestori'
+import { accoda } from '@/lib/outbox'
 import { ripulisciNome, validaFile } from '@/lib/domain/upload'
 import { getArchivio } from '@/lib/storage'
 import type { ActionResult } from './opportunities'
@@ -72,20 +74,33 @@ export async function uploadDocument(
   const versione = (ultima?.versionNo ?? 0) + 1
   const nome = ripulisciNome(file.name)
 
-  const [salvato] = await db
-    .insert(documentFiles)
-    .values({
-      requirementId,
-      versionNo: versione,
-      storageKey: archiviato.chiave,
-      filename: nome,
-      mimeType: esito.tipo,
-      sizeBytes: archiviato.dimensione,
-      checksum: archiviato.checksum,
-      source: 'interno',
-      uploadedBy: utente.id,
+  // Riga del file e richiesta di copia su Drive nella stessa transazione: una
+  // copia accodata per un file che poi non esiste sarebbe un errore ricorrente
+  // e inspiegabile (ADR-005).
+  const salvato = await db.transaction(async (tx) => {
+    const [riga] = await tx
+      .insert(documentFiles)
+      .values({
+        requirementId,
+        versionNo: versione,
+        storageKey: archiviato.chiave,
+        filename: nome,
+        mimeType: esito.tipo,
+        sizeBytes: archiviato.dimensione,
+        checksum: archiviato.checksum,
+        source: 'interno',
+        uploadedBy: utente.id,
+      })
+      .returning({ id: documentFiles.id })
+
+    await accoda(tx, {
+      type: TIPO_COPIA_DOCUMENTO,
+      payload: { documentFileId: riga!.id },
+      dedupKey: `${TIPO_COPIA_DOCUMENTO}:${riga!.id}`,
     })
-    .returning({ id: documentFiles.id })
+
+    return riga!
+  })
 
   // Caricato ≠ verificato: resta un impedimento finché qualcuno non lo approva.
   await db
@@ -98,14 +113,14 @@ export async function uploadDocument(
     actorLabel: utente.email,
     action: 'create',
     entityType: 'document_file',
-    entityId: salvato!.id,
+    entityId: salvato.id,
   })
 
   await ricalcolaReadinessInterno(requisito.projectId)
   revalidatePath(`/commesse/${requisito.projectId}`)
   revalidatePath('/commesse')
 
-  return { ok: true, data: { fileId: salvato!.id, versione, nome } }
+  return { ok: true, data: { fileId: salvato.id, versione, nome } }
 }
 
 /** Elimina l'ultima versione caricata, riportando il requisito a «richiesto». */

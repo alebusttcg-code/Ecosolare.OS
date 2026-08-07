@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "configura": "tsx scripts/configura.ts",
+    "amministratore": "tsx --env-file-if-exists=.env.local scripts/crea-amministratore.ts",
+    "outbox": "tsx --env-file-if-exists=.env.local scripts/outbox.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -19,10 +21,8 @@
     "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
-    "@auth/drizzle-adapter": "^1.10.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.3.0",
-    "next-auth": "^5.0.0-beta.29",
     "postgres": "^3.4.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",

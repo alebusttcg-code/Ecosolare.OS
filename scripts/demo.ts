@@ -9,6 +9,7 @@
  */
 import { eq, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
+import { createHash } from 'node:crypto'
 import postgres from 'postgres'
 import {
   activities,
@@ -26,6 +27,7 @@ import {
   surveys,
   users,
 } from '../src/db/schema'
+import { calcolaImpronta } from '../src/lib/auth/password'
 
 const url = process.env.DATABASE_URL
 if (!url) {
@@ -40,10 +42,17 @@ if (process.env.NODE_ENV === 'production') {
 const client = postgres(url, { max: 1, prepare: false })
 const db = drizzle(client)
 
+/** Solo per i dati dimostrativi: non esiste in nessun ambiente reale. */
+const PASSWORD_DIMOSTRATIVA = 'dimostrazione-locale'
+
 const giorni = (n: number) => new Date(Date.now() + n * 86_400_000)
 
 async function main(): Promise<void> {
   console.log('Creazione dati dimostrativi…')
+
+  // Una sola password per tutti e tre: sono dati di prova su un database di
+  // prova, e tre password diverse da ricordare non aggiungerebbero nulla.
+  const impronta = await calcolaImpronta(PASSWORD_DIMOSTRATIVA)
 
   await db.execute(sql`
     truncate table
@@ -61,10 +70,18 @@ async function main(): Promise<void> {
       name: 'Federico Leporati',
       role: 'amministratore',
       canViewCosts: true,
+      passwordHash: impronta,
+      mustChangePassword: false,
     })
     .onConflictDoUpdate({
       target: users.email,
-      set: { role: 'amministratore', canViewCosts: true, isActive: true },
+      set: {
+        role: 'amministratore',
+        canViewCosts: true,
+        isActive: true,
+        passwordHash: impronta,
+        mustChangePassword: false,
+      },
     })
     .returning()
 
@@ -75,10 +92,18 @@ async function main(): Promise<void> {
       name: 'Giulia Ferrari',
       role: 'commerciale',
       canViewCosts: false,
+      passwordHash: impronta,
+      mustChangePassword: false,
     })
     .onConflictDoUpdate({
       target: users.email,
-      set: { role: 'commerciale', canViewCosts: false, isActive: true },
+      set: {
+        role: 'commerciale',
+        canViewCosts: false,
+        isActive: true,
+        passwordHash: impronta,
+        mustChangePassword: false,
+      },
     })
     .returning()
 
@@ -89,21 +114,30 @@ async function main(): Promise<void> {
       name: 'Marco Bianchi',
       role: 'cantiere',
       canViewCosts: true,
+      passwordHash: impronta,
+      mustChangePassword: false,
     })
     .onConflictDoUpdate({
       target: users.email,
-      set: { role: 'cantiere', isActive: true },
+      set: {
+        role: 'cantiere',
+        isActive: true,
+        passwordHash: impronta,
+        mustChangePassword: false,
+      },
     })
     .returning()
 
-  /* Sessione pronta per il browser ------------------------------------------ */
+  /* Sessioni pronte per il browser ------------------------------------------ */
   // Due sessioni pronte: servono a confrontare cosa vede l'amministratore e
-  // cosa vede il commerciale senza la capacita' sui costi.
+  // cosa vede il commerciale senza la capacita' sui costi, senza fare due
+  // accessi. Nel database va l'IMPRONTA del token, non il token.
   const token = 'demo-locale-sessione-amministratore'
   const tokenCommerciale = 'demo-locale-sessione-commerciale'
+  const chiave = (t: string) => createHash('sha256').update(t).digest('hex')
   await db.insert(sessions).values([
-    { sessionToken: token, userId: admin!.id, expires: giorni(7) },
-    { sessionToken: tokenCommerciale, userId: commerciale!.id, expires: giorni(7) },
+    { sessionToken: chiave(token), userId: admin!.id, expires: giorni(7) },
+    { sessionToken: chiave(tokenCommerciale), userId: commerciale!.id, expires: giorni(7) },
   ])
 
   /* Catalogo ---------------------------------------------------------------- */
@@ -265,9 +299,11 @@ Dati dimostrativi creati.
               giulia@ecosolare.it    (commerciale, NON vede i costi)
               marco@ecosolare.it     (cantiere)
 
-  Sessione locale gia' pronta, cookie:
-    amministratore: authjs.session-token=${token}
-    commerciale:     authjs.session-token=${tokenCommerciale}
+  Password    ${PASSWORD_DIMOSTRATIVA}   (per tutti e tre)
+
+  Oppure senza accedere, impostando il cookie a mano:
+    amministratore: ecosolare.sessione=${token}
+    commerciale:    ecosolare.sessione=${tokenCommerciale}
 `)
 }
 

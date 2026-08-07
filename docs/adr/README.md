@@ -19,6 +19,7 @@ ricostruire il ragionamento a memoria.
 | [008](008-immutabilita-economica.md) | Immutabilità dei dati economici | Accettata |
 | [009](009-migrazioni-versionate.md) | Migrazioni versionate, mai modifiche manuali al database | Accettata |
 | [010](010-pglite-per-i-test.md) | PGlite per i test, PostgreSQL gestito per tutto il resto | Accettata |
+| [011](011-drive-specchio-non-archivio.md) | Google Drive è uno specchio, non l'archivio | Accettata |
 
 Riferimento esteso: [§8.3 del blueprint](../00-discovery-blueprint-v1.md).
 Decisioni di prodotto e di processo (non architetturali): [registro decisioni](../01-registro-decisioni.md).
