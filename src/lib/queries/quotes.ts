@@ -1,6 +1,7 @@
-import { asc, desc, eq } from 'drizzle-orm'
+import { and, asc, count, desc, eq } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
+  approvals,
   contacts,
   opportunities,
   products,
@@ -114,6 +115,17 @@ export async function getCatalogo(mostraCosti: boolean) {
     ...(mostraCosti && r.costPrice ? { costo: Number.parseFloat(r.costPrice) } : {}),
     iva: Number.parseFloat(r.vatRate),
   }))
+}
+
+/** Richieste di approvazione in attesa: alimenta il contatore nel menu. */
+export async function contaApprovazioniInAttesa(): Promise<number> {
+  const [riga] = await getDb()
+    .select({ totale: count() })
+    .from(approvals)
+    .where(
+      and(eq(approvals.status, 'richiesta'), eq(approvals.entityType, 'quote_version')),
+    )
+  return riga?.totale ?? 0
 }
 
 /** I preventivi di un'opportunita', con la versione corrente. */

@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { cambiaPassword } from '@/lib/actions/auth'
-import { LUNGHEZZA_MINIMA_PASSWORD } from '@/lib/auth/password'
 
 const CAMPO =
   'w-full rounded-lg border px-3 py-2.5 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]'
@@ -65,7 +64,6 @@ export function ModuloCambioPassword() {
         etichetta="Nuova password"
         autoComplete="new-password"
         errore={errors.nuova}
-        aiuto={`Almeno ${LUNGHEZZA_MINIMA_PASSWORD} caratteri. Una frase che ricordi è più sicura di una parola con i simboli.`}
       />
       <Campo
         nome="conferma"

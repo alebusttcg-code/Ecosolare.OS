@@ -108,7 +108,7 @@ export async function savePrequalification(
     after: { score: esito.punteggio },
   })
 
-  revalidatePath(`/opportunita/${dati.opportunityId}`)
+  revalidatePath(`/lead/${dati.opportunityId}`)
   return {
     ok: true,
     data: {
@@ -192,7 +192,7 @@ export async function createSurvey(
     entityId: creato.id,
   })
 
-  revalidatePath(`/opportunita/${dati.opportunityId}`)
+  revalidatePath(`/lead/${dati.opportunityId}`)
   return { ok: true, data: creato }
 }
 
@@ -329,8 +329,8 @@ export async function saveSurvey(
     after: { status: puoCompletare ? 'completato' : sopralluogo.status },
   })
 
-  revalidatePath(`/sopralluoghi/${dati.surveyId}`)
-  revalidatePath(`/opportunita/${sopralluogo.opportunityId}`)
+  revalidatePath(`/agenda/${dati.surveyId}`)
+  revalidatePath(`/lead/${sopralluogo.opportunityId}`)
 
   return {
     ok: true,

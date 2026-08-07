@@ -1,6 +1,8 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { useAvvisi } from '@/components/avvisi'
 import { completeActivity } from '@/lib/actions/activities'
 
 const TIPI = [
@@ -9,7 +11,7 @@ const TIPI = [
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'appuntamento', label: 'Appuntamento' },
   { value: 'sopralluogo', label: 'Sopralluogo' },
-  { value: 'task', label: 'Attivita' },
+  { value: 'task', label: 'Attività' },
 ] as const
 
 function fraGiorni(giorni: number): string {
@@ -32,6 +34,8 @@ export function CompletaAttivita({
   activityId: string
   richiedeProssima: boolean
 }) {
+  const router = useRouter()
+  const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const [inCorso, avvia] = useTransition()
@@ -41,7 +45,7 @@ export function CompletaAttivita({
       <button
         type="button"
         onClick={() => setAperto(true)}
-        className="rounded border px-3 py-1 text-xs font-medium"
+        className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs font-medium"
         style={{ borderColor: 'var(--bordo)' }}
       >
         Completa
@@ -66,8 +70,11 @@ export function CompletaAttivita({
                 }
               : undefined,
           })
-          if (esito.ok) setAperto(false)
-          else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
+          if (esito.ok) {
+            avvisa('Attività completata.')
+            setAperto(false)
+            router.refresh()
+          } else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
         })
       }}
       className="mt-3 space-y-3 rounded-md border p-3"
@@ -77,7 +84,7 @@ export function CompletaAttivita({
         <span className="mb-1 block text-xs font-medium">Esito</span>
         <input
           name="outcome"
-          placeholder="Com'e andata?"
+          placeholder="Com’è andata?"
           className="w-full rounded-md border px-2 py-1.5 text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
           style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         />
@@ -86,9 +93,9 @@ export function CompletaAttivita({
       {richiedeProssima ? (
         <div className="space-y-3 border-t pt-3" style={{ borderColor: 'var(--bordo)' }}>
           <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-            L&apos;opportunita e ancora aperta: indica la prossima azione.
+            Il lead è ancora aperto: indica la prossima azione.
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <select
               name="kind"
               className="rounded border px-2 py-1.5 text-sm"
@@ -104,7 +111,7 @@ export function CompletaAttivita({
               name="subject"
               required
               placeholder="Cosa fare"
-              className="col-span-2 rounded border px-2 py-1.5 text-sm"
+              className="rounded border px-2 py-1.5 text-sm sm:col-span-2"
               style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
             />
           </div>
@@ -113,7 +120,7 @@ export function CompletaAttivita({
             type="date"
             required
             defaultValue={fraGiorni(2)}
-            className="rounded border px-2 py-1.5 text-sm"
+            className="w-full rounded border px-2 py-1.5 text-sm sm:w-auto"
             style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           />
         </div>

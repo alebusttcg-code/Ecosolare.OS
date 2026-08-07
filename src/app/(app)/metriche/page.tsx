@@ -136,7 +136,7 @@ export default async function MetrichePage({
                   {imbuto.map((tappa, indice) => (
                     <li key={tappa.codice} className="riga rounded-md py-1">
                       <div className="flex items-center gap-4">
-                        <span className="w-44 shrink-0 text-sm">{tappa.etichetta}</span>
+                        <span className="w-28 shrink-0 truncate text-sm sm:w-44">{tappa.etichetta}</span>
                         <div
                           className="h-2 flex-1 overflow-hidden rounded-full"
                           style={{ background: 'rgba(255,255,255,0.04)' }}
@@ -319,6 +319,7 @@ function Ripartizione({
       {righe.length === 0 ? (
         <Vuoto messaggio="Nessun dato." />
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr
@@ -355,6 +356,7 @@ function Ripartizione({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </Card>
   )

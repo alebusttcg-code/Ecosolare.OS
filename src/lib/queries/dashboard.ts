@@ -1,6 +1,6 @@
-import { and, count, eq, isNotNull, isNull, lt, sql, sum } from 'drizzle-orm'
+import { and, count, eq, isNotNull, isNull, lt, or, sql, sum } from 'drizzle-orm'
 import { getDb } from '@/db'
-import { activities, opportunities, pipelineStages } from '@/db/schema'
+import { activities, contacts, opportunities, pipelineStages } from '@/db/schema'
 
 export interface DashboardDati {
   readonly aperte: number
@@ -22,9 +22,21 @@ export async function getDashboard(): Promise<DashboardDati> {
   const db = getDb()
   const adesso = new Date()
 
+  /**
+   * Stessi criteri dell'elenco Lead: aperta, non archiviata e con contatto
+   * vivo. Se i numeri del cruscotto e la lista divergessero, il cruscotto
+   * mentirebbe — e un contatore che mente è peggio di nessun contatore.
+   */
+  const contattoVivo = sql`exists (
+    select 1 from ${contacts}
+    where ${contacts.id} = ${opportunities.contactId}
+      and ${contacts.deletedAt} is null
+  )`
+
   const apertaEViva = and(
     eq(pipelineStages.isOpen, true),
     isNull(opportunities.deletedAt),
+    contattoVivo,
   )
 
   const [aggregato] = await db
@@ -60,14 +72,24 @@ export async function getDashboard(): Promise<DashboardDati> {
       label: pipelineStages.label,
       totale: count(opportunities.id),
       ordine: pipelineStages.sortOrder,
+      attivo: pipelineStages.isActive,
     })
     .from(pipelineStages)
     .leftJoin(
       opportunities,
-      and(eq(opportunities.stage, pipelineStages.code), isNull(opportunities.deletedAt)),
+      and(
+        eq(opportunities.stage, pipelineStages.code),
+        isNull(opportunities.deletedAt),
+        contattoVivo,
+      ),
     )
-    .where(and(eq(pipelineStages.isOpen, true), eq(pipelineStages.isActive, true)))
-    .groupBy(pipelineStages.code, pipelineStages.label, pipelineStages.sortOrder)
+    .where(eq(pipelineStages.isOpen, true))
+    .groupBy(
+      pipelineStages.code,
+      pipelineStages.label,
+      pipelineStages.sortOrder,
+      pipelineStages.isActive,
+    )
     .orderBy(pipelineStages.sortOrder)
 
   return {
@@ -76,7 +98,11 @@ export async function getDashboard(): Promise<DashboardDati> {
     senzaProssimaAzione: senzaAzione?.totale ?? 0,
     inRitardo: inRitardo?.totale ?? 0,
     senzaPrimaRisposta: senzaPrimaRisposta?.totale ?? 0,
-    perStato: perStato.map((r) => ({ code: r.code, label: r.label, totale: r.totale })),
+    perStato: perStato
+      // Uno stato disattivato sparisce dal grafico solo se è davvero vuoto:
+      // se ha ancora lead sopra, nasconderlo falserebbe il totale.
+      .filter((r) => r.attivo || r.totale > 0)
+      .map((r) => ({ code: r.code, label: r.label, totale: r.totale })),
   }
 }
 
@@ -117,7 +143,14 @@ export async function getAttivitaAperte(
     })
     .from(activities)
     .leftJoin(opportunities, eq(opportunities.id, activities.opportunityId))
-    .where(and(eq(activities.assignedTo, userId), isNull(activities.completedAt)))
+    .where(
+      and(
+        eq(activities.assignedTo, userId),
+        isNull(activities.completedAt),
+        // Un'attività legata a un lead archiviato non è più «da fare».
+        or(isNull(activities.opportunityId), isNull(opportunities.deletedAt)),
+      ),
+    )
     .orderBy(sql`${activities.dueAt} asc nulls last`)
     .limit(limite)
 

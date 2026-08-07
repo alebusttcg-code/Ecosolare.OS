@@ -2,6 +2,7 @@
 
 import { desc, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 import { getDb } from '@/db'
 import { documentFiles, documentRequirements } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
@@ -11,7 +12,7 @@ import { accoda } from '@/lib/outbox'
 import { ripulisciNome, validaFile } from '@/lib/domain/upload'
 import { getArchivio } from '@/lib/storage'
 import type { ActionResult } from './opportunities'
-import { ricalcolaReadinessInterno } from './projects'
+import { ricalcolaReadiness } from '@/lib/readiness'
 
 export interface EsitoCaricamento {
   readonly fileId: string
@@ -41,7 +42,9 @@ export async function uploadDocument(
   const requirementId = String(formData.get('requirementId') ?? '')
   const file = formData.get('file')
 
-  if (!requirementId) return { ok: false, errors: { _: 'Requisito non indicato.' } }
+  if (!z.uuid().safeParse(requirementId).success) {
+    return { ok: false, errors: { _: 'Requisito non indicato.' } }
+  }
   if (!(file instanceof File)) return { ok: false, errors: { file: 'Nessun file scelto.' } }
 
   const db = getDb()
@@ -116,9 +119,9 @@ export async function uploadDocument(
     entityId: salvato.id,
   })
 
-  await ricalcolaReadinessInterno(requisito.projectId)
-  revalidatePath(`/commesse/${requisito.projectId}`)
-  revalidatePath('/commesse')
+  await ricalcolaReadiness(requisito.projectId)
+  revalidatePath(`/cantieri/${requisito.projectId}`)
+  revalidatePath('/cantieri')
 
   return { ok: true, data: { fileId: salvato.id, versione, nome } }
 }
@@ -126,6 +129,10 @@ export async function uploadDocument(
 /** Elimina l'ultima versione caricata, riportando il requisito a «richiesto». */
 export async function deleteDocumentFile(fileId: string): Promise<ActionResult> {
   const utente = await guard('delete', 'document')
+
+  if (!z.uuid().safeParse(fileId).success) {
+    return { ok: false, errors: { _: 'Identificativo non valido.' } }
+  }
 
   const db = getDb()
   const file = await db.query.documentFiles.findFirst({
@@ -162,8 +169,8 @@ export async function deleteDocumentFile(fileId: string): Promise<ActionResult> 
   })
 
   if (requisito) {
-    await ricalcolaReadinessInterno(requisito.projectId)
-    revalidatePath(`/commesse/${requisito.projectId}`)
+    await ricalcolaReadiness(requisito.projectId)
+    revalidatePath(`/cantieri/${requisito.projectId}`)
   }
   return { ok: true, data: undefined }
 }

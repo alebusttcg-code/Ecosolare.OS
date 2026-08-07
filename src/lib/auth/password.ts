@@ -49,18 +49,16 @@ const LUNGHEZZA = 64
 const MEMORIA_MAX = 128 * COSTO * BLOCCO * 2
 
 /**
- * Il numero minimo di caratteri è più efficace di qualunque regola su maiuscole
- * e simboli: quelle regole producono `Password1!` e nient'altro.
+ * Nessuna policy di complessità (lunghezza minima, maiuscole, numeri…):
+ * produce password prevedibili e frustrazione senza guadagno reale qui.
+ * Resta solo il rifiuto del vuoto e un tetto tecnico contro abusi di CPU
+ * su scrypt (una password di megabyte occuperebbe il server a ogni login).
  */
-export const LUNGHEZZA_MINIMA_PASSWORD = 12
-
 export function validaPassword(password: string): string | null {
-  if (password.length < LUNGHEZZA_MINIMA_PASSWORD) {
-    return `La password deve avere almeno ${LUNGHEZZA_MINIMA_PASSWORD} caratteri.`
+  if (password.length === 0) {
+    return 'Inserire una password.'
   }
   if (password.length > 200) {
-    // Limite superiore: senza, una password di 10 MB diventa un modo per
-    // occupare la CPU del server.
     return 'La password non può superare i 200 caratteri.'
   }
   return null

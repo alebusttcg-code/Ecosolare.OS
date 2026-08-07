@@ -1,4 +1,4 @@
-import { asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
   contacts,
@@ -31,10 +31,24 @@ export interface CommessaInElenco {
   readonly revenueNet: string
   readonly cliente: string
   readonly responsabile: string | null
+  /** Valorizzato quando la commessa è in uno stato chiuso. */
+  readonly completedAt: Date | null
+  readonly chiusaDal: Date
 }
 
-export async function listProjects(): Promise<CommessaInElenco[]> {
+/**
+ * Elenco commesse.
+ *
+ * `attive` = ciclo operativo (Cantieri e commesse).
+ * `completate` = archivio (Lavori completati): solo stati con `is_closed`.
+ * Separarli è la differenza fra «cosa sto portando avanti» e «dove ritrovo
+ * un lavoro già finito senza mischiarlo a quelli aperti».
+ */
+export async function listProjects(
+  ambito: 'attive' | 'completate' = 'attive',
+): Promise<CommessaInElenco[]> {
   const adesso = Date.now()
+  const chiuse = ambito === 'completate'
 
   const righe = await getDb()
     .select({
@@ -49,6 +63,8 @@ export async function listProjects(): Promise<CommessaInElenco[]> {
       readinessBlockers: projects.readinessBlockers,
       blockedSince: projects.blockedSince,
       revenueNet: projects.revenueNet,
+      completedAt: projects.completedAt,
+      stageSince: projects.stageSince,
       clienteNome: contacts.firstName,
       clienteCognome: contacts.lastName,
       responsabile: users.name,
@@ -58,8 +74,11 @@ export async function listProjects(): Promise<CommessaInElenco[]> {
     .innerJoin(projectStages, eq(projectStages.code, projects.stage))
     .innerJoin(contacts, eq(contacts.id, projects.contactId))
     .leftJoin(users, eq(users.id, projects.ownerId))
-    .where(isNull(projects.deletedAt))
-    .orderBy(asc(projectStages.sortOrder), desc(projects.createdAt))
+    .where(and(isNull(projects.deletedAt), eq(projectStages.isClosed, chiuse)))
+    .orderBy(
+      chiuse ? desc(projects.completedAt) : asc(projectStages.sortOrder),
+      desc(projects.createdAt),
+    )
 
   return righe.map((r) => {
     const tutti = (r.readinessBlockers ?? []) as Blocco[]
@@ -79,6 +98,8 @@ export async function listProjects(): Promise<CommessaInElenco[]> {
       revenueNet: r.revenueNet,
       cliente: [r.clienteNome, r.clienteCognome].filter(Boolean).join(' '),
       responsabile: r.responsabile ?? r.responsabileEmail,
+      completedAt: r.completedAt,
+      chiusaDal: r.completedAt ?? r.stageSince,
     }
   })
 }
@@ -108,7 +129,7 @@ export async function getProjectDetail(id: string) {
     .innerJoin(contacts, eq(contacts.id, projects.contactId))
     .leftJoin(users, eq(users.id, projects.ownerId))
     .leftJoin(sites, eq(sites.id, projects.siteId))
-    .where(eq(projects.id, id))
+    .where(and(eq(projects.id, id), isNull(projects.deletedAt)))
     .limit(1)
 
   if (!riga) return null

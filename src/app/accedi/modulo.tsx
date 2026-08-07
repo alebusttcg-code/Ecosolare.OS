@@ -92,7 +92,7 @@ export function ModuloAccesso() {
       <button
         type="submit"
         disabled={inCorso}
-        className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="bottone-oro w-full rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
         style={{
           background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
           color: '#050a14',

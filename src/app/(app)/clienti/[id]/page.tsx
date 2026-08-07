@@ -6,7 +6,7 @@ import { getContactDetail } from '@/lib/queries/contacts'
 import { getStages } from '@/lib/queries/pipeline'
 import { NuovoImmobile } from './nuovo-immobile'
 
-export const metadata = { title: 'Scheda cliente — EcoSolare OS' }
+export const metadata = { title: 'Clienti — EcoSolare OS' }
 
 export default async function SchedaClientePage({
   params,
@@ -19,53 +19,148 @@ export default async function SchedaClientePage({
   const [dettaglio, stages] = await Promise.all([getContactDetail(id), getStages()])
   if (!dettaglio) notFound()
 
-  const { contatto, siti, opportunita, attivita } = dettaglio
+  const { contatto, siti, opportunita, attivita, clienteDal, commesse, eCliente } =
+    dettaglio
   const etichettaStato = (code: string) =>
     stages.find((s) => s.code === code)?.label ?? code
 
   const nome = [contatto.firstName, contatto.lastName].filter(Boolean).join(' ')
+  const leadAperto = opportunita.find((o) => !o.closedAt)
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <Link href="/clienti" className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
-            ← Clienti
+          <Link
+            href={eCliente ? '/clienti' : '/lead'}
+            className="text-sm"
+            style={{ color: 'var(--testo-tenue)' }}
+          >
+            {eCliente ? '← Clienti' : '← Lead'}
           </Link>
           <h1 className="mt-1 text-xl font-semibold">{nome}</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-            {[contatto.phone, contatto.email].filter(Boolean).join(' · ') || 'Nessun recapito'}
+            {contatto.phone ? (
+              <a
+                href={`tel:${contatto.phoneE164 ?? contatto.phone}`}
+                className="collega text-eco-blue-300"
+              >
+                {contatto.phone}
+              </a>
+            ) : null}
+            {contatto.phone && contatto.phoneE164 ? (
+              <>
+                {' · '}
+                <a
+                  href={`https://wa.me/${contatto.phoneE164.replace('+', '')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="collega text-eco-blue-300"
+                >
+                  WhatsApp
+                </a>
+              </>
+            ) : null}
+            {contatto.phone && contatto.email ? ' · ' : null}
+            {contatto.email ? (
+              <a href={`mailto:${contatto.email}`} className="collega text-eco-blue-300">
+                {contatto.email}
+              </a>
+            ) : null}
+            {!contatto.phone && !contatto.email ? 'Nessun recapito' : null}
           </p>
         </div>
-        {contatto.marketingConsent ? (
-          <Badge tone="positivo">Consenso commerciale</Badge>
-        ) : (
-          <Badge>Nessun consenso commerciale</Badge>
-        )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {eCliente ? (
+            <Badge tone="positivo">Cliente</Badge>
+          ) : (
+            <Badge tone="attenzione">Ancora un lead</Badge>
+          )}
+          {contatto.marketingConsent ? (
+            <Badge tone="positivo">Consenso commerciale</Badge>
+          ) : (
+            <Badge>Nessun consenso commerciale</Badge>
+          )}
+        </div>
       </div>
+
+      {!eCliente ? (
+        <div
+          className="rounded-xl border p-4 text-sm"
+          style={{
+            borderColor: 'rgba(217,164,65,0.35)',
+            background: 'rgba(217,164,65,0.08)',
+            color: 'var(--testo-tenue)',
+          }}
+        >
+          Diventa cliente solo dopo aver accettato e firmato un preventivo.
+          {leadAperto ? (
+            <>
+              {' '}
+              <Link
+                href={`/lead/${leadAperto.id}`}
+                className="text-eco-blue-300 hover:underline collega"
+              >
+                Apri il lead in corso →
+              </Link>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {eCliente && commesse.length > 0 ? (
+            <Card title="Commesse">
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
+                {commesse.map((c) => (
+                  <li
+                    key={c.id}
+                    className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <Link
+                        href={`/cantieri/${c.id}`}
+                        className="text-sm font-medium text-eco-blue-300 hover:underline collega"
+                      >
+                        {c.title}
+                      </Link>
+                      <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                        {c.code}
+                      </div>
+                    </div>
+                    <Badge>{c.stageLabel}</Badge>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
+
           <Card
-            title="Opportunita"
+            title="Lead"
             action={
-              <Link
-                href={`/opportunita/nuova?cliente=${contatto.id}`}
-                className="text-xs text-eco-blue-300 hover:underline collega"
-              >
-                + Nuova opportunita
-              </Link>
+              eCliente ? (
+                <Link
+                  href={`/lead/nuova?cliente=${contatto.id}`}
+                  className="text-xs text-eco-blue-300 hover:underline collega"
+                >
+                  + Nuovo lead
+                </Link>
+              ) : undefined
             }
           >
             {opportunita.length === 0 ? (
-              <Vuoto messaggio="Nessuna opportunita per questo cliente." />
+              <Vuoto messaggio="Nessun lead collegato." />
             ) : (
               <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {opportunita.map((o) => (
-                  <li key={o.id} className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0">
+                  <li
+                    key={o.id}
+                    className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
+                  >
                     <div>
                       <Link
-                        href={`/opportunita/${o.id}`}
+                        href={`/lead/${o.id}`}
                         className="text-sm font-medium text-eco-blue-300 hover:underline collega"
                       >
                         {o.title}
@@ -86,9 +181,9 @@ export default async function SchedaClientePage({
             )}
           </Card>
 
-          <Card title="Storico attivita">
+          <Card title="Storico attività">
             {attivita.length === 0 ? (
-              <Vuoto messaggio="Nessuna attivita registrata." />
+              <Vuoto messaggio="Nessuna attività registrata." />
             ) : (
               <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {attivita.map((a) => (
@@ -132,7 +227,11 @@ export default async function SchedaClientePage({
                 <dt className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
                   Cliente dal
                 </dt>
-                <dd>{formattaData(contatto.createdAt)}</dd>
+                <dd>
+                  {clienteDal
+                    ? formattaData(clienteDal)
+                    : '— (dopo la firma del preventivo)'}
+                </dd>
               </div>
               {contatto.notes ? (
                 <div>
@@ -161,7 +260,10 @@ export default async function SchedaClientePage({
                         {s.province ? ` (${s.province})` : ''}
                       </div>
                       {s.pod ? (
-                        <div className="font-mono text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                        <div
+                          className="font-mono text-xs"
+                          style={{ color: 'var(--testo-tenue)' }}
+                        >
                           POD {s.pod}
                         </div>
                       ) : null}

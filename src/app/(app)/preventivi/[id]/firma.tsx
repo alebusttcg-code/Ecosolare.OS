@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { useAvvisi } from '@/components/avvisi'
 import { signContractAndOpenProject } from '@/lib/actions/projects'
 
 /**
@@ -14,6 +15,7 @@ import { signContractAndOpenProject } from '@/lib/actions/projects'
  */
 export function RegistraFirma({ versionId }: { versionId: string }) {
   const router = useRouter()
+  const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const [inCorso, avvia] = useTransition()
@@ -47,8 +49,10 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
             signedAt: new Date(`${data}T12:00:00`),
             signatureMethod: String(fd.get('method') ?? 'cartacea') as 'cartacea',
           })
-          if (esito.ok) router.push(`/commesse/${esito.data.projectId}`)
-          else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
+          if (esito.ok) {
+            avvisa('Firma registrata: cantiere aperto.')
+            router.push(`/cantieri/${esito.data.projectId}`)
+          } else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
         })
       }}
       className="space-y-3"
@@ -86,8 +90,9 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
           color: '#e8c765',
         }}
       >
-        Verrà aperta la commessa con task, checklist documentale, distinta materiali,
-        pratiche e piano pagamenti. L&apos;opportunità passerà a <strong>vinto</strong>.
+        Verrà aperta la commessa in «Cantieri e commesse» con task, checklist
+        documentale, distinta materiali, pratiche e piano pagamenti. Il lead
+        passerà a <strong>vinto</strong>.
       </p>
 
       {errore ? <p className="text-xs text-eco-red-400">{errore}</p> : null}

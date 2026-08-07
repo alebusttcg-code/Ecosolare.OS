@@ -10,10 +10,10 @@ import { env } from '@/env'
  * richieste HTTP, e l'autenticazione è un JWT firmato con una chiave RSA che
  * `node:crypto` sa già firmare.
  *
- * **Serve un Drive condiviso.** Un service account non ha spazio proprio e non
- * può possedere file in un «Il mio Drive»: senza `GOOGLE_DRIVE_ID` che punta a
- * un Drive condiviso (di cui il service account sia membro con permesso di
- * scrittura), ogni creazione fallisce con «storage quota exceeded».
+ * **Serve una radice con permesso di scrittura.** In Workspace è un Drive
+ * condiviso; con Gmail personale basta una cartella in «Il mio Drive» condivisa
+ * con il service account come Editor. Senza `GOOGLE_DRIVE_ID` che punta a
+ * quella radice, ogni creazione fallisce con «storage quota exceeded».
  */
 
 const AMBITO = 'https://www.googleapis.com/auth/drive'
@@ -150,12 +150,11 @@ export async function creaCartella(params: {
     `${API}/files?${new URLSearchParams({
       q: query,
       fields: 'files(id)',
-      // Senza questi tre parametri Drive non guarda dentro i Drive condivisi
-      // e risponde «nessun risultato» anche quando la cartella c'è.
+      // allDrives copre sia Drive condivisi Workspace sia cartelle Gmail condivise
+      // con il service account — corpora=drive richiede un id di Drive condiviso.
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',
-      corpora: 'drive',
-      driveId: c.GOOGLE_DRIVE_ID!,
+      corpora: 'allDrives',
     })}`,
     { method: 'GET' },
   )

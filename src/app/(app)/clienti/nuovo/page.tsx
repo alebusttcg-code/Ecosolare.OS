@@ -1,15 +1,12 @@
+import { redirect } from 'next/navigation'
 import { guard } from '@/lib/auth/session'
-import { FormNuovoCliente } from './form'
 
-export const metadata = { title: 'Nuovo cliente — EcoSolare OS' }
-
-export default async function NuovoClientePage() {
-  await guard('create', 'contact')
-
-  return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-xl font-semibold">Nuovo cliente</h1>
-      <FormNuovoCliente />
-    </div>
-  )
+/**
+ * Non si crea un cliente a mano: nasce dalla firma del preventivo.
+ * L'ingresso anagrafico è «Nuovo lead».
+ */
+export default async function NuovoClienteRedirect() {
+  // Stessa risorsa della destinazione: il redirect non salta il guard (ADR-006).
+  await guard('create', 'opportunity')
+  redirect('/lead/nuova')
 }

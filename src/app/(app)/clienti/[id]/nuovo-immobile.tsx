@@ -1,10 +1,14 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { useAvvisi } from '@/components/avvisi'
 import { Campo } from '@/components/ui'
 import { createSite } from '@/lib/actions/sites'
 
 export function NuovoImmobile({ contactId }: { contactId: string }) {
+  const router = useRouter()
+  const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [inCorso, avvia] = useTransition()
@@ -37,8 +41,11 @@ export function NuovoImmobile({ contactId }: { contactId: string }) {
             buildingType: String(formData.get('buildingType') ?? '') || undefined,
             pod: String(formData.get('pod') ?? '') || undefined,
           })
-          if (esito.ok) setAperto(false)
-          else setErrors(esito.errors)
+          if (esito.ok) {
+            avvisa('Immobile aggiunto.')
+            setAperto(false)
+            router.refresh()
+          } else setErrors(esito.errors)
         })
       }}
       className="space-y-3 rounded-md border p-3"

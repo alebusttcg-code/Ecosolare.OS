@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { useAvvisi } from '@/components/avvisi'
 import { newQuoteVersion, recordQuoteOutcome, sendQuote } from '@/lib/actions/quotes'
 import type { StatoVersione } from '@/lib/domain/quote-lifecycle'
 
@@ -15,6 +16,7 @@ export function AzioniPreventivo({
   stato: StatoVersione
 }) {
   const router = useRouter()
+  const avvisa = useAvvisi()
   const [messaggio, setMessaggio] = useState<string | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
   const [mostraRifiuto, setMostraRifiuto] = useState(false)
@@ -29,11 +31,11 @@ export function AzioniPreventivo({
         setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
         return
       }
-      setMessaggio(
-        esito.data.inviato
-          ? 'Preventivo contrassegnato come inviato. Da questo momento la versione non è più modificabile.'
-          : 'Richiesta di approvazione inviata alla direzione: il margine è sotto la soglia minima.',
-      )
+      const testo = esito.data.inviato
+        ? 'Preventivo contrassegnato come inviato. Da questo momento la versione non è più modificabile.'
+        : 'Richiesta di approvazione inviata alla direzione: il margine è sotto la soglia minima.'
+      setMessaggio(testo)
+      avvisa(esito.data.inviato ? 'Preventivo inviato.' : 'Richiesta di approvazione inviata.')
       router.refresh()
     })
   }
@@ -42,8 +44,10 @@ export function AzioniPreventivo({
     setErrore(null)
     avvia(async () => {
       const esito = await newQuoteVersion(quoteId)
-      if (esito.ok) router.push(`/preventivi/${esito.data.versionId}`)
-      else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
+      if (esito.ok) {
+        avvisa('Nuova versione creata.')
+        router.push(`/preventivi/${esito.data.versionId}`)
+      } else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
     })
   }
 
@@ -56,6 +60,7 @@ export function AzioniPreventivo({
         ...(motivo ? { motivoRifiuto: motivo } : {}),
       })
       if (risultato.ok) {
+        avvisa(esito === 'accettato' ? 'Preventivo accettato.' : 'Rifiuto registrato.', esito === 'accettato' ? 'successo' : 'info')
         setMostraRifiuto(false)
         router.refresh()
       } else setErrore(Object.values(risultato.errors)[0] ?? 'Operazione non riuscita.')
@@ -71,7 +76,7 @@ export function AzioniPreventivo({
           disabled={inCorso}
           className="bottone-oro w-full rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
         >
-          {stato === 'approvato' ? 'Invia (approvato)' : 'Invia al cliente'}
+          {stato === 'approvato' ? 'Invia (approvato)' : 'Invia al contatto'}
         </button>
       ) : null}
 
@@ -90,7 +95,7 @@ export function AzioniPreventivo({
             className="w-full rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, #a3c563 0%, #7fa348 100%)', color: '#050a14' }}
           >
-            Il cliente ha accettato
+            Il contatto ha accettato
           </button>
           {mostraRifiuto ? (
             <form
@@ -120,7 +125,7 @@ export function AzioniPreventivo({
               className="bottone-fantasma w-full rounded-lg border px-4 py-2 text-sm"
               style={{ borderColor: 'var(--bordo)' }}
             >
-              Il cliente ha rifiutato
+              Il contatto ha rifiutato
             </button>
           )}
         </div>

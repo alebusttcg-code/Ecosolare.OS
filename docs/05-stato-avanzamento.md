@@ -150,16 +150,17 @@ alla commessa, senza costruire altre funzioni.
 
 ### A. Chiudere il pezzo tecnico già fatto
 
-- [ ] Commit del lavoro auth + outbox + Drive + storage (working tree attuale)
-- [ ] `npm run check` verde sul commit
-- [ ] Migrazioni `0008` e `0009` applicate sul database di lavoro
+- [x] Commit del lavoro auth + outbox + Drive + storage (`086bcef`)
+- [x] `npm run check` verde sul commit
+- [x] Migrazioni `0008` e `0009` applicate sul database di lavoro
 
 ### B. Ambiente
 
-- [ ] Progetto Supabase UE (Francoforte), piano Pro — guida in `docs/07`
-- [ ] `DATABASE_URL` = transaction pooler (porta 6543) in `.env.local`
-- [ ] Bucket Storage privato + variabili Supabase Storage
-- [ ] `npm run db:migrate` e `npm run amministratore` (password iniziale una sola volta)
+- [x] Progetto Supabase UE — `DATABASE_URL` già impostata (pooler, porta 6543)
+- [ ] Pulire `.env.local`: togliere le chiavi Auth.js/Google (`AUTH_*`, `ALLOWED_EMAIL_DOMAIN`, `ADMIN_BOOTSTRAP_EMAIL`) non più usate
+- [ ] Bucket Storage privato + variabili Supabase Storage (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`)
+- [x] `npm run db:migrate` — fatto (40 tabelle, RLS ok, seed presente)
+- [ ] `npm run amministratore` (password iniziale una sola volta; oggi: 0 utenti)
 - [ ] (Opzionale ma utile) Drive condiviso + service account, altrimenti la coda Drive resta ferma senza bloccare il gestionale
 - [ ] Deploy Vercel in `fra1` (o almeno ambiente condiviso raggiungibile)
 

@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import Link from 'next/link'
 import { Contatore } from './contatore'
 import { Inclina } from './inclina'
 
@@ -19,18 +20,27 @@ export function Intestazione({
   titolo,
   sottotitolo,
   azione,
+  titoloOro = false,
 }: {
   eyebrow?: string
   titolo: string
   sottotitolo?: string
   azione?: ReactNode
+  /** Sfumatura oro→blu sul titolo: per i momenti d'ingresso, non per il lavoro. */
+  titoloOro?: boolean
 }) {
   return (
-    <div className="rivela mb-8">
-      <div className="flex items-start justify-between gap-6">
+    <div className="rivela mb-6 lg:mb-8">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           {eyebrow ? <p className="mb-1.5 eyebrow">{eyebrow}</p> : null}
-          <h1 className="text-2xl font-semibold tracking-tight">{titolo}</h1>
+          <h1
+            className={`text-xl font-semibold tracking-tight sm:text-2xl ${
+              titoloOro ? 'titolo-oro' : ''
+            }`}
+          >
+            {titolo}
+          </h1>
           {sottotitolo ? (
             <p className="mt-1.5 text-sm" style={{ color: 'var(--testo-tenue)' }}>
               {sottotitolo}
@@ -95,6 +105,7 @@ export function Stat({
   tone = 'neutro',
   icona,
   indice = 0,
+  href,
 }: {
   label: string
   value: number
@@ -103,6 +114,8 @@ export function Stat({
   tone?: 'neutro' | 'positivo' | 'attenzione' | 'critico'
   icona?: string
   indice?: number
+  /** Se presente, la card diventa un collegamento alla sezione. */
+  href?: string
 }) {
   const colori: Record<string, string> = {
     neutro: 'var(--color-eco-blue-300)',
@@ -112,35 +125,48 @@ export function Stat({
   }
   const colore = colori[tone] ?? colori.neutro!
 
-  return (
-    <Inclina className="rivela">
-      <div className="pannello relative px-5 py-4" style={ritardo(indice)}>
-        <div className="flex items-start justify-between gap-3">
-          <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-            {label}
+  const corpo = (
+    <div
+      className={`pannello relative px-5 py-4 ${href ? 'pannello-interattivo' : ''}`}
+      style={ritardo(indice)}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+          {label}
+        </span>
+        {icona ? (
+          <span
+            className="anello h-7 w-7 shrink-0 text-xs"
+            style={{ color: colore }}
+            aria-hidden
+          >
+            {icona}
           </span>
-          {icona ? (
-            <span
-              className="anello h-7 w-7 shrink-0 text-xs"
-              style={{ color: colore }}
-              aria-hidden
-            >
-              {icona}
-            </span>
-          ) : null}
-        </div>
-        <div
-          className="mt-2 text-3xl font-semibold tracking-tight"
-          style={{ color: tone === 'neutro' ? 'var(--testo)' : colore }}
-        >
-          <Contatore valore={value} formato={formato} />
-        </div>
-        {hint ? (
-          <div className="mt-1 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-            {hint}
-          </div>
         ) : null}
       </div>
+      <div
+        className="mt-2 text-3xl font-semibold tracking-tight"
+        style={{ color: tone === 'neutro' ? 'var(--testo)' : colore }}
+      >
+        <Contatore valore={value} formato={formato} />
+      </div>
+      {hint ? (
+        <div className="mt-1 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+          {hint}
+        </div>
+      ) : null}
+    </div>
+  )
+
+  return (
+    <Inclina className="rivela">
+      {href ? (
+        <Link href={href} className="block outline-none focus-visible:ring-2 focus-visible:ring-eco-blue-400/40 rounded-[inherit]">
+          {corpo}
+        </Link>
+      ) : (
+        corpo
+      )}
     </Inclina>
   )
 }
@@ -271,9 +297,12 @@ export function Bottone({
   )
 }
 
-export function formattaData(data: Date | null): string {
+export function formattaData(data: Date | string | null): string {
   if (!data) return '—'
-  return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(data)
+  // Dai Server Component le Date arrivano al client come stringhe ISO.
+  const valore = typeof data === 'string' ? new Date(data) : data
+  if (Number.isNaN(valore.getTime())) return '—'
+  return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(valore)
 }
 
 export function formattaEuro(valore: string | null): string {

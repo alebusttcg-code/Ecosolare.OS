@@ -22,16 +22,11 @@ export default async function ClientiPage({
   return (
     <div className="space-y-6">
       <Intestazione
-        eyebrow="Anagrafica"
         titolo="Clienti"
-        sottotitolo={`${totale} ${totale === 1 ? 'contatto' : 'contatti'} in archivio`}
-        azione={
-          <Link
-            href="/clienti/nuovo"
-            className="bottone-oro rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
-          >
-            Nuovo cliente
-          </Link>
+        sottotitolo={
+          totale === 0
+            ? 'Nessun cliente ancora: nasce quando un lead firma un preventivo.'
+            : `${totale} ${totale === 1 ? 'cliente' : 'clienti'} con contratto firmato`
         }
       />
 
@@ -56,10 +51,13 @@ export default async function ClientiPage({
         {righe.length === 0 ? (
           <Vuoto
             messaggio={
-              q ? `Nessun risultato per "${q}".` : 'Nessun cliente ancora registrato.'
+              q
+                ? `Nessun risultato per "${q}".`
+                : 'Un lead diventa cliente solo dopo aver accettato e firmato un preventivo. Parti da Lead → Nuovo lead.'
             }
           />
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr
@@ -67,14 +65,18 @@ export default async function ClientiPage({
                 style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
               >
                 <th className="pb-2 font-medium">Nome</th>
-                <th className="pb-2 font-medium">Contatti</th>
-                <th className="pb-2 font-medium">Opportunita</th>
-                <th className="pb-2 text-right font-medium">Creato</th>
+                <th className="pb-2 font-medium">Recapiti</th>
+                <th className="pb-2 font-medium">Commesse</th>
+                <th className="pb-2 text-right font-medium">Cliente dal</th>
               </tr>
             </thead>
             <tbody>
               {righe.map((riga) => (
-                <tr key={riga.id} className="riga border-b last:border-0" style={{ borderColor: 'var(--bordo)' }}>
+                <tr
+                  key={riga.id}
+                  className="riga border-b last:border-0"
+                  style={{ borderColor: 'var(--bordo)' }}
+                >
                   <td className="py-2.5">
                     <Link
                       href={`/clienti/${riga.id}`}
@@ -87,19 +89,23 @@ export default async function ClientiPage({
                     {riga.phone ?? riga.email ?? '—'}
                   </td>
                   <td className="py-2.5">
-                    {riga.opportunitaAperte > 0 ? (
-                      <Badge tone="positivo">{riga.opportunitaAperte} aperte</Badge>
+                    {riga.commesse > 0 ? (
+                      <Badge tone="positivo">{riga.commesse}</Badge>
                     ) : (
                       <span style={{ color: 'var(--testo-tenue)' }}>—</span>
                     )}
                   </td>
-                  <td className="py-2.5 text-right" style={{ color: 'var(--testo-tenue)' }}>
-                    {formattaData(riga.createdAt)}
+                  <td
+                    className="py-2.5 text-right"
+                    style={{ color: 'var(--testo-tenue)' }}
+                  >
+                    {formattaData(riga.clienteDal)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 

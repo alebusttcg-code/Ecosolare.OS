@@ -146,61 +146,7 @@ export async function completeActivity(
   })
 
   revalidatePath('/attivita')
-  revalidatePath('/opportunita')
+  revalidatePath('/lead')
   return { ok: true, data: undefined }
 }
 
-const createSchema = z.object({
-  kind: z.enum([
-    'chiamata',
-    'email',
-    'whatsapp',
-    'appuntamento',
-    'sopralluogo',
-    'task',
-    'nota',
-  ]),
-  subject: z.string().trim().min(1, 'Indicare un oggetto').max(160),
-  notes: z.string().trim().max(2000).optional(),
-  opportunityId: z.uuid().optional(),
-  contactId: z.uuid().optional(),
-  assignedTo: z.uuid().optional(),
-  dueAt: z.date().optional(),
-})
-
-export async function createActivity(
-  input: z.input<typeof createSchema>,
-): Promise<ActionResult<{ id: string }>> {
-  const utente = await guard('create', 'activity')
-
-  const parsed = createSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, errors: errori(parsed.error.issues) }
-  const dati = parsed.data
-
-  const [creata] = await getDb()
-    .insert(activities)
-    .values({
-      kind: dati.kind,
-      subject: dati.subject,
-      notes: dati.notes ?? null,
-      opportunityId: dati.opportunityId ?? null,
-      contactId: dati.contactId ?? null,
-      assignedTo: dati.assignedTo ?? utente.id,
-      dueAt: dati.dueAt ?? null,
-      createdBy: utente.id,
-    })
-    .returning({ id: activities.id })
-
-  if (!creata) return { ok: false, errors: { _: 'Creazione non riuscita.' } }
-
-  await recordEntityChange({
-    actorId: utente.id,
-    actorLabel: utente.email,
-    action: 'create',
-    entityType: 'activity',
-    entityId: creata.id,
-  })
-
-  revalidatePath('/attivita')
-  return { ok: true, data: creata }
-}

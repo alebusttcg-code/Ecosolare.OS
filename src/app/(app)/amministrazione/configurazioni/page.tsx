@@ -45,6 +45,7 @@ export default async function ConfigurazioniPage() {
           aggiungere o rinominare senza un rilascio. La modifica da interfaccia arriva con
           la Fase 2; oggi si interviene sulla tabella <code>pipeline_stages</code>.
         </p>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr
@@ -54,7 +55,7 @@ export default async function ConfigurazioniPage() {
               <th className="pb-2 font-medium">Stato</th>
               <th className="pb-2 font-medium">Codice</th>
               <th className="pb-2 font-medium">Tipo</th>
-              <th className="pb-2 text-right font-medium">Probabilita</th>
+              <th className="pb-2 text-right font-medium">Probabilità</th>
             </tr>
           </thead>
           <tbody>
@@ -73,6 +74,7 @@ export default async function ConfigurazioniPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   )

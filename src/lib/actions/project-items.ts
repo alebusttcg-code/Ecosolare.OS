@@ -15,7 +15,7 @@ import {
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
 import type { ActionResult } from './opportunities'
-import { ricalcolaReadinessInterno } from './projects'
+import { ricalcolaReadiness } from '@/lib/readiness'
 
 function errori(issues: readonly z.core.$ZodIssue[]): Record<string, string> {
   const out: Record<string, string> = {}
@@ -29,9 +29,9 @@ function errori(issues: readonly z.core.$ZodIssue[]): Record<string, string> {
  * ingredienti che lo compongono.
  */
 async function aggiornaEDRicalcola(projectId: string): Promise<void> {
-  await ricalcolaReadinessInterno(projectId)
-  revalidatePath(`/commesse/${projectId}`)
-  revalidatePath('/commesse')
+  await ricalcolaReadiness(projectId)
+  revalidatePath(`/cantieri/${projectId}`)
+  revalidatePath('/cantieri')
 }
 
 /* -------------------------------------------------------------------------- */
@@ -225,6 +225,10 @@ export async function setPracticeStatus(
 export async function toggleProjectTask(taskId: string): Promise<ActionResult> {
   const utente = await guard('update', 'project')
 
+  if (!z.uuid().safeParse(taskId).success) {
+    return { ok: false, errors: { _: 'Identificativo non valido.' } }
+  }
+
   const db = getDb()
   const task = await db.query.projectTasks.findFirst({
     where: eq(projectTasks.id, taskId),
@@ -240,7 +244,7 @@ export async function toggleProjectTask(taskId: string): Promise<ActionResult> {
     })
     .where(eq(projectTasks.id, taskId))
 
-  revalidatePath(`/commesse/${task.projectId}`)
+  revalidatePath(`/cantieri/${task.projectId}`)
   return { ok: true, data: undefined }
 }
 

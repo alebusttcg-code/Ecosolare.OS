@@ -39,7 +39,6 @@ export default async function ApprovazioniPage() {
   return (
     <div className="space-y-6">
       <Intestazione
-        eyebrow="Direzione"
         titolo="Approvazioni"
         sottotitolo={`${righe.length} in attesa di decisione`}
       />

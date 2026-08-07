@@ -31,6 +31,8 @@ export function Inclina({
     (evento: React.PointerEvent<HTMLDivElement>) => {
       const nodo = riferimento.current
       if (!nodo) return
+      // Solo mouse: col dito l'inclinazione scatterebbe durante lo scroll.
+      if (evento.pointerType !== 'mouse') return
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
       const { clientX, clientY } = evento

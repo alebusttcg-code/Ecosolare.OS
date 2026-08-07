@@ -4,7 +4,7 @@ import { guard } from '@/lib/auth/session'
 import { getAttivitaAperte } from '@/lib/queries/dashboard'
 import { CompletaAttivita } from './completa'
 
-export const metadata = { title: 'Attivita — EcoSolare OS' }
+export const metadata = { title: 'Le mie attività — EcoSolare OS' }
 
 const ETICHETTA_TIPO: Record<string, string> = {
   chiamata: 'Chiamata',
@@ -12,7 +12,7 @@ const ETICHETTA_TIPO: Record<string, string> = {
   whatsapp: 'WhatsApp',
   appuntamento: 'Appuntamento',
   sopralluogo: 'Sopralluogo',
-  task: 'Attivita',
+  task: 'Attività',
   nota: 'Nota',
 }
 
@@ -23,14 +23,13 @@ export default async function AttivitaPage() {
   return (
     <div className="space-y-6">
       <Intestazione
-        eyebrow="Operativo"
-        titolo="Le tue attività"
+        titolo="Le mie attività"
         sottotitolo={`${righe.length} aperte, dalla più urgente`}
       />
 
       <Card>
         {righe.length === 0 ? (
-          <Vuoto messaggio="Nessuna attivita aperta." />
+          <Vuoto messaggio="Nessuna attività aperta." />
         ) : (
           <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
             {righe.map((a) => (
@@ -47,7 +46,7 @@ export default async function AttivitaPage() {
                           <>
                             {' · '}
                             <Link
-                              href={`/opportunita/${a.opportunityId}`}
+                              href={`/lead/${a.opportunityId}`}
                               className="text-eco-blue-300 hover:underline collega"
                             >
                               {a.opportunityCode} {a.opportunityTitle}

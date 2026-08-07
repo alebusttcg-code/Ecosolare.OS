@@ -7,8 +7,8 @@ import type { Role } from '@/lib/auth/policy'
 
 const RUOLI: readonly { value: Role; label: string; descrizione: string }[] = [
   { value: 'amministratore', label: 'Amministratore', descrizione: 'Accesso completo, configurazioni, utenti, audit' },
-  { value: 'contabilita', label: 'Contabilita', descrizione: 'Fatture, pagamenti, documenti, pratiche' },
-  { value: 'commerciale', label: 'Commerciale', descrizione: 'Lead, opportunita, sopralluoghi, preventivi' },
+  { value: 'contabilita', label: 'Contabilità', descrizione: 'Fatture, pagamenti, documenti, pratiche' },
+  { value: 'commerciale', label: 'Commerciale', descrizione: 'Lead, sopralluoghi, preventivi e firme' },
   { value: 'cantiere', label: 'Cantiere', descrizione: 'Materiali, pianificazione, esecuzione, fogli di lavoro' },
 ]
 
@@ -318,7 +318,7 @@ function RigaUtente({
         <button
           type="button"
           onClick={() => setAperto(!aperto)}
-          className="bottone-fantasma shrink-0 rounded-lg border px-3 py-1 text-xs"
+          className="bottone-fantasma shrink-0 rounded-lg border px-3 py-1.5 text-xs"
           style={{ borderColor: 'var(--bordo)' }}
         >
           {aperto ? 'Chiudi' : 'Modifica'}

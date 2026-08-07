@@ -1,6 +1,6 @@
 'use server'
 
-import { and, desc, eq, inArray, like, max } from 'drizzle-orm'
+import { desc, eq, inArray, like, max } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb, type Esecutore } from '@/db'
@@ -92,7 +92,7 @@ export async function createQuote(
     entityId: risultato.quoteId,
   })
 
-  revalidatePath(`/opportunita/${parsed.data.opportunityId}`)
+  revalidatePath(`/lead/${parsed.data.opportunityId}`)
   return { ok: true, data: risultato }
 }
 
@@ -292,6 +292,10 @@ export async function saveQuoteLines(
 export async function sendQuote(versionId: string): Promise<ActionResult<{ inviato: boolean }>> {
   const utente = await guard('update', 'quote')
 
+  if (!z.uuid().safeParse(versionId).success) {
+    return { ok: false, errors: { _: 'Identificativo non valido.' } }
+  }
+
   const db = getDb()
   const versione = await db.query.quoteVersions.findFirst({
     where: eq(quoteVersions.id, versionId),
@@ -470,6 +474,10 @@ export async function newQuoteVersion(
 ): Promise<ActionResult<{ versionId: string; versionNo: number }>> {
   const utente = await guard('create', 'quote')
 
+  if (!z.uuid().safeParse(quoteId).success) {
+    return { ok: false, errors: { _: 'Identificativo non valido.' } }
+  }
+
   const db = getDb()
   const preventivo = await db.query.quotes.findFirst({ where: eq(quotes.id, quoteId) })
   if (!preventivo) return { ok: false, errors: { _: 'Preventivo non trovato.' } }
@@ -622,12 +630,3 @@ export async function recordQuoteOutcome(
   return { ok: true, data: undefined }
 }
 
-/** Le richieste di approvazione in attesa di decisione. */
-export async function pendingApprovals() {
-  await guard('read', 'quote_approval')
-  return getDb()
-    .select()
-    .from(approvals)
-    .where(and(eq(approvals.status, 'richiesta'), eq(approvals.entityType, 'quote_version')))
-    .orderBy(desc(approvals.requestedAt))
-}

@@ -1,0 +1,32 @@
+---
+description: Estetica e design UI — sempre al meglio delle competenze
+alwaysApply: true
+---
+
+# Estetica e design (EcoSolare OS)
+
+Su ogni intervento di interfaccia (layout, componenti, popup, form, elenchi,
+stati vuoti, motion), lavorare **al meglio delle competenze di estetica e
+design**, non al minimo funzionante.
+
+## Principi
+
+- Gerarchia chiara: una cosa importante per viewport/sezione.
+- Allineamento e spaziatura intenzionali; niente elementi “quasi centrati”
+  o tagliati dal viewport (popup sempre ben centrati e scrollabili).
+- Coerenza con il linguaggio visivo già in app (abisso, oro, blu EcoSolare,
+  tipografia e motion esistenti in `globals.css` / componenti UI).
+- Dettaglio: hover, focus, overlay, ombre e bordi devono sembrare curati,
+  non generici.
+- Preferire pochi elementi ben bilanciati a clutter (pill, badge e chip
+  solo se servono).
+
+## Cosa evitare
+
+- UI “da template AI” generica (viola su bianco, cream+terracotta, ecc.)
+  se non è già il sistema del progetto.
+- Popup o pannelli spostati, tagliati in alto o senza margine dal bordo.
+- Card e bordi decorativi inutili quando basta gerarchia tipografica.
+
+Se c’è tensione tra velocità e qualità visiva, scegliere la qualità visiva
+finché resta semplice da mantenere.

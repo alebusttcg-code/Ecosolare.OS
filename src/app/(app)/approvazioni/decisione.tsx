@@ -2,10 +2,12 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { useAvvisi } from '@/components/avvisi'
 import { decideApproval } from '@/lib/actions/quotes'
 
 export function Decisione({ approvalId }: { approvalId: string }) {
   const router = useRouter()
+  const avvisa = useAvvisi()
   const [errore, setErrore] = useState<string | null>(null)
   const [inCorso, avvia] = useTransition()
 
@@ -13,8 +15,10 @@ export function Decisione({ approvalId }: { approvalId: string }) {
     setErrore(null)
     avvia(async () => {
       const esito = await decideApproval({ approvalId, approva, nota: nota || undefined })
-      if (esito.ok) router.refresh()
-      else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
+      if (esito.ok) {
+        avvisa(approva ? 'Preventivo approvato.' : 'Preventivo respinto.', approva ? 'successo' : 'info')
+        router.refresh()
+      } else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
     })
   }
 

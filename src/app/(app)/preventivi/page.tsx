@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import Link from 'next/link'
 import { Badge, Card, Intestazione, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { getDb } from '@/db'
@@ -6,7 +6,7 @@ import { contacts, opportunities, quoteVersions, quotes } from '@/db/schema'
 import { guard } from '@/lib/auth/session'
 import type { StatoVersione } from '@/lib/domain/quote-lifecycle'
 
-export const metadata = { title: 'Preventivi — EcoSolare OS' }
+export const metadata = { title: 'Preventivi e firme — EcoSolare OS' }
 
 const ETICHETTA: Record<StatoVersione, { testo: string; tono: 'neutro' | 'blu' | 'positivo' | 'attenzione' | 'critico' }> = {
   bozza: { testo: 'Bozza', tono: 'neutro' },
@@ -39,6 +39,7 @@ export default async function PreventiviPage() {
     .innerJoin(quoteVersions, eq(quoteVersions.id, quotes.currentVersionId))
     .innerJoin(opportunities, eq(opportunities.id, quotes.opportunityId))
     .innerJoin(contacts, eq(contacts.id, opportunities.contactId))
+    .where(and(isNull(opportunities.deletedAt), isNull(contacts.deletedAt)))
     .orderBy(desc(quotes.createdAt))
     .limit(100)
 
@@ -49,14 +50,13 @@ export default async function PreventiviPage() {
   return (
     <div>
       <Intestazione
-        eyebrow="Commerciale"
-        titolo="Preventivi"
-        sottotitolo={`${righe.length} in archivio · ${aperti} ancora aperti`}
+        titolo="Preventivi e firme"
+        sottotitolo={`${righe.length} in elenco · ${aperti} ancora aperti`}
       />
 
       <Card>
         {righe.length === 0 ? (
-          <Vuoto messaggio="Nessun preventivo. Si aprono dalla scheda di un'opportunità." />
+          <Vuoto messaggio="Nessun preventivo. Si apre dalla scheda di un lead." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -69,7 +69,7 @@ export default async function PreventiviPage() {
                     Preventivo
                   </th>
                   <th className="pb-2.5 text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
-                    Cliente
+                    Contatto
                   </th>
                   <th className="pb-2.5 text-right text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
                     Totale

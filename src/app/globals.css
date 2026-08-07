@@ -61,6 +61,8 @@ body {
   background:
     radial-gradient(1200px 600px at 15% -10%, #0d1c33 0%, transparent 60%),
     radial-gradient(900px 500px at 100% 0%, #14203a 0%, transparent 55%),
+    radial-gradient(720px 420px at 84% 14%, rgba(217, 164, 65, 0.05) 0%, transparent 62%),
+    radial-gradient(1600px 900px at 50% 118%, #0a1424 0%, transparent 70%),
     var(--sfondo);
   background-attachment: fixed;
   color: var(--testo);
@@ -69,9 +71,80 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/**
+ * Grana fotografica appena percettibile sopra i gradienti, sotto il contenuto.
+ * È ciò che separa un fondo «digitale piatto» da una superficie con materia;
+ * al 4% di opacità non tocca la leggibilità.
+ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* Il contenuto sta sopra la grana. */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Dettagli di sistema: barre di scorrimento, selezione, focus
+   --------------------------------------------------------------------------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e3350 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #1e3350, #16273e);
+  border-radius: 9999px;
+  border: 2px solid rgba(5, 10, 20, 0.6);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2f66a8;
+  background-clip: padding-box;
+}
+
+::selection {
+  background: rgba(217, 164, 65, 0.32);
+  color: #f5f8fd;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(91, 155, 213, 0.65);
+  outline-offset: 2px;
+}
+
 /* ---------------------------------------------------------------------------
    Elementi ricorrenti del linguaggio visivo
    --------------------------------------------------------------------------- */
+
+/** Titolo con luce: dall'oro chiaro al blu del marchio. Per i momenti di
+    ingresso (saluto della dashboard, soglie), non per i titoli di lavoro. */
+.titolo-oro {
+  background: linear-gradient(115deg, #f2dda0 0%, #e8c765 40%, #7fb2e8 115%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
 /** Etichetta di sezione: piccola, maiuscola, spaziata, oro. */
 .eyebrow {
@@ -299,6 +372,11 @@ body {
   transform: scaleY(1);
 }
 
+/* Su touch non esiste hover: il tocco deve dare comunque un riscontro. */
+.riga:active {
+  background-color: rgba(91, 155, 213, 0.09);
+}
+
 /* Nelle tabelle resta solo l'evidenziazione: su una riga di tabella il
    padding non e' animabile e lo pseudo-elemento posizionato non e'
    affidabile fra browser. */
@@ -314,6 +392,10 @@ tr.riga::before {
 tr.riga:hover {
   padding-left: 0;
   background-color: rgba(91, 155, 213, 0.06);
+}
+
+tr.riga:active {
+  background-color: rgba(91, 155, 213, 0.1);
 }
 
 /**
@@ -405,8 +487,72 @@ tr.riga:hover {
   transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.collega:hover::after {
+.collega:hover::after,
+.collega:active::after {
   transform: scaleX(1);
+}
+
+/* ---------------------------------------------------------------------------
+   Avvisi transitori (toast): entrano dal basso, escono in dissolvenza.
+   --------------------------------------------------------------------------- */
+
+@keyframes eco-avviso {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.avviso {
+  animation: eco-avviso 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition:
+    opacity 300ms ease,
+    transform 300ms ease;
+}
+
+.avviso-esce {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+/* ---------------------------------------------------------------------------
+   Soglia d'ingresso (pagina di accesso)
+
+   Unica eccezione consapevole alla regola «nessun ciclo continuo»: la pagina
+   di accesso è una soglia, non una superficie di lavoro — un respiro di luce
+   di 11 secondi dà il benvenuto senza stancare nessuno, e si spegne del tutto
+   per chi preferisce il movimento ridotto.
+   --------------------------------------------------------------------------- */
+
+@keyframes eco-respiro {
+  from {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+.alone-accesso {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(40px);
+  pointer-events: none;
+  animation: eco-respiro 11s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alone-accesso {
+    animation: none;
+    opacity: 0.6;
+  }
 }
 
 /* ---------------------------------------------------------------------------

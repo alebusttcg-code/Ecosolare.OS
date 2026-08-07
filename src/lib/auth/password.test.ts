@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   calcolaImpronta,
   generaPasswordIniziale,
-  LUNGHEZZA_MINIMA_PASSWORD,
   validaPassword,
   verificaPassword,
 } from './password'
@@ -59,12 +58,13 @@ describe('impronte delle password', () => {
 })
 
 describe('regole sulla password', () => {
-  it('accetta dalla lunghezza minima in su', () => {
-    expect(validaPassword('a'.repeat(LUNGHEZZA_MINIMA_PASSWORD))).toBeNull()
+  it('accetta anche una password corta, senza regole di complessità', () => {
+    expect(validaPassword('a')).toBeNull()
+    expect(validaPassword('password')).toBeNull()
   })
 
-  it('rifiuta le password corte', () => {
-    expect(validaPassword('a'.repeat(LUNGHEZZA_MINIMA_PASSWORD - 1))).not.toBeNull()
+  it('rifiuta la password vuota', () => {
+    expect(validaPassword('')).not.toBeNull()
   })
 
   it('rifiuta le password assurdamente lunghe', () => {

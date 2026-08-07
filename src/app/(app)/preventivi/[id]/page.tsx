@@ -9,7 +9,7 @@ import { AzioniPreventivo } from './azioni'
 import { RegistraFirma } from './firma'
 import { EditorPreventivo } from './editor'
 
-export const metadata = { title: 'Preventivo — EcoSolare OS' }
+export const metadata = { title: 'Preventivi e firme — EcoSolare OS' }
 
 const ETICHETTA_STATO: Record<StatoVersione, string> = {
   bozza: 'Bozza',
@@ -48,13 +48,13 @@ export default async function PreventivoPage({
     <div className="space-y-6">
       <div>
         <Link
-          href={`/opportunita/${dati.opportunityId}`}
+          href="/preventivi"
           className="text-sm"
           style={{ color: 'var(--testo-tenue)' }}
         >
-          ← {dati.opportunityCode} {dati.opportunityTitle}
+          ← Preventivi e firme
         </Link>
-        <div className="mt-1 flex items-center gap-3">
+        <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold">{dati.quoteTitle}</h1>
           <Badge
             tone={
@@ -74,6 +74,10 @@ export default async function PreventivoPage({
           {dati.quoteCode} · versione {dati.versione.versionNo} ·{' '}
           <Link href={`/clienti/${dati.clienteId}`} className="text-eco-blue-300 hover:underline collega">
             {[dati.clienteNome, dati.clienteCognome].filter(Boolean).join(' ')}
+          </Link>{' '}
+          · lead{' '}
+          <Link href={`/lead/${dati.opportunityId}`} className="text-eco-blue-300 hover:underline collega">
+            {dati.opportunityCode}
           </Link>
         </p>
       </div>
@@ -83,7 +87,7 @@ export default async function PreventivoPage({
           className="rounded-lg border p-3 text-sm"
           style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.04)' }}
         >
-          Questa versione non è modificabile: il cliente ha ricevuto questi numeri e devono
+          Questa versione non è modificabile: il contatto ha ricevuto questi numeri e devono
           restare ricostruibili. Per cambiare qualcosa, crea una nuova versione.
         </p>
       ) : null}

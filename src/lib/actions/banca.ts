@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq, gte, isNotNull, lte } from 'drizzle-orm'
+import { and, eq, gte, isNotNull, isNull, lte } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb } from '@/db'
@@ -23,7 +23,7 @@ import { validaFile } from '@/lib/domain/upload'
 import { ripulisciNome } from '@/lib/domain/upload'
 import { getArchivio } from '@/lib/storage'
 import type { ActionResult } from './opportunities'
-import { ricalcolaReadinessInterno } from './projects'
+import { ricalcolaReadiness } from '@/lib/readiness'
 
 function errori(issues: readonly z.core.$ZodIssue[]): Record<string, string> {
   const out: Record<string, string> = {}
@@ -92,14 +92,18 @@ export async function concediOkAmministrativo(
     entityId: parsed.data.milestoneId,
   })
 
-  await ricalcolaReadinessInterno(scadenza.projectId)
-  revalidatePath(`/commesse/${scadenza.projectId}`)
-  revalidatePath('/banca')
+  await ricalcolaReadiness(scadenza.projectId)
+  revalidatePath(`/cantieri/${scadenza.projectId}`)
+  revalidatePath('/controllo-bancario')
   return { ok: true, data: undefined }
 }
 
 export async function revocaOkAmministrativo(milestoneId: string): Promise<ActionResult> {
   const utente = await guard('update', 'invoice')
+
+  if (!z.uuid().safeParse(milestoneId).success) {
+    return { ok: false, errors: { _: 'Identificativo non valido.' } }
+  }
 
   const db = getDb()
   const scadenza = await db.query.paymentMilestones.findFirst({
@@ -122,8 +126,8 @@ export async function revocaOkAmministrativo(milestoneId: string): Promise<Actio
     after: { adminOkAt: null },
   })
 
-  await ricalcolaReadinessInterno(scadenza.projectId)
-  revalidatePath(`/commesse/${scadenza.projectId}`)
+  await ricalcolaReadiness(scadenza.projectId)
+  revalidatePath(`/cantieri/${scadenza.projectId}`)
   return { ok: true, data: undefined }
 }
 
@@ -133,7 +137,9 @@ export async function caricaContabile(formData: FormData): Promise<ActionResult>
 
   const milestoneId = String(formData.get('milestoneId') ?? '')
   const file = formData.get('file')
-  if (!milestoneId) return { ok: false, errors: { _: 'Scadenza non indicata.' } }
+  if (!z.uuid().safeParse(milestoneId).success) {
+    return { ok: false, errors: { _: 'Scadenza non indicata.' } }
+  }
   if (!(file instanceof File)) return { ok: false, errors: { file: 'Nessun file scelto.' } }
 
   const db = getDb()
@@ -166,7 +172,7 @@ export async function caricaContabile(formData: FormData): Promise<ActionResult>
     uploadedBy: utente.id,
   })
 
-  revalidatePath(`/commesse/${scadenza.projectId}`)
+  revalidatePath(`/cantieri/${scadenza.projectId}`)
   return { ok: true, data: undefined }
 }
 
@@ -195,7 +201,15 @@ export async function caricaEstrattoConto(
   const utente = await guard('update', 'invoice')
 
   const file = formData.get('file')
-  const etichetta = String(formData.get('label') ?? '').trim()
+  const etichettaEsito = z
+    .string()
+    .trim()
+    .max(160, 'Etichetta troppo lunga (massimo 160 caratteri).')
+    .safeParse(String(formData.get('label') ?? ''))
+  if (!etichettaEsito.success) {
+    return { ok: false, errors: { label: etichettaEsito.error.issues[0]!.message } }
+  }
+  const etichetta = etichettaEsito.data
   if (!(file instanceof File)) return { ok: false, errors: { file: 'Nessun file scelto.' } }
 
   const contenuto = new Uint8Array(await file.arrayBuffer())
@@ -268,6 +282,10 @@ export async function caricaEstrattoConto(
         isNotNull(paymentMilestones.adminOkAt),
         gte(paymentMilestones.adminOkAt, new Date(daData.getTime() - margine)),
         lte(paymentMilestones.adminOkAt, new Date(aData.getTime() + margine)),
+        // Le commesse archiviate non partecipano all'abbinamento dei nuovi
+        // estratti: un pagamento su una commessa rimossa sarebbe un falso match.
+        isNull(projects.deletedAt),
+        isNull(contacts.deletedAt),
       ),
     )
 
@@ -349,7 +367,7 @@ export async function caricaEstrattoConto(
     entityId: risultato,
   })
 
-  revalidatePath('/banca')
+  revalidatePath('/controllo-bancario')
   return {
     ok: true,
     data: {
@@ -385,6 +403,6 @@ export async function segnaVerificato(
     })
     .where(eq(reconciliationChecks.id, parsed.data.checkId))
 
-  revalidatePath('/banca')
+  revalidatePath('/controllo-bancario')
   return { ok: true, data: undefined }
 }
