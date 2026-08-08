@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { ArchivioSupabase, supabaseStorageConfigurato } from './supabase'
 
 /**
@@ -46,6 +46,8 @@ const RADICE = resolve(process.cwd(), '.archivio')
  * lettura di un file arbitrario del server.
  */
 function percorsoSicuro(chiave: string): string | null {
+  // Radice fissa sotto process.cwd()/.archivio: così il tracing di build
+  // resta confinato e non include tutto il repository.
   const percorso = resolve(RADICE, chiave)
   if (!percorso.startsWith(RADICE + '/') && percorso !== RADICE) return null
   return percorso
@@ -57,9 +59,9 @@ class ArchivioSuDisco implements Archivio {
     estensione: string
     cartella: string
   }): Promise<FileArchiviato> {
-    // La chiave è generata dal sistema: il nome originale non entra MAI nel
-    // percorso, così non esiste modo di influenzarlo dall'esterno.
-    const chiave = join(params.cartella, `${randomUUID()}.${params.estensione}`)
+    // Chiave logica (non path FS): evita path.join dinamico che in build
+    // Vercel/Turbopack fa tracciare l'intero progetto.
+    const chiave = `${params.cartella}/${randomUUID()}.${params.estensione}`
     const percorso = percorsoSicuro(chiave)
     if (percorso === null) throw new Error('Chiave di archiviazione non valida')
 
