@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { LinkNome } from '@/components/link-nome'
 import { SelettorePeriodoEconomia } from '@/components/selettore-periodo-economia'
 import { Badge, Card, Intestazione, Stat, Vuoto, formattaData } from '@/components/ui'
 import { formattaImporto } from '@/lib/domain/money'
@@ -169,14 +170,18 @@ export default async function EconomiaPage({
               return (
                 <li key={p.versionId} className="riga flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/preventivi/${p.versionId}`}
-                      className="text-sm font-medium text-eco-blue-300 hover:underline collega"
-                    >
-                      {p.titolo}
-                    </Link>
+                    <LinkNome href={`/lead/${p.opportunityId}`} className="text-sm font-medium">
+                      {p.cliente}
+                    </LinkNome>
                     <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                      {p.code} · {p.cliente}
+                      <Link
+                        href={`/preventivi/${p.versionId}`}
+                        className="text-eco-blue-300 hover:underline collega"
+                      >
+                        {p.titolo}
+                      </Link>
+                      {' · '}
+                      {p.code}
                       {p.inviatoIl ? ` · inviato ${formattaData(p.inviatoIl)}` : ''}
                     </div>
                   </div>

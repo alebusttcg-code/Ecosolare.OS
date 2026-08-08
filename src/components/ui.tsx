@@ -60,6 +60,7 @@ export function Card({
   accento = 'neutro',
   interattivo = false,
   indice = 0,
+  id,
   children,
 }: {
   title?: string
@@ -68,6 +69,7 @@ export function Card({
   /** Solo per i pannelli che portano da qualche parte: si sollevano al hover. */
   interattivo?: boolean
   indice?: number
+  id?: string
   children: ReactNode
 }) {
   const bordi: Record<string, string> = {
@@ -80,7 +82,8 @@ export function Card({
 
   return (
     <section
-      className={`pannello rivela ${interattivo ? 'pannello-interattivo' : ''}`}
+      id={id}
+      className={`pannello rivela ${id ? 'scroll-mt-24' : ''} ${interattivo ? 'pannello-interattivo' : ''}`}
       style={{ borderColor: bordi[accento], ...ritardo(indice) }}
     >
       {title ? (

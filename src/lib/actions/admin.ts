@@ -53,7 +53,7 @@ export async function createUser(
     columns: { id: true },
   })
   if (esistente) {
-    return { ok: false, errors: { email: 'Esiste gia un utente con questa email.' } }
+    return { ok: false, errors: { email: 'Esiste già un utente con questa email.' } }
   }
 
   const passwordIniziale = generaPasswordIniziale()

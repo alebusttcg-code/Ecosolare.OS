@@ -86,7 +86,7 @@ function estraiNomi(raw: Record<string, unknown>): { nome: string | null; cognom
 
 export function parseIntakePayload(payload: unknown): EsitoParsing {
   const oggetto = z.record(z.string(), z.unknown()).safeParse(payload)
-  if (!oggetto.success) return { ok: false, motivo: 'Il corpo della richiesta non e un oggetto.' }
+  if (!oggetto.success) return { ok: false, motivo: 'Il corpo della richiesta non è un oggetto.' }
 
   const raw = oggetto.data
   const { nome, cognome } = estraiNomi(raw)

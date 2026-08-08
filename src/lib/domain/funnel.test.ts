@@ -11,6 +11,7 @@ import {
   motiviDiPerdita,
   percentuale,
   ripartisci,
+  totaleAzienda,
   type PraticaCommerciale,
 } from './funnel'
 
@@ -205,7 +206,7 @@ describe('calcolaValori', () => {
 })
 
 describe('ripartisci', () => {
-  it('raggruppa e ordina per valore portato', () => {
+  it('raggruppa e ordina per fatturato portato', () => {
     const righe = ripartisci(
       [
         completa({ fonte: 'passaparola', valoreContratto: 2_000_000 }),
@@ -218,14 +219,52 @@ describe('ripartisci', () => {
 
     expect(righe[0]?.chiave).toBe('passaparola')
     expect(righe[0]?.conversione).toBe(10_000)
+    expect(righe[0]?.sopralluoghi).toBe(1)
+    expect(righe[0]?.tassoSopralluogo).toBe(10_000)
+    expect(righe[0]?.valore).toBe(2_000_000)
     expect(righe[1]?.chiave).toBe('sito')
     expect(righe[1]?.lead).toBe(3)
+    expect(righe[1]?.sopralluoghi).toBe(1)
+    expect(righe[1]?.tassoSopralluogo).toBe(3333)
     expect(righe[1]?.conversione).toBe(3333)
   })
 
   it('raccoglie sotto un etichetta i valori mancanti', () => {
     const righe = ripartisci([pratica({ fonte: null })], (p) => p.fonte)
     expect(righe[0]?.chiave).toBe('Non indicata')
+  })
+})
+
+describe('totaleAzienda', () => {
+  it('aggrega lead, sopralluoghi, chiusura e fatturato', () => {
+    const totale = totaleAzienda([
+      completa({ commerciale: 'Giulia', valoreContratto: 1_000_000 }),
+      completa({ commerciale: 'Marco', valoreContratto: 2_000_000 }),
+      pratica({ commerciale: 'Marco', sopralluogoEffettuatoIl: g(4) }),
+      pratica({ commerciale: 'Giulia' }),
+    ])
+
+    expect(totale.lead).toBe(4)
+    expect(totale.sopralluoghi).toBe(3)
+    expect(totale.tassoSopralluogo).toBe(7500)
+    expect(totale.contratti).toBe(2)
+    expect(totale.conversione).toBe(5000)
+    expect(totale.valore).toBe(3_000_000)
+  })
+
+  it('coincide con la somma delle ripartizioni per commerciale', () => {
+    const pratiche = [
+      completa({ commerciale: 'Giulia', valoreContratto: 800_000 }),
+      completa({ commerciale: 'Marco', valoreContratto: 1_200_000 }),
+      pratica({ commerciale: 'Marco', sopralluogoEffettuatoIl: g(3) }),
+    ]
+    const totale = totaleAzienda(pratiche)
+    const perComm = ripartisci(pratiche, (p) => p.commerciale)
+
+    expect(perComm.reduce((s, r) => s + r.lead, 0)).toBe(totale.lead)
+    expect(perComm.reduce((s, r) => s + r.sopralluoghi, 0)).toBe(totale.sopralluoghi)
+    expect(perComm.reduce((s, r) => s + r.contratti, 0)).toBe(totale.contratti)
+    expect(perComm.reduce((s, r) => s + r.valore, 0)).toBe(totale.valore)
   })
 })
 

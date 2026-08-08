@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Intestazione, Vuoto, formattaData } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import { getAttivitaAperte } from '@/lib/queries/dashboard'
@@ -36,11 +37,23 @@ export default async function AttivitaPage() {
               <li key={a.id} className="riga rounded-md py-4 first:pt-0 last:pb-0">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{a.subject}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {a.opportunityId && a.clienteNome ? (
+                          <LinkNome href={`/lead/${a.opportunityId}`} className="text-sm font-medium">
+                            {a.clienteNome}
+                          </LinkNome>
+                        ) : (
+                          <span className="text-sm font-medium">{a.subject}</span>
+                        )}
                         {a.isNextAction ? <Badge tone="positivo">Prossima azione</Badge> : null}
                       </div>
                       <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                        {a.opportunityId && a.clienteNome ? (
+                          <>
+                            {a.subject}
+                            {' · '}
+                          </>
+                        ) : null}
                         {ETICHETTA_TIPO[a.kind] ?? a.kind}
                         {a.opportunityId ? (
                           <>
@@ -49,7 +62,7 @@ export default async function AttivitaPage() {
                               href={`/lead/${a.opportunityId}`}
                               className="text-eco-blue-300 hover:underline collega"
                             >
-                              {a.opportunityCode} {a.opportunityTitle}
+                              {a.opportunityCode}
                             </Link>
                           </>
                         ) : null}

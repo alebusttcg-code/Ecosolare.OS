@@ -1,10 +1,17 @@
 'use server'
 
-import { desc, eq, inArray, like, max } from 'drizzle-orm'
+import { and, desc, eq, inArray, like, max } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb, type Esecutore } from '@/db'
-import { approvals, products, quoteLines, quoteVersions, quotes } from '@/db/schema'
+import {
+  approvals,
+  contracts,
+  products,
+  quoteLines,
+  quoteVersions,
+  quotes,
+} from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
 import {
@@ -14,7 +21,14 @@ import {
   quantitaDaNumero,
 } from '@/lib/domain/money'
 import { calcolaPreventivo, valutaSoglia, type RigaCalcolo } from '@/lib/domain/pricing'
-import { puoInviare, puoModificare, registraEsitoCliente } from '@/lib/domain/quote-lifecycle'
+import {
+  puoEliminarePreventivo,
+  puoInviare,
+  puoModificare,
+  registraEsitoCliente,
+  type StatoVersione,
+} from '@/lib/domain/quote-lifecycle'
+import { unitaRichiedeIntero } from '@/lib/domain/unita'
 import type { ActionResult } from './opportunities'
 
 function errori(issues: readonly z.core.$ZodIssue[]): Record<string, string> {
@@ -98,23 +112,33 @@ export async function createQuote(
 
 /* -------------------------------------------------------------------------- */
 
-const rigaSchema = z.object({
-  /** Presente per le righe gia' esistenti: serve a conservarne il costo. */
-  id: z.uuid().optional(),
-  productId: z.uuid().optional(),
-  description: z.string().trim().min(1, 'Descrizione obbligatoria').max(300),
-  unit: z.string().trim().max(12).default('pz'),
-  quantity: z.number().positive('La quantita deve essere maggiore di zero'),
-  unitPrice: z.number().min(0),
-  /**
-   * Assente per chi non ha la capacita' `can_view_costs`: a quegli utenti il
-   * costo non viene nemmeno inviato, quindi non puo' tornare indietro.
-   * Il server lo ricostruisce (vedere `risolviCosto`).
-   */
-  unitCost: z.number().min(0).optional(),
-  discountPct: z.number().min(0).max(100).default(0),
-  vatRate: z.number().min(0).max(100).default(10),
-})
+const rigaSchema = z
+  .object({
+    /** Presente per le righe gia' esistenti: serve a conservarne il costo. */
+    id: z.uuid().optional(),
+    productId: z.uuid().optional(),
+    description: z.string().trim().min(1, 'Descrizione obbligatoria').max(300),
+    unit: z.string().trim().max(12).default('pz'),
+    quantity: z.number().positive('La quantità deve essere maggiore di zero'),
+    unitPrice: z.number().min(0),
+    /**
+     * Assente per chi non ha la capacita' `can_view_costs`: a quegli utenti il
+     * costo non viene nemmeno inviato, quindi non puo' tornare indietro.
+     * Il server lo ricostruisce (vedere `risolviCosto`).
+     */
+    unitCost: z.number().min(0).optional(),
+    discountPct: z.number().min(0).max(100).default(0),
+    vatRate: z.number().min(0).max(100).default(10),
+  })
+  .superRefine((riga, ctx) => {
+    if (unitaRichiedeIntero(riga.unit) && !Number.isInteger(riga.quantity)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['quantity'],
+        message: `Con unità «${riga.unit}» la quantità deve essere un numero intero.`,
+      })
+    }
+  })
 
 const salvaRigheSchema = z.object({
   versionId: z.uuid(),
@@ -149,7 +173,7 @@ export async function saveQuoteLines(
     return {
       ok: false,
       errors: {
-        _: `Una versione in stato "${versione.status}" non e modificabile. Crea una nuova versione.`,
+        _: `Una versione in stato "${versione.status}" non è modificabile. Crea una nuova versione.`,
       },
     }
   }
@@ -422,7 +446,7 @@ export async function decideApproval(
   })
   if (!richiesta) return { ok: false, errors: { _: 'Richiesta non trovata.' } }
   if (richiesta.status !== 'richiesta') {
-    return { ok: false, errors: { _: 'Richiesta gia decisa.' } }
+    return { ok: false, errors: { _: 'Richiesta già decisa.' } }
   }
 
   // Chi ha chiesto l'approvazione non puo' concedersela da solo, nemmeno se e'
@@ -628,5 +652,103 @@ export async function recordQuoteOutcome(
 
   revalidatePath(`/preventivi/${dati.versionId}`)
   return { ok: true, data: undefined }
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Elimina un preventivo non ancora inviato al cliente.
+ *
+ * Usa `update` sul permesso quote (non `delete`): in matrice il commerciale ha
+ * scrittura sui preventivi ma non il livello full; togliere una bozza fa parte
+ * della gestione quotidiana. Dopo l'invio la cancellazione è negata (ADR-008).
+ */
+export async function deleteQuote(
+  quoteId: string,
+): Promise<ActionResult<{ opportunityId: string }>> {
+  const utente = await guard('update', 'quote')
+
+  if (!z.uuid().safeParse(quoteId).success) {
+    return { ok: false, errors: { _: 'Identificativo non valido.' } }
+  }
+
+  const db = getDb()
+  const preventivo = await db.query.quotes.findFirst({ where: eq(quotes.id, quoteId) })
+  if (!preventivo) return { ok: false, errors: { _: 'Preventivo non trovato.' } }
+
+  const versioni = await db
+    .select({
+      id: quoteVersions.id,
+      status: quoteVersions.status,
+      sentAt: quoteVersions.sentAt,
+    })
+    .from(quoteVersions)
+    .where(eq(quoteVersions.quoteId, quoteId))
+
+  const corrente = preventivo.currentVersionId
+    ? versioni.find((v) => v.id === preventivo.currentVersionId)
+    : versioni[0]
+
+  if (!corrente || !puoEliminarePreventivo(corrente.status as StatoVersione)) {
+    return {
+      ok: false,
+      errors: {
+        _: 'Si possono eliminare solo preventivi non ancora inviati al cliente.',
+      },
+    }
+  }
+
+  if (versioni.some((v) => v.sentAt !== null)) {
+    return {
+      ok: false,
+      errors: {
+        _: 'Questo preventivo ha già una versione inviata: non si elimina.',
+      },
+    }
+  }
+
+  const versioneIds = versioni.map((v) => v.id)
+  if (versioneIds.length > 0) {
+    const [contratto] = await db
+      .select({ id: contracts.id })
+      .from(contracts)
+      .where(inArray(contracts.quoteVersionId, versioneIds))
+      .limit(1)
+    if (contratto) {
+      return {
+        ok: false,
+        errors: { _: 'Esiste un contratto collegato: il preventivo non si elimina.' },
+      }
+    }
+  }
+
+  await db.transaction(async (tx) => {
+    if (versioneIds.length > 0) {
+      await tx
+        .delete(approvals)
+        .where(
+          and(eq(approvals.entityType, 'quote_version'), inArray(approvals.entityId, versioneIds)),
+        )
+    }
+    await tx
+      .update(quotes)
+      .set({ currentVersionId: null })
+      .where(eq(quotes.id, quoteId))
+    await tx.delete(quotes).where(eq(quotes.id, quoteId))
+  })
+
+  await recordEntityChange({
+    actorId: utente.id,
+    actorLabel: utente.email,
+    action: 'delete',
+    entityType: 'quote',
+    entityId: quoteId,
+    before: { code: preventivo.code, title: preventivo.title },
+  })
+
+  revalidatePath('/preventivi')
+  revalidatePath(`/lead/${preventivo.opportunityId}`)
+  revalidatePath('/economia')
+  return { ok: true, data: { opportunityId: preventivo.opportunityId } }
 }
 

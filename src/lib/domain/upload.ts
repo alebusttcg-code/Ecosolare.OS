@@ -10,7 +10,9 @@
  * formato non può nascondere.
  */
 
-export type TipoFileAmmesso = 'image/jpeg' | 'image/png' | 'application/pdf'
+export type TipoImmagine = 'image/jpeg' | 'image/png'
+
+export type TipoFileAmmesso = TipoImmagine | 'application/pdf'
 
 export const TIPI_AMMESSI: readonly TipoFileAmmesso[] = [
   'image/jpeg',
@@ -86,6 +88,19 @@ export function validaFile(params: {
   // Discordanza fra dichiarato e reale: si accetta il contenuto vero, ma il
   // fatto va notato. Spesso è solo un browser distratto; a volte non lo è.
   return { ok: true, tipo: tipoReale, estensione: ESTENSIONI[tipoReale] }
+}
+
+/** Validazione per le fotografie di sopralluogo: solo JPEG e PNG. */
+export function validaFoto(params: {
+  readonly byte: Uint8Array
+  readonly dimensione: number
+}): EsitoValidazione {
+  const esito = validaFile({ ...params, tipoDichiarato: '' })
+  if (!esito.ok) return esito
+  if (esito.tipo === 'application/pdf') {
+    return { ok: false, motivo: 'Per le fotografie del sopralluogo servono JPEG o PNG.' }
+  }
+  return esito
 }
 
 /**

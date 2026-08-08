@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Dialogo } from '@/components/dialogo'
 import { BottoneChiama, BottoneWhatsApp } from '@/components/bottoni-contatto'
+import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
 import { componeIndirizzo } from '@/lib/geo/tipi-via'
 import type { LeadInElenco } from '@/lib/queries/opportunities'
@@ -115,10 +116,18 @@ export function ElencoLead({
                     role="button"
                     aria-label={`Apri ${l.firstName} ${l.lastName}`}
                   >
-                    <td className="py-2.5 pr-3 font-medium text-eco-blue-300">
-                      {l.firstName || '—'}
+                    <td
+                      className="py-2.5 pr-3 font-medium"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <LinkNome href={`/lead/${l.id}`}>{l.firstName || '—'}</LinkNome>
                     </td>
-                    <td className="py-2.5 pr-3 font-medium">{l.lastName}</td>
+                    <td
+                      className="py-2.5 pr-3 font-medium"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <LinkNome href={`/lead/${l.id}`}>{l.lastName}</LinkNome>
+                    </td>
                     <td
                       className="py-2.5 pr-3 tabular-nums"
                       style={{ color: 'var(--testo-tenue)' }}

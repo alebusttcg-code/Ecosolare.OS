@@ -1,8 +1,9 @@
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
 import { BottoneChiama, BottoneWhatsApp } from '@/components/bottoni-contatto'
+import { LinkNome, nomePersona } from '@/components/link-nome'
+import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
 import { getDb } from '@/db'
 import {
   activities,
@@ -22,6 +23,7 @@ import {
 } from '@/lib/domain/prequalifica-lead'
 import { getStages } from '@/lib/queries/pipeline'
 import { getQuotesForOpportunity } from '@/lib/queries/quotes'
+import { correggiDefinizioneQuestionario } from '@/lib/domain/etichette-ui'
 import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnaire'
 import { CambiaStato } from './cambia-stato'
 import { NuovoPreventivo } from './nuovo-preventivo'
@@ -103,8 +105,10 @@ export default async function DettaglioLeadPage({
 
   const opp = riga.opp
   const definizionePrequalifica = templatePrequalifica
-    ? arricchisciDefinizionePrequalifica(
-        templatePrequalifica.definition as DefinizioneQuestionario,
+    ? correggiDefinizioneQuestionario(
+        arricchisciDefinizionePrequalifica(
+          templatePrequalifica.definition as DefinizioneQuestionario,
+        ),
       )
     : null
   const rispostePrequalifica = unisciRispostePrequalifica(
@@ -132,17 +136,17 @@ export default async function DettaglioLeadPage({
         <div className="mt-1 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-xl font-semibold">{opp.title}</h1>
+              <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                <LinkNome href={`/clienti/${riga.clienteId}`} hero>
+                  {nomePersona(riga.clienteNome, riga.clienteCognome) || 'Senza nome'}
+                </LinkNome>
+              </h1>
               <Badge tone={stato?.isLost ? 'critico' : stato?.isWon ? 'positivo' : 'neutro'}>
                 {stato?.label ?? opp.stage}
               </Badge>
             </div>
             <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-              {opp.code} ·{' '}
-              <Link href={`/clienti/${riga.clienteId}`} className="text-eco-blue-300 hover:underline collega">
-                {[riga.clienteNome, riga.clienteCognome].filter(Boolean).join(' ')}
-              </Link>{' '}
-              · {opp.businessLine}
+              {opp.title} · {opp.code} · {opp.businessLine}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">

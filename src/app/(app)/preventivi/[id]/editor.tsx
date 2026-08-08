@@ -9,6 +9,7 @@ import {
   quantitaDaNumero,
 } from '@/lib/domain/money'
 import { calcolaPreventivo } from '@/lib/domain/pricing'
+import { normalizzaQuantita, unitaRichiedeIntero } from '@/lib/domain/unita'
 import { saveQuoteLines } from '@/lib/actions/quotes'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import type { RigaVisibile } from '@/lib/queries/quotes'
@@ -59,7 +60,11 @@ export function EditorPreventivo({
   sogliaMarginePct: number
 }) {
   const [righe, setRighe] = useState<RigaEditor[]>(
-    righeIniziali.map((r) => ({ ...r, chiave: r.id })),
+    righeIniziali.map((r) => ({
+      ...r,
+      quantity: normalizzaQuantita(r.quantity, r.unit),
+      chiave: r.id,
+    })),
   )
   const [sconto, setSconto] = useState(scontoIniziale)
   const [messaggio, setMessaggio] = useState<string | null>(null)
@@ -83,7 +88,16 @@ export function EditorPreventivo({
 
   function aggiorna(chiave: string, patch: Partial<RigaEditor>) {
     setRighe((precedenti) =>
-      precedenti.map((r) => (r.chiave === chiave ? { ...r, ...patch } : r)),
+      precedenti.map((r) => {
+        if (r.chiave !== chiave) return r
+        const unita = patch.unit ?? r.unit
+        const quantitaGrezza = patch.quantity ?? r.quantity
+        return {
+          ...r,
+          ...patch,
+          quantity: normalizzaQuantita(quantitaGrezza, unita),
+        }
+      }),
     )
   }
 
@@ -153,7 +167,7 @@ export function EditorPreventivo({
         parti.push(`Margine ${formattaPercentuale(esito.data.marginePct)}.`)
       }
       if (esito.data.sottoSoglia) {
-        parti.push('Sotto la soglia minima: l invio richiedera l approvazione.')
+        parti.push('Sotto la soglia minima: l\'invio richiederà l\'approvazione.')
       }
       if (esito.data.righeSenzaCosto.length > 0) {
         parti.push(
@@ -222,12 +236,19 @@ export function EditorPreventivo({
                   <td className="p-1">
                     <input
                       type="number"
-                      step="0.001"
+                      step={unitaRichiedeIntero(r.unit) ? '1' : '0.001'}
+                      min={1}
+                      inputMode={unitaRichiedeIntero(r.unit) ? 'numeric' : 'decimal'}
                       value={r.quantity}
                       disabled={!modificabile}
                       onChange={(e) => aggiorna(r.chiave, { quantity: numero(e.target.value) })}
                       className="w-full rounded-md border px-2 py-1 text-right text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
                       style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+                      title={
+                        unitaRichiedeIntero(r.unit)
+                          ? 'Con unità a pezzi la quantità è intera'
+                          : undefined
+                      }
                     />
                   </td>
                   <td className="p-1">
@@ -416,7 +437,7 @@ export function EditorPreventivo({
           disabled={inCorso}
           className="rounded-md bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso hover:opacity-90 disabled:opacity-50"
         >
-          {inCorso ? 'Salvataggio…' : 'Salva righe'}
+          {inCorso ? 'Salvataggio…' : 'Salva preventivo'}
         </button>
       ) : null}
     </div>

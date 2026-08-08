@@ -11,8 +11,8 @@ const STAGES: StageDefinition[] = [
   { code: 'nuovo', label: 'Nuovo', sortOrder: 10, isOpen: true, isWon: false, isLost: false, defaultProbability: 5, isActive: true },
   { code: 'contattato', label: 'Contattato', sortOrder: 20, isOpen: true, isWon: false, isLost: false, defaultProbability: 15, isActive: true },
   { code: 'qualificato', label: 'Qualificato', sortOrder: 30, isOpen: true, isWon: false, isLost: false, defaultProbability: 30, isActive: true },
-  { code: 'vinto', label: 'Vinto', sortOrder: 100, isOpen: false, isWon: true, isLost: false, defaultProbability: 100, isActive: true },
-  { code: 'perso', label: 'Perso', sortOrder: 110, isOpen: false, isWon: false, isLost: true, defaultProbability: 0, isActive: true },
+  { code: 'vinto', label: 'Contratto firmato', sortOrder: 100, isOpen: false, isWon: true, isLost: false, defaultProbability: 100, isActive: true },
+  { code: 'perso', label: 'Non concluso', sortOrder: 110, isOpen: false, isWon: false, isLost: true, defaultProbability: 0, isActive: true },
   { code: 'dismesso', label: 'Stato dismesso', sortOrder: 120, isOpen: true, isWon: false, isLost: false, defaultProbability: 0, isActive: false },
 ]
 

@@ -73,7 +73,7 @@ export function validateOpportunityState(
     violations.push({
       code: 'stato_non_attivo',
       field: 'stage',
-      message: `Lo stato "${stage.label}" non e piu utilizzabile.`,
+      message: `Lo stato "${stage.label}" non è più utilizzabile.`,
     })
   }
 
@@ -82,7 +82,7 @@ export function validateOpportunityState(
       code: 'prossima_azione_mancante',
       field: 'nextActionDueAt',
       message:
-        'Ogni opportunita aperta deve avere una prossima azione con una scadenza.',
+        'Ogni opportunità aperta deve avere una prossima azione con una scadenza.',
     })
   }
 
@@ -91,7 +91,7 @@ export function validateOpportunityState(
       code: 'motivo_perdita_mancante',
       field: 'lostReason',
       message:
-        'Indicare il motivo della perdita: senza, non e possibile capire dove si perde.',
+        'Indicare il motivo della perdita: senza, non è possibile capire dove si perde.',
     })
   }
 

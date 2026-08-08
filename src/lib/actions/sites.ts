@@ -6,18 +6,25 @@ import { getDb } from '@/db'
 import { sites } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
+import { normalizzaPod, validaPodOpzionale } from '@/lib/domain/pod'
 import type { ActionResult } from './opportunities'
 
 const siteSchema = z.object({
   contactId: z.uuid(),
-  label: z.string().trim().min(1, 'Indicare un nome per l immobile').max(80),
-  addressLine: z.string().trim().min(1, 'Indicare l indirizzo').max(200),
+  label: z.string().trim().min(1, 'Indicare un nome per l\'immobile').max(80),
+  addressLine: z.string().trim().min(1, 'Indicare l\'indirizzo').max(200),
   city: z.string().trim().min(1, 'Indicare il comune').max(80),
   province: z.string().trim().max(4).optional(),
   postalCode: z.string().trim().max(10).optional(),
   buildingType: z.string().trim().max(60).optional(),
   /** Punto di prelievo: identifica univocamente la fornitura elettrica. */
-  pod: z.string().trim().max(20).optional(),
+  pod: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || validaPodOpzionale(v).ok, {
+      message: 'Il codice POD deve essere alfanumerico e lungo 14 o 15 caratteri.',
+    }),
   notes: z.string().trim().max(2000).optional(),
 })
 
@@ -44,7 +51,7 @@ export async function createSite(input: SiteInput): Promise<ActionResult<{ id: s
       province: dati.province?.toUpperCase() ?? null,
       postalCode: dati.postalCode ?? null,
       buildingType: dati.buildingType ?? null,
-      pod: dati.pod?.toUpperCase() ?? null,
+      pod: dati.pod ? normalizzaPod(dati.pod) : null,
       notes: dati.notes ?? null,
       createdBy: utente.id,
       updatedBy: utente.id,

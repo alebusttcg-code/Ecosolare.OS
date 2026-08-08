@@ -13,9 +13,8 @@ import type { DefinizioneQuestionario } from '@/lib/domain/questionnaire'
  * obbligatorio che non serve e' altrettanto dannoso di quello mancante: insegna
  * ad aggirare il sistema.
  *
- * Le fotografie sono previste come tipo di campo ma NON obbligatorie: il
- * caricamento file arriva con il modulo documentale. Renderle obbligatorie ora
- * bloccherebbe ogni chiusura con un requisito impossibile da soddisfare.
+ * Le fotografie si caricano direttamente nel sopralluogo (JPEG/PNG, piu' scatti
+ * per campo). Restano facoltative finche' l'ufficio tecnico non le rende obbligatorie.
  */
 export const SOPRALLUOGO_FV: DefinizioneQuestionario = {
   code: 'sopralluogo_fv',
@@ -94,7 +93,7 @@ export const SOPRALLUOGO_FV: DefinizioneQuestionario = {
           options: [
             { value: 'buono', label: 'Buono' },
             { value: 'discreto', label: 'Discreto' },
-            { value: 'da_sistemare', label: 'Da sistemare prima dell installazione' },
+            { value: 'da_sistemare', label: 'Da sistemare prima dell\'installazione' },
           ],
           criticoSe: 'da_sistemare',
         },
@@ -129,7 +128,7 @@ export const SOPRALLUOGO_FV: DefinizioneQuestionario = {
           code: 'foto_copertura',
           label: 'Fotografie della copertura',
           type: 'foto',
-          help: 'Il caricamento arriva con il modulo documentale.',
+          help: 'Scatta o carica dal telefono: tetto, falde, eventuali ombre.',
         },
       ],
     },
@@ -148,7 +147,8 @@ export const SOPRALLUOGO_FV: DefinizioneQuestionario = {
           label: 'Codice POD',
           type: 'testo',
           required: true,
-          help: 'Si legge sulla bolletta o sul contatore.',
+          format: 'pod',
+          help: 'Si legge sulla bolletta o sul contatore. 14–15 caratteri alfanumerici (es. IT001E12345678).',
         },
         {
           code: 'stato_quadro',
@@ -172,19 +172,19 @@ export const SOPRALLUOGO_FV: DefinizioneQuestionario = {
         },
         {
           code: 'posizione_inverter',
-          label: 'Posizione prevista per l inverter',
+          label: 'Posizione prevista per l\'inverter',
           type: 'testo',
           required: true,
         },
         {
           code: 'accumulo_previsto',
-          label: 'E previsto un accumulo',
+          label: 'È previsto un accumulo',
           type: 'booleano',
           required: true,
         },
         {
           code: 'posizione_accumulo',
-          label: 'Posizione prevista per l accumulo',
+          label: 'Posizione prevista per l\'accumulo',
           type: 'testo',
           required: true,
           showIf: { campo: 'accumulo_previsto', uguale: true },
@@ -199,16 +199,17 @@ export const SOPRALLUOGO_FV: DefinizioneQuestionario = {
           code: 'foto_quadro',
           label: 'Fotografie di quadro e contatore',
           type: 'foto',
+          help: 'Scatta o carica: quadro generale, contatore e codice POD se visibile.',
         },
       ],
     },
     {
       code: 'accesso',
-      label: 'Accessibilita e cantiere',
+      label: 'Accessibilità e cantiere',
       fields: [
         {
           code: 'accesso_mezzi',
-          label: 'Accessibilita per i mezzi',
+          label: 'Accessibilità per i mezzi',
           type: 'scelta',
           required: true,
           options: [
@@ -259,7 +260,7 @@ export const SOPRALLUOGO_FV: DefinizioneQuestionario = {
         },
         {
           code: 'criticita',
-          label: 'Criticita rilevate',
+          label: 'Criticità rilevate',
           type: 'testo_lungo',
         },
         {

@@ -463,7 +463,7 @@ export async function changeStage(
   const corrente = await db.query.opportunities.findFirst({
     where: eq(opportunities.id, dati.opportunityId),
   })
-  if (!corrente) return { ok: false, errors: { _: 'Opportunita non trovata.' } }
+  if (!corrente) return { ok: false, errors: { _: 'Opportunità non trovata.' } }
 
   const stages = await getStages()
   const esito = planStageChange(

@@ -5,16 +5,22 @@ import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { newQuoteVersion, recordQuoteOutcome, sendQuote } from '@/lib/actions/quotes'
-import type { StatoVersione } from '@/lib/domain/quote-lifecycle'
+import { puoEliminarePreventivo, type StatoVersione } from '@/lib/domain/quote-lifecycle'
+import { EliminaPreventivo } from '../elimina'
 
 export function AzioniPreventivo({
   versionId,
   quoteId,
+  titolo,
   stato,
+  haRighe,
 }: {
   versionId: string
   quoteId: string
+  titolo: string
   stato: StatoVersione
+  /** Il PDF ha senso solo con almeno una riga economica. */
+  haRighe: boolean
 }) {
   const router = useRouter()
   const avvisa = useAvvisi()
@@ -77,7 +83,7 @@ export function AzioniPreventivo({
           disabled={inCorso}
           className="bottone-oro w-full rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
         >
-          {stato === 'approvato' ? 'Invia (approvato)' : 'Invia al contatto'}
+          {stato === 'approvato' ? 'Inviato al contatto (approvato)' : 'Inviato al contatto'}
         </button>
       ) : null}
 
@@ -142,6 +148,30 @@ export function AzioniPreventivo({
         >
           Crea nuova versione
         </button>
+      ) : null}
+
+      {haRighe ? (
+        <a
+          href={`/api/preventivi/${versionId}/pdf`}
+          className="bottone-fantasma flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-white/[0.04]"
+          style={{ borderColor: 'rgba(217,164,65,0.42)', color: 'var(--color-eco-gold-300)' }}
+        >
+          <span aria-hidden>↓</span>
+          Scarica PDF
+        </a>
+      ) : (
+        <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+          Aggiungi almeno una riga per scaricare il PDF.
+        </p>
+      )}
+
+      {puoEliminarePreventivo(stato) ? (
+        <EliminaPreventivo
+          quoteId={quoteId}
+          titolo={titolo}
+          variante="pulsante"
+          dopoEliminazione="/preventivi"
+        />
       ) : null}
 
       {errore ? <p className="text-xs text-eco-red-400">{errore}</p> : null}

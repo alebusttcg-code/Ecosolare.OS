@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Intestazione, Stat, Vuoto, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import type { StatoPianificabilita } from '@/lib/domain/readiness'
@@ -70,15 +71,18 @@ export default async function CommessePage() {
                   <li key={r.id} className="riga rounded-md py-4 first:pt-0 last:pb-0">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <Link
-                          href={`/cantieri/${r.id}`}
-                          className="collega text-sm font-medium transition-colors hover:text-eco-gold-300"
-                          style={{ color: 'var(--color-eco-blue-300)' }}
-                        >
-                          {r.title}
-                        </Link>
+                        <LinkNome href={`/clienti/${r.clienteId}`} className="text-sm font-medium">
+                          {r.cliente}
+                        </LinkNome>
                         <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                          {r.code} · {r.cliente} · {r.stageLabel}
+                          <Link
+                            href={`/cantieri/${r.id}`}
+                            className="collega text-eco-blue-300 hover:underline"
+                          >
+                            {r.title}
+                          </Link>
+                          {' · '}
+                          {r.code} · {r.stageLabel}
                           {r.responsabile ? ` · ${r.responsabile}` : ''}
                         </div>
                       </div>

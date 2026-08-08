@@ -1,10 +1,13 @@
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import Link from 'next/link'
+import { LinkNome, nomePersona } from '@/components/link-nome'
 import { Badge, Card, Intestazione, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { getDb } from '@/db'
 import { contacts, opportunities, quoteVersions, quotes } from '@/db/schema'
+import { can } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
-import type { StatoVersione } from '@/lib/domain/quote-lifecycle'
+import { puoEliminarePreventivo, type StatoVersione } from '@/lib/domain/quote-lifecycle'
+import { EliminaPreventivo } from './elimina'
 
 export const metadata = { title: 'Preventivi e firme — EcoSolare OS' }
 
@@ -21,8 +24,11 @@ const ETICHETTA: Record<StatoVersione, { testo: string; tono: 'neutro' | 'blu' |
 export default async function PreventiviPage() {
   const utente = await guard('read', 'quote')
 
+  const puoEliminare = can(utente, 'update', 'quote')
+
   const righe = await getDb()
     .select({
+      quoteId: quotes.id,
       versionId: quoteVersions.id,
       versionNo: quoteVersions.versionNo,
       status: quoteVersions.status,
@@ -31,6 +37,7 @@ export default async function PreventiviPage() {
       sentAt: quoteVersions.sentAt,
       code: quotes.code,
       title: quotes.title,
+      opportunityId: opportunities.id,
       opportunityCode: opportunities.code,
       clienteNome: contacts.firstName,
       clienteCognome: contacts.lastName,
@@ -66,10 +73,10 @@ export default async function PreventiviPage() {
                   style={{ borderColor: 'var(--bordo-tenue)' }}
                 >
                   <th className="pb-2.5 text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
-                    Preventivo
+                    Contatto
                   </th>
                   <th className="pb-2.5 text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
-                    Contatto
+                    Preventivo
                   </th>
                   <th className="pb-2.5 text-right text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
                     Totale
@@ -82,12 +89,20 @@ export default async function PreventiviPage() {
                   <th className="pb-2.5 text-right text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
                     Stato
                   </th>
+                  {puoEliminare ? (
+                    <th className="pb-2.5 w-px text-right text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
+                      <span className="sr-only">Azioni</span>
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
                 {righe.map((r) => {
-                  const stato = ETICHETTA[r.status as StatoVersione]
+                  const statoVersione = r.status as StatoVersione
+                  const stato = ETICHETTA[statoVersione]
                   const margine = r.marginPct === null ? null : Number.parseFloat(r.marginPct)
+                  const eliminabile =
+                    puoEliminare && puoEliminarePreventivo(statoVersione) && !r.sentAt
 
                   return (
                     <tr
@@ -96,9 +111,14 @@ export default async function PreventiviPage() {
                       style={{ borderColor: 'var(--bordo-tenue)' }}
                     >
                       <td className="py-3">
+                        <LinkNome href={`/lead/${r.opportunityId}`} className="font-medium">
+                          {nomePersona(r.clienteNome, r.clienteCognome)}
+                        </LinkNome>
+                      </td>
+                      <td className="py-3">
                         <Link
                           href={`/preventivi/${r.versionId}`}
-                          className="collega font-medium transition-colors hover:text-eco-gold-300"
+                          className="collega transition-colors hover:text-eco-gold-300"
                           style={{ color: 'var(--color-eco-blue-300)' }}
                         >
                           {r.title}
@@ -107,9 +127,6 @@ export default async function PreventiviPage() {
                           {r.code} · v{r.versionNo}
                           {r.sentAt ? ` · inviato ${formattaData(r.sentAt)}` : ''}
                         </div>
-                      </td>
-                      <td className="py-3" style={{ color: 'var(--testo-tenue)' }}>
-                        {[r.clienteNome, r.clienteCognome].filter(Boolean).join(' ')}
                       </td>
                       <td className="py-3 text-right tabular-nums">
                         {formattaEuro(r.grossTotal)}
@@ -132,6 +149,13 @@ export default async function PreventiviPage() {
                       <td className="py-3 text-right">
                         <Badge tone={stato.tono}>{stato.testo}</Badge>
                       </td>
+                      {puoEliminare ? (
+                        <td className="py-3 text-right">
+                          {eliminabile ? (
+                            <EliminaPreventivo quoteId={r.quoteId} titolo={r.title} />
+                          ) : null}
+                        </td>
+                      ) : null}
                     </tr>
                   )
                 })}

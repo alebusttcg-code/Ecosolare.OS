@@ -203,6 +203,29 @@ describe('validaRisposte', () => {
     })
     expect(violazioni.map((v) => v.codice)).toEqual(['non_numerico'])
   })
+
+  it('valida il codice POD (14–15 caratteri alfanumerici)', () => {
+    const definizione: DefinizioneQuestionario = {
+      code: 'test_pod',
+      version: 1,
+      name: 'Test POD',
+      sections: [
+        {
+          code: 'elettrico',
+          label: 'Elettrico',
+          fields: [{ code: 'pod', label: 'Codice POD', type: 'testo', required: true, format: 'pod' }],
+        },
+      ],
+    }
+
+    expect(
+      validaRisposte(definizione, { pod: 'IT001E1234567' }).some(
+        (v) => v.codice === 'formato_non_valido',
+      ),
+    ).toBe(true)
+    expect(validaRisposte(definizione, { pod: 'IT001E12345678' })).toEqual([])
+    expect(validaRisposte(definizione, { pod: 'IT001E123456789' })).toEqual([])
+  })
 })
 
 describe('calcolaCompletezza', () => {

@@ -93,7 +93,7 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
       >
         Verrà aperta la commessa in «Cantieri e commesse» con task, checklist
         documentale, distinta materiali, pratiche e piano pagamenti. Il lead
-        passerà a <strong>vinto</strong>.
+        passerà a <strong>contratto firmato</strong>.
       </p>
 
       {errore ? <p className="text-xs text-eco-red-400">{errore}</p> : null}

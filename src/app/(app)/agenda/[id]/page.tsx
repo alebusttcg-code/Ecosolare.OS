@@ -1,10 +1,18 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, asc, eq, isNull } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import type { FotoSopralluogo } from '@/components/carica-foto-sopralluogo'
+import { LinkNome, nomePersona } from '@/components/link-nome'
 import { Badge, formattaData } from '@/components/ui'
 import { getDb } from '@/db'
-import { contacts, opportunities, surveyTemplates, surveys } from '@/db/schema'
+import { contacts, opportunities, surveyFiles, surveyTemplates, surveys } from '@/db/schema'
 import { guard } from '@/lib/auth/session'
+import {
+  haDatiPrequalificaPerSopralluogo,
+  risposteDaPrequalifica,
+  unisciRisposteSopralluogo,
+} from '@/lib/domain/sopralluogo-prequalifica'
+import { correggiDefinizioneQuestionario } from '@/lib/domain/etichette-ui'
 import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnaire'
 import { CompilaSopralluogo } from './compila'
 
@@ -25,6 +33,7 @@ export default async function SopralluogoPage({
       opportunityId: opportunities.id,
       opportunityCode: opportunities.code,
       opportunityTitle: opportunities.title,
+      prequalifica: opportunities.prequalification,
       clienteNome: contacts.firstName,
       clienteCognome: contacts.lastName,
     })
@@ -36,6 +45,31 @@ export default async function SopralluogoPage({
     .limit(1)
 
   if (!riga) notFound()
+
+  const righeFoto = await getDb()
+    .select({
+      id: surveyFiles.id,
+      fieldCode: surveyFiles.fieldCode,
+      filename: surveyFiles.filename,
+      mimeType: surveyFiles.mimeType,
+      sizeBytes: surveyFiles.sizeBytes,
+      sortOrder: surveyFiles.sortOrder,
+    })
+    .from(surveyFiles)
+    .where(eq(surveyFiles.surveyId, id))
+    .orderBy(asc(surveyFiles.fieldCode), asc(surveyFiles.sortOrder))
+
+  const fotoPerCampo: Record<string, FotoSopralluogo[]> = {}
+  for (const f of righeFoto) {
+    ;(fotoPerCampo[f.fieldCode] ??= []).push(f)
+  }
+
+  const prequalifica = (riga.prequalifica ?? {}) as Risposte
+  const risposteIniziali = unisciRisposteSopralluogo(
+    risposteDaPrequalifica(prequalifica),
+    (riga.sopralluogo.answers ?? {}) as Risposte,
+  )
+  const daPrequalifica = haDatiPrequalificaPerSopralluogo(prequalifica)
 
   const completato = riga.sopralluogo.status === 'completato'
 
@@ -50,7 +84,11 @@ export default async function SopralluogoPage({
           ← Agenda e sopralluoghi
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold">{riga.template.name}</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            <LinkNome href={`/lead/${riga.opportunityId}`} hero>
+              {nomePersona(riga.clienteNome, riga.clienteCognome) || 'Senza nome'}
+            </LinkNome>
+          </h1>
           <Badge tone={completato ? 'positivo' : 'neutro'}>
             {completato ? 'Completato' : 'In compilazione'}
           </Badge>
@@ -59,7 +97,7 @@ export default async function SopralluogoPage({
           ) : null}
         </div>
         <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          {[riga.clienteNome, riga.clienteCognome].filter(Boolean).join(' ')} · lead{' '}
+          {riga.template.name} · lead{' '}
           <Link
             href={`/lead/${riga.opportunityId}`}
             className="text-eco-blue-300 hover:underline collega"
@@ -84,10 +122,14 @@ export default async function SopralluogoPage({
 
       <CompilaSopralluogo
         surveyId={riga.sopralluogo.id}
-        definizione={riga.template.definition as DefinizioneQuestionario}
-        risposteIniziali={(riga.sopralluogo.answers ?? {}) as Risposte}
+        definizione={correggiDefinizioneQuestionario(
+          riga.template.definition as DefinizioneQuestionario,
+        )}
+        risposteIniziali={risposteIniziali}
+        daPrequalifica={daPrequalifica}
         noteIniziali={riga.sopralluogo.notes ?? ''}
         completato={completato}
+        fotoPerCampo={fotoPerCampo}
       />
     </div>
   )

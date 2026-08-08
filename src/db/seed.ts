@@ -83,7 +83,8 @@ const STATI = [
 const STATI_CHIUSI = [
   {
     code: 'vinto',
-    label: 'Vinto',
+    // Non "Vinto": in EcoSolare significa che il contratto è stato firmato.
+    label: 'Contratto firmato',
     sortOrder: 200,
     defaultProbability: 100,
     isOpen: false,
@@ -92,7 +93,7 @@ const STATI_CHIUSI = [
   },
   {
     code: 'perso',
-    label: 'Perso',
+    label: 'Non concluso',
     sortOrder: 210,
     defaultProbability: 0,
     isOpen: false,
@@ -131,7 +132,7 @@ const CONFIGURAZIONI = [
     key: 'pipeline.giorni_alert_opportunita_ferma',
     value: 7,
     description:
-      'Dopo quanti giorni senza avanzamento un opportunita viene segnalata alla direzione.',
+      'Dopo quanti giorni senza avanzamento un\'opportunità viene segnalata alla direzione.',
   },
   {
     key: 'dedup.soglia_segnalazione',
@@ -143,12 +144,12 @@ const CONFIGURAZIONI = [
     key: 'preventivi.soglia_margine_pct',
     value: 20,
     description:
-      'Percentuale minima di margine. Sotto questa soglia il preventivo non viene bloccato, ma richiede l approvazione della direzione.',
+      'Percentuale minima di margine. Sotto questa soglia il preventivo non viene bloccato, ma richiede l\'approvazione della direzione.',
   },
   {
     key: 'preventivi.giorni_validita',
     value: 30,
-    description: 'Validita proposta per un nuovo preventivo, in giorni.',
+    description: 'Validità proposta per un nuovo preventivo, in giorni.',
   },
   {
     key: 'orari.servizio',
@@ -175,6 +176,13 @@ async function main(): Promise<void> {
     ]
 
     await db.insert(pipelineStages).values(stati).onConflictDoNothing()
+    // Allinea etichette già presenti: onConflictDoNothing non aggiorna le righe.
+    for (const chiuso of STATI_CHIUSI) {
+      await db
+        .update(pipelineStages)
+        .set({ label: chiuso.label })
+        .where(eq(pipelineStages.code, chiuso.code))
+    }
     console.log(`Stati pipeline: ${stati.length} verificati.`)
 
     await db.insert(leadSources).values([...FONTI]).onConflictDoNothing()

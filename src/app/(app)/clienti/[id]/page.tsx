@@ -22,11 +22,15 @@ export default async function SchedaClientePage({
 
   const { contatto, siti, opportunita, attivita, clienteDal, commesse, eCliente } =
     dettaglio
-  const etichettaStato = (code: string) =>
-    stages.find((s) => s.code === code)?.label ?? code
+  const statoDi = (code: string) => stages.find((s) => s.code === code)
+  const etichettaStato = (code: string) => statoDi(code)?.label ?? code
 
   const nome = [contatto.firstName, contatto.lastName].filter(Boolean).join(' ')
   const leadAperto = opportunita.find((o) => !o.closedAt)
+
+  const alertCommesse = commesse.filter(
+    (c) => c.documentiMancanti.length > 0 || c.readinessState !== 'pianificabile',
+  )
 
   return (
     <div className="space-y-6">
@@ -39,7 +43,7 @@ export default async function SchedaClientePage({
           >
             {eCliente ? '← Clienti' : '← Lead'}
           </Link>
-          <h1 className="mt-1 text-xl font-semibold">{nome}</h1>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{nome}</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
             {contatto.phone ? contatto.phone : null}
             {contatto.phone && contatto.email ? ' · ' : null}
@@ -95,34 +99,69 @@ export default async function SchedaClientePage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          {eCliente && commesse.length > 0 ? (
-            <Card title="Commesse">
-              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
-                {commesse.map((c) => (
-                  <li
-                    key={c.id}
-                    className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
-                  >
-                    <div>
-                      <Link
-                        href={`/cantieri/${c.id}`}
-                        className="text-sm font-medium text-eco-blue-300 hover:underline collega"
+          {eCliente ? (
+            <Card
+              title="Cantieri e commesse"
+              action={
+                <Link
+                  href="/cantieri"
+                  className="text-xs text-eco-blue-300 hover:underline collega"
+                >
+                  Vai ai cantieri →
+                </Link>
+              }
+            >
+              {commesse.length === 0 ? (
+                <Vuoto messaggio="Nessuna commessa aperta dopo la firma del contratto." />
+              ) : (
+                <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
+                  {commesse.map((c) => {
+                    const nDoc = c.documentiMancanti.length
+                    return (
+                      <li
+                        key={c.id}
+                        className="riga flex items-start justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
                       >
-                        {c.title}
-                      </Link>
-                      <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                        {c.code}
-                      </div>
-                    </div>
-                    <Badge>{c.stageLabel}</Badge>
-                  </li>
-                ))}
-              </ul>
+                        <div className="min-w-0">
+                          <Link
+                            href={`/cantieri/${c.id}`}
+                            className="text-sm font-medium text-eco-blue-300 hover:underline collega"
+                          >
+                            {c.title}
+                          </Link>
+                          <div
+                            className="mt-0.5 text-xs"
+                            style={{ color: 'var(--testo-tenue)' }}
+                          >
+                            {c.code}
+                            {nDoc > 0
+                              ? ` · ${nDoc} document${nDoc === 1 ? 'o' : 'i'} da completare`
+                              : c.readinessState === 'pianificabile'
+                                ? ' · pronto per la pianificazione'
+                                : ' · in preparazione cantiere'}
+                          </div>
+                        </div>
+                        <Badge
+                          tone={
+                            c.readinessState === 'pianificabile'
+                              ? 'positivo'
+                              : nDoc > 0
+                                ? 'attenzione'
+                                : 'neutro'
+                          }
+                        >
+                          {c.stageLabel}
+                        </Badge>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </Card>
           ) : null}
 
           <Card
-            title="Lead"
+            title="Pratiche commerciali"
             action={
               eCliente ? (
                 <Link
@@ -152,11 +191,26 @@ export default async function SchedaClientePage({
                       </Link>
                       <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
                         {o.code} · {o.businessLine}
+                        {statoDi(o.stage)?.isWon
+                          ? ' · il seguito è nel cantiere'
+                          : null}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <span>{formattaEuro(o.estimatedValue)}</span>
-                      <Badge tone={o.closedAt ? 'neutro' : 'positivo'}>
+                      {o.estimatedValue != null ? (
+                        <span>{formattaEuro(o.estimatedValue)}</span>
+                      ) : null}
+                      <Badge
+                        tone={
+                          statoDi(o.stage)?.isWon
+                            ? 'positivo'
+                            : statoDi(o.stage)?.isLost
+                              ? 'critico'
+                              : o.closedAt
+                                ? 'neutro'
+                                : 'positivo'
+                        }
+                      >
                         {etichettaStato(o.stage)}
                       </Badge>
                     </div>
@@ -194,6 +248,73 @@ export default async function SchedaClientePage({
         </div>
 
         <div className="space-y-6">
+          {alertCommesse.length > 0 ? (
+            <section
+              className="pannello rivela overflow-hidden"
+              style={{
+                borderColor: 'rgba(217,164,65,0.5)',
+                background:
+                  'linear-gradient(165deg, rgba(217,164,65,0.14) 0%, rgba(15,28,46,0.55) 55%)',
+              }}
+            >
+              <header
+                className="flex items-center justify-between gap-3 border-b px-5 py-3.5"
+                style={{ borderColor: 'rgba(217,164,65,0.28)' }}
+              >
+                <h2 className="text-sm font-semibold tracking-wide text-eco-gold-300">
+                  Azione richiesta
+                </h2>
+                <Badge tone="attenzione">Documenti</Badge>
+              </header>
+              <div className="space-y-4 p-5">
+                {alertCommesse.map((c) => {
+                  const voci =
+                    c.documentiMancanti.length > 0
+                      ? c.documentiMancanti
+                      : c.bloccanti.slice(0, 3)
+                  const href =
+                    c.documentiMancanti.length > 0
+                      ? `/cantieri/${c.id}#documenti`
+                      : `/cantieri/${c.id}`
+                  return (
+                    <div key={c.id} className="space-y-2">
+                      <p className="text-sm font-medium">{c.title}</p>
+                      <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                        Contratto firmato: per partire mancano ancora elementi sul cantiere.
+                      </p>
+                      {voci.length > 0 ? (
+                        <ul className="space-y-1 text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                          {voci.slice(0, 4).map((b, i) => (
+                            <li key={i} className="flex gap-2">
+                              <span style={{ color: 'var(--color-eco-gold-300)' }}>▸</span>
+                              <span>{b.descrizione}</span>
+                            </li>
+                          ))}
+                          {voci.length > 4 ? (
+                            <li style={{ color: 'var(--testo-fioco)' }}>
+                              + altre {voci.length - 4}
+                            </li>
+                          ) : null}
+                        </ul>
+                      ) : null}
+                      <Link
+                        href={href}
+                        className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition hover:brightness-110"
+                        style={{
+                          borderColor: 'rgba(217,164,65,0.45)',
+                          background: 'rgba(217,164,65,0.12)',
+                          color: 'var(--color-eco-gold-300)',
+                        }}
+                      >
+                        Completa i documenti sul cantiere →
+                      </Link>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          ) : null}
+
           <Card title="Anagrafica">
             <dl className="space-y-3 text-sm">
               <div>

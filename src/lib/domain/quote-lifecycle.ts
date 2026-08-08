@@ -28,6 +28,20 @@ export function puoModificare(stato: StatoVersione): boolean {
   return MODIFICABILI.includes(stato)
 }
 
+/**
+ * Un preventivo si elimina solo se non è mai uscito dall'azienda.
+ *
+ * Da `inviato` in poi i numeri sono un fatto contrattuale (ADR-008): si crea
+ * una nuova versione, non si cancella la storia.
+ */
+export function puoEliminarePreventivo(statoCorrente: StatoVersione): boolean {
+  return (
+    statoCorrente === 'bozza' ||
+    statoCorrente === 'in_approvazione' ||
+    statoCorrente === 'approvato'
+  )
+}
+
 export function eConcluso(stato: StatoVersione): boolean {
   return CONCLUSI.includes(stato)
 }
@@ -61,7 +75,7 @@ export function puoInviare(params: {
   if (params.stato !== 'bozza') {
     return {
       ok: false,
-      motivo: `Una versione in stato "${params.stato}" non puo essere inviata.`,
+      motivo: `Una versione in stato "${params.stato}" non può essere inviata.`,
       richiedeApprovazione: false,
     }
   }
@@ -69,7 +83,7 @@ export function puoInviare(params: {
   if (params.esitoSoglia === 'sotto_soglia') {
     return {
       ok: false,
-      motivo: 'Il margine e sotto la soglia minima: serve l approvazione della direzione.',
+      motivo: 'Il margine è sotto la soglia minima: serve l\'approvazione della direzione.',
       richiedeApprovazione: true,
     }
   }
@@ -111,7 +125,7 @@ export function registraEsitoCliente(
   if (stato !== 'inviato') {
     return {
       ok: false,
-      motivo: 'Si puo registrare l esito solo di una versione inviata al cliente.',
+      motivo: 'Si può registrare l\'esito solo di una versione inviata al cliente.',
     }
   }
 

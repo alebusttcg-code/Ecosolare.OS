@@ -38,15 +38,15 @@ export const PREQUALIFICA_FV: DefinizioneQuestionario = {
         },
         {
           code: 'proprietario',
-          label: 'E proprietario dell immobile',
+          label: 'È proprietario dell\'immobile',
           type: 'booleano',
           required: true,
-          help: 'Se non lo e, servira il consenso scritto del proprietario.',
+          help: 'Se non lo è, servirà il consenso scritto del proprietario.',
           punteggio: { tipo: 'valori', mappa: { true: 20, false: 0 } },
         },
         {
           code: 'consenso_proprietario',
-          label: 'Ha gia il consenso del proprietario',
+          label: 'Ha già il consenso del proprietario',
           type: 'booleano',
           showIf: { campo: 'proprietario', uguale: false },
         },
@@ -94,7 +94,7 @@ export const PREQUALIFICA_FV: DefinizioneQuestionario = {
           type: 'scelta',
           options: [
             { value: 'no', label: 'No' },
-            { value: 'si', label: 'Si' },
+            { value: 'si', label: 'Sì' },
             { value: 'non_so', label: 'Non lo so' },
           ],
           criticoSe: 'si',
@@ -105,7 +105,7 @@ export const PREQUALIFICA_FV: DefinizioneQuestionario = {
     {
       code: 'consumi',
       label: 'Consumi elettrici',
-      description: 'I dati della bolletta rendono il preventivo molto piu accurato.',
+      description: 'I dati della bolletta rendono il preventivo molto più accurato.',
       fields: [
         {
           code: 'bolletta_disponibile',

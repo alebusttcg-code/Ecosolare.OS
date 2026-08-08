@@ -5,6 +5,7 @@ import {
   riconosciTipo,
   ripulisciNome,
   validaFile,
+  validaFoto,
 } from './upload'
 
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])
@@ -99,6 +100,20 @@ describe('validaFile', () => {
     expect(validaFile({ byte: gif, dimensione: 100, tipoDichiarato: 'image/gif' }).ok).toBe(
       false,
     )
+  })
+})
+
+describe('validaFoto', () => {
+  it('accetta JPEG e PNG', () => {
+    expect(validaFoto({ byte: jpeg, dimensione: jpeg.length }).ok).toBe(true)
+    expect(validaFoto({ byte: png, dimensione: png.length }).ok).toBe(true)
+  })
+
+  it('rifiuta i PDF', () => {
+    const esito = validaFoto({ byte: pdf, dimensione: pdf.length })
+    expect(esito.ok).toBe(false)
+    if (esito.ok) return
+    expect(esito.motivo).toContain('JPEG o PNG')
   })
 })
 

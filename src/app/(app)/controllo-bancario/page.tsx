@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Intestazione, Stat, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import { ETICHETTE_ESITO, SPIEGAZIONI, type EsitoAbbinamento } from '@/lib/domain/riconciliazione'
@@ -154,7 +155,9 @@ export default async function BancaPage({
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-medium">{r.cliente}</span>
+                              <LinkNome href={`/clienti/${r.clienteId}`} className="text-sm font-medium">
+                                {r.cliente}
+                              </LinkNome>
                               <Badge tone={ok ? 'positivo' : chiuso ? 'neutro' : TONO[r.esito]}>
                                 {chiuso && !ok ? 'chiarito' : ETICHETTE_ESITO[r.esito]}
                               </Badge>

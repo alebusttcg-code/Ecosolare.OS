@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { LinkNome, nomePersona } from '@/components/link-nome'
 import { Badge, Card, formattaData } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import { puoModificare, type StatoVersione } from '@/lib/domain/quote-lifecycle'
@@ -55,7 +56,11 @@ export default async function PreventivoPage({
           ← Preventivi e firme
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold">{dati.quoteTitle}</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            <LinkNome href={`/lead/${dati.opportunityId}`} hero>
+              {nomePersona(dati.clienteNome, dati.clienteCognome) || 'Senza nome'}
+            </LinkNome>
+          </h1>
           <Badge
             tone={
               stato === 'accettato'
@@ -71,11 +76,7 @@ export default async function PreventivoPage({
           </Badge>
         </div>
         <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          {dati.quoteCode} · versione {dati.versione.versionNo} ·{' '}
-          <Link href={`/clienti/${dati.clienteId}`} className="text-eco-blue-300 hover:underline collega">
-            {[dati.clienteNome, dati.clienteCognome].filter(Boolean).join(' ')}
-          </Link>{' '}
-          · lead{' '}
+          {dati.quoteTitle} · {dati.quoteCode} · versione {dati.versione.versionNo} · lead{' '}
           <Link href={`/lead/${dati.opportunityId}`} className="text-eco-blue-300 hover:underline collega">
             {dati.opportunityCode}
           </Link>
@@ -110,7 +111,9 @@ export default async function PreventivoPage({
             <AzioniPreventivo
               versionId={dati.versione.id}
               quoteId={dati.quoteId}
+              titolo={dati.quoteTitle}
               stato={stato}
+              haRighe={dati.righe.length > 0}
             />
           </Card>
 

@@ -62,7 +62,7 @@ export function NuovoImmobile({ contactId }: { contactId: string }) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Campo label="Tipo edificio" name="buildingType" errore={errors.buildingType} />
-        <Campo label="POD" name="pod" errore={errors.pod} placeholder="IT001E…" />
+        <Campo label="POD" name="pod" errore={errors.pod} placeholder="IT001E12345678" />
       </div>
 
       {errors._ ? <p className="text-xs text-eco-red-400">{errors._}</p> : null}

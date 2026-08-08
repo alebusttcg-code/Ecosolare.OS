@@ -2,13 +2,22 @@ import { and, asc, count, desc, eq } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
   approvals,
+  companies,
   contacts,
   opportunities,
   products,
   quoteLines,
   quoteVersions,
   quotes,
+  sites,
 } from '@/db/schema'
+import {
+  formattaDataIt,
+  formattaEuroDb,
+  formattaPrezzoUnitario,
+  formattaQuantita,
+  type DatiPdfPreventivo,
+} from '@/lib/pdf/dati-preventivo'
 
 export interface RigaVisibile {
   readonly id: string
@@ -86,6 +95,122 @@ export async function getQuoteVersion(versionId: string, mostraCosti: boolean) {
     .orderBy(desc(quoteVersions.versionNo))
 
   return { ...riga, righe, versioni }
+}
+
+/**
+ * Carica una versione di preventivo per il PDF cliente.
+ *
+ * Non include costi né margini: il documento esce dall'azienda e non deve
+ * rivelare prezzi di acquisto (ADR-006).
+ */
+export async function getQuoteVersionPerPdf(
+  versionId: string,
+): Promise<DatiPdfPreventivo | null> {
+  const db = getDb()
+
+  const [riga] = await db
+    .select({
+      quoteCode: quotes.code,
+      quoteTitle: quotes.title,
+      versionNo: quoteVersions.versionNo,
+      status: quoteVersions.status,
+      globalDiscountPct: quoteVersions.globalDiscountPct,
+      revenueNet: quoteVersions.revenueNet,
+      vatAmount: quoteVersions.vatAmount,
+      grossTotal: quoteVersions.grossTotal,
+      vatBreakdown: quoteVersions.vatBreakdown,
+      validUntil: quoteVersions.validUntil,
+      sentAt: quoteVersions.sentAt,
+      createdAt: quoteVersions.createdAt,
+      notes: quoteVersions.notes,
+      clienteNome: contacts.firstName,
+      clienteCognome: contacts.lastName,
+      aziendaNome: companies.legalName,
+      immobileEtichetta: sites.label,
+      immobileVia: sites.addressLine,
+      immobileCitta: sites.city,
+      immobileProvincia: sites.province,
+      immobileCap: sites.postalCode,
+    })
+    .from(quoteVersions)
+    .innerJoin(quotes, eq(quotes.id, quoteVersions.quoteId))
+    .innerJoin(opportunities, eq(opportunities.id, quotes.opportunityId))
+    .innerJoin(contacts, eq(contacts.id, opportunities.contactId))
+    .leftJoin(companies, eq(companies.id, contacts.companyId))
+    .leftJoin(sites, eq(sites.id, opportunities.siteId))
+    .where(eq(quoteVersions.id, versionId))
+    .limit(1)
+
+  if (!riga) return null
+
+  const righeDb = await db
+    .select({
+      description: quoteLines.description,
+      unit: quoteLines.unit,
+      quantity: quoteLines.quantity,
+      unitPrice: quoteLines.unitPrice,
+      discountPct: quoteLines.discountPct,
+      vatRate: quoteLines.vatRate,
+      lineNet: quoteLines.lineNet,
+    })
+    .from(quoteLines)
+    .where(eq(quoteLines.quoteVersionId, versionId))
+    .orderBy(asc(quoteLines.sortOrder))
+
+  if (righeDb.length === 0) return null
+
+  const scontoGlobale = Number.parseFloat(riga.globalDiscountPct)
+  const ripartizioneGrezza = Array.isArray(riga.vatBreakdown)
+    ? (riga.vatBreakdown as { aliquota: number; imponibile: string; imposta: string }[])
+    : []
+
+  const indirizzoImmobile =
+    riga.immobileVia && riga.immobileCitta
+      ? [
+          riga.immobileVia,
+          [riga.immobileCap, riga.immobileCitta].filter(Boolean).join(' '),
+          riga.immobileProvincia ? `(${riga.immobileProvincia})` : null,
+        ]
+          .filter(Boolean)
+          .join(', ')
+      : null
+
+  const dataRiferimento = riga.sentAt ?? riga.createdAt
+
+  return {
+    codice: riga.quoteCode,
+    titolo: riga.quoteTitle,
+    versione: riga.versionNo,
+    dataDocumento: formattaDataIt(dataRiferimento),
+    validita: riga.validUntil ? formattaDataIt(riga.validUntil) : null,
+    clienteNome: [riga.clienteNome, riga.clienteCognome].filter(Boolean).join(' '),
+    aziendaCliente: riga.aziendaNome,
+    immobileEtichetta: riga.immobileEtichetta,
+    immobileIndirizzo: indirizzoImmobile,
+    righe: righeDb.map((r) => {
+      const sconto = Number.parseFloat(r.discountPct)
+      return {
+        descrizione: r.description,
+        quantita: formattaQuantita(r.quantity),
+        unita: r.unit,
+        prezzoUnitario: formattaPrezzoUnitario(r.unitPrice),
+        scontoPct: sconto > 0 ? `${sconto.toLocaleString('it-IT')}%` : null,
+        ivaPct: `${Number.parseFloat(r.vatRate).toLocaleString('it-IT')}%`,
+        importo: formattaEuroDb(r.lineNet),
+      }
+    }),
+    scontoGlobalePct:
+      scontoGlobale > 0 ? `${scontoGlobale.toLocaleString('it-IT')}%` : null,
+    imponibile: formattaEuroDb(riga.revenueNet),
+    ripartizioneIva: ripartizioneGrezza.map((v) => ({
+      etichetta: `IVA ${Number(v.aliquota).toLocaleString('it-IT')}%`,
+      imponibile: formattaEuroDb(v.imponibile),
+      imposta: formattaEuroDb(v.imposta),
+    })),
+    totaleIva: formattaEuroDb(riga.vatAmount),
+    totaleLordo: formattaEuroDb(riga.grossTotal),
+    note: riga.notes?.trim() || null,
+  }
 }
 
 /** Catalogo attivo per il selettore di riga. */

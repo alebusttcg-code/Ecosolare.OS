@@ -820,6 +820,37 @@ export const surveys = pgTable(
   ],
 )
 
+/**
+ * Fotografie allegate a un sopralluogo (ADR-004).
+ *
+ * I byte restano nell'object storage; in `surveys.answers` compaiono solo gli
+ * id. Un campo foto puo' avere piu' immagini (angolazioni diverse del tetto).
+ */
+export const surveyFiles = pgTable(
+  'survey_files',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    surveyId: uuid('survey_id')
+      .notNull()
+      .references(() => surveys.id, { onDelete: 'cascade' }),
+    fieldCode: text('field_code').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+
+    storageKey: text('storage_key').notNull(),
+    filename: text('filename').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    checksum: text('checksum'),
+
+    uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('survey_files_survey_idx').on(table.surveyId),
+    index('survey_files_survey_field_idx').on(table.surveyId, table.fieldCode),
+  ],
+)
+
 /* -------------------------------------------------------------------------- */
 /*  Preventivi                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -1582,6 +1613,7 @@ export type NewActivity = typeof activities.$inferInsert
 export type Product = typeof products.$inferSelect
 export type SurveyTemplate = typeof surveyTemplates.$inferSelect
 export type Survey = typeof surveys.$inferSelect
+export type SurveyFile = typeof surveyFiles.$inferSelect
 export type Quote = typeof quotes.$inferSelect
 export type QuoteVersion = typeof quoteVersions.$inferSelect
 export type QuoteLine = typeof quoteLines.$inferSelect

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   eConcluso,
   eScaduto,
+  puoEliminarePreventivo,
   puoInviare,
   puoModificare,
   registraEsitoCliente,
@@ -17,6 +18,18 @@ const TUTTI: StatoVersione[] = [
   'rifiutato',
   'scaduto',
 ]
+
+describe('puoEliminarePreventivo', () => {
+  it('consente l eliminazione solo prima dell invio al cliente', () => {
+    expect(puoEliminarePreventivo('bozza')).toBe(true)
+    expect(puoEliminarePreventivo('in_approvazione')).toBe(true)
+    expect(puoEliminarePreventivo('approvato')).toBe(true)
+    expect(puoEliminarePreventivo('inviato')).toBe(false)
+    expect(puoEliminarePreventivo('accettato')).toBe(false)
+    expect(puoEliminarePreventivo('rifiutato')).toBe(false)
+    expect(puoEliminarePreventivo('scaduto')).toBe(false)
+  })
+})
 
 describe('puoModificare', () => {
   it('consente la modifica solo in bozza', () => {

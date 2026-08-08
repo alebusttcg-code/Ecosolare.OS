@@ -90,6 +90,7 @@ export interface Riscontro {
   readonly notaVerifica: string | null
 
   readonly cliente: string
+  readonly clienteId: string
   readonly commessaId: string
   readonly commessaCodice: string
   readonly scadenza: string
@@ -144,6 +145,7 @@ export async function getDettaglioEstratto(id: string): Promise<DettaglioEstratt
       importoAtteso: paymentMilestones.amountNet,
       okAmministrativoIl: paymentMilestones.adminOkAt,
 
+      clienteId: contacts.id,
       cognome: contacts.lastName,
       nomeCliente: contacts.firstName,
       ragioneSociale: companies.legalName,
@@ -210,6 +212,7 @@ export async function getDettaglioEstratto(id: string): Promise<DettaglioEstratt
         cliente:
           r.ragioneSociale ??
           [r.nomeCliente, r.cognome].filter(Boolean).join(' '),
+        clienteId: r.clienteId,
         commessaId: r.commessaId,
         commessaCodice: r.commessaCodice,
         scadenza: r.scadenza,

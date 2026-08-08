@@ -1,3 +1,5 @@
+import { validaPod } from '@/lib/domain/pod'
+
 /**
  * Motore dei questionari condizionali.
  *
@@ -57,6 +59,8 @@ export interface Campo {
   readonly unit?: string
   readonly min?: number
   readonly max?: number
+  /** Formato atteso per i campi testo (es. codice POD elettrico). */
+  readonly format?: 'pod'
   readonly showIf?: Condizione
   readonly punteggio?: RegolaPunteggio
   /** Se true, una risposta affermativa segnala una criticita' tecnica. */
@@ -136,6 +140,7 @@ export type CodiceViolazione =
   | 'fuori_intervallo'
   | 'non_numerico'
   | 'opzione_non_valida'
+  | 'formato_non_valido'
 
 export interface Violazione {
   readonly campo: string
@@ -166,12 +171,29 @@ export function validaRisposte(
         campo: campo.code,
         label: campo.label,
         codice: 'obbligatorio',
-        messaggio: `"${campo.label}" e obbligatorio.`,
+        messaggio: `"${campo.label}" è obbligatorio.`,
       })
       continue
     }
 
     if (!compilato) continue
+
+    if (
+      (campo.type === 'testo' || campo.type === 'testo_lungo') &&
+      (campo.format === 'pod' || campo.code === 'pod') &&
+      typeof valore === 'string'
+    ) {
+      const esito = validaPod(valore)
+      if (!esito.ok) {
+        violazioni.push({
+          campo: campo.code,
+          label: campo.label,
+          codice: 'formato_non_valido',
+          messaggio: esito.motivo,
+        })
+        continue
+      }
+    }
 
     if (campo.type === 'numero') {
       const numero = typeof valore === 'number' ? valore : Number.parseFloat(String(valore))

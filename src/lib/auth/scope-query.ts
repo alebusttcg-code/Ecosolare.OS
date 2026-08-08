@@ -6,6 +6,8 @@ import {
   documentRequirements,
   projectTasks,
   projects,
+  surveyFiles,
+  surveys,
 } from '@/db/schema'
 import { AuthorizationError, scopeFor, type PolicySubject } from './policy'
 
@@ -88,4 +90,42 @@ export async function assertDocumentoInScope(
   if (!requisito) throw new AuthorizationError('read', 'document')
 
   await assertCommessaInScope(utente, requisito.projectId)
+}
+
+/** Verifica scope su un sopralluogo. */
+export async function assertSopralluogoInScope(
+  utente: UtenteConId,
+  surveyId: string,
+): Promise<void> {
+  const scope = scopeFor(utente, 'survey')
+  if (scope === 'none') throw new AuthorizationError('read', 'survey')
+  if (scope === 'all') return
+
+  const sopralluogo = await getDb().query.surveys.findFirst({
+    where: eq(surveys.id, surveyId),
+    columns: { performedBy: true, createdBy: true },
+  })
+  if (!sopralluogo) throw new AuthorizationError('read', 'survey')
+
+  if (sopralluogo.performedBy === utente.id || sopralluogo.createdBy === utente.id) return
+  throw new AuthorizationError('read', 'survey')
+}
+
+/** Verifica scope su una fotografia di sopralluogo. */
+export async function assertFotoSopralluogoInScope(
+  utente: UtenteConId,
+  fileId: string,
+): Promise<void> {
+  const scope = scopeFor(utente, 'survey')
+  if (scope === 'none') throw new AuthorizationError('read', 'survey')
+  if (scope === 'all') return
+
+  const db = getDb()
+  const file = await db.query.surveyFiles.findFirst({
+    where: eq(surveyFiles.id, fileId),
+    columns: { surveyId: true },
+  })
+  if (!file) throw new AuthorizationError('read', 'survey')
+
+  await assertSopralluogoInScope(utente, file.surveyId)
 }

@@ -232,11 +232,45 @@ export function calcolaValori(
 export interface RigaRipartizione {
   readonly chiave: string
   readonly lead: number
+  /** Sopralluoghi effettuati (chiusi) nella coorte. */
+  readonly sopralluoghi: number
+  /** Lead → sopralluogo, in centesimi di punto. */
+  readonly tassoSopralluogo: number | null
   readonly contratti: number
-  /** Centesimi di punto. */
+  /** Lead → contratto (chiusura), in centesimi di punto. */
   readonly conversione: number | null
-  /** Centesimi di euro. */
+  /** Fatturato da contratti firmati, in centesimi di euro. */
   readonly valore: number
+}
+
+/**
+ * Prestazioni di un insieme di pratiche (totale azienda o un commerciale).
+ *
+ * Stessa formula ovunque: altrimenti il totale e le ripartizioni divergono e
+ * nessuno si fida più dei numeri.
+ */
+export function aggregaPrestazioni(
+  pratiche: readonly PraticaCommerciale[],
+  chiave: string,
+): RigaRipartizione {
+  const sopralluoghi = pratiche.filter((p) => p.sopralluogoEffettuatoIl !== null).length
+  const vinte = pratiche.filter((p) => p.contrattoFirmatoIl !== null)
+  return {
+    chiave,
+    lead: pratiche.length,
+    sopralluoghi,
+    tassoSopralluogo: percentuale(sopralluoghi, pratiche.length),
+    contratti: vinte.length,
+    conversione: percentuale(vinte.length, pratiche.length),
+    valore: vinte.reduce((s, p) => s + (p.valoreContratto ?? 0), 0),
+  }
+}
+
+/** Totale azienda sulla stessa coorte delle ripartizioni. */
+export function totaleAzienda(
+  pratiche: readonly PraticaCommerciale[],
+): RigaRipartizione {
+  return aggregaPrestazioni(pratiche, 'Totale azienda')
 }
 
 /** Raggruppa per una dimensione qualsiasi: fonte, commerciale, linea. */
@@ -253,17 +287,8 @@ export function ripartisci(
   }
 
   return [...gruppi.entries()]
-    .map(([k, elenco]) => {
-      const vinte = elenco.filter((p) => p.contrattoFirmatoIl !== null)
-      return {
-        chiave: k,
-        lead: elenco.length,
-        contratti: vinte.length,
-        conversione: percentuale(vinte.length, elenco.length),
-        valore: vinte.reduce((s, p) => s + (p.valoreContratto ?? 0), 0),
-      }
-    })
-    // Prima chi porta più valore: è l'ordine in cui si prendono le decisioni.
+    .map(([k, elenco]) => aggregaPrestazioni(elenco, k))
+    // Prima chi porta più fatturato: è l'ordine in cui si prendono le decisioni.
     .sort((a, b) => b.valore - a.valore || b.lead - a.lead)
 }
 

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import type { FotoSopralluogo } from '@/components/carica-foto-sopralluogo'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { Questionario } from '@/components/questionario'
 import { saveSurvey } from '@/lib/actions/questionnaires'
@@ -26,14 +27,18 @@ export function CompilaSopralluogo({
   surveyId,
   definizione,
   risposteIniziali,
+  daPrequalifica,
   noteIniziali,
   completato,
+  fotoPerCampo,
 }: {
   surveyId: string
   definizione: DefinizioneQuestionario
   risposteIniziali: Risposte
+  daPrequalifica: boolean
   noteIniziali: string
   completato: boolean
+  fotoPerCampo: Readonly<Record<string, readonly FotoSopralluogo[]>>
 }) {
   const router = useRouter()
   const avvisa = useAvvisi()
@@ -149,6 +154,20 @@ export function CompilaSopralluogo({
         </div>
       ) : null}
 
+      {daPrequalifica && !completato ? (
+        <p
+          className="rounded-lg border p-3 text-xs leading-relaxed"
+          style={{
+            borderColor: 'rgba(91,155,213,0.28)',
+            background: 'rgba(63,127,196,0.08)',
+            color: 'var(--testo-tenue)',
+          }}
+        >
+          Tetto, superficie, ombre e accumulo arrivano dalla prequalifica del lead: verifica sul
+          posto e correggi se serve prima di chiudere.
+        </p>
+      ) : null}
+
       <div
         className="rounded-lg border p-6"
         style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
@@ -158,6 +177,8 @@ export function CompilaSopralluogo({
           risposte={risposte}
           errori={errori}
           soloLettura={completato}
+          surveyId={surveyId}
+          fotoPerCampo={fotoPerCampo}
           onChange={aggiorna}
         />
 

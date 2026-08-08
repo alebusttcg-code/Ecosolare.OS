@@ -116,6 +116,7 @@ export interface AttivitaInElenco {
   readonly opportunityId: string | null
   readonly opportunityCode: string | null
   readonly opportunityTitle: string | null
+  readonly clienteNome: string | null
 }
 
 /**
@@ -140,9 +141,12 @@ export async function getAttivitaAperte(
       opportunityId: activities.opportunityId,
       opportunityCode: opportunities.code,
       opportunityTitle: opportunities.title,
+      contattoNome: contacts.firstName,
+      contattoCognome: contacts.lastName,
     })
     .from(activities)
     .leftJoin(opportunities, eq(opportunities.id, activities.opportunityId))
+    .leftJoin(contacts, eq(contacts.id, opportunities.contactId))
     .where(
       and(
         eq(activities.assignedTo, userId),
@@ -154,10 +158,14 @@ export async function getAttivitaAperte(
     .orderBy(sql`${activities.dueAt} asc nulls last`)
     .limit(limite)
 
-  return righe.map((r) => ({
-    ...r,
-    scaduta: r.dueAt !== null && r.dueAt.getTime() < adesso,
-  }))
+  return righe.map((r) => {
+    const { contattoNome, contattoCognome, ...resto } = r
+    return {
+      ...resto,
+      clienteNome: [contattoNome, contattoCognome].filter(Boolean).join(' ') || null,
+      scaduta: r.dueAt !== null && r.dueAt.getTime() < adesso,
+    }
+  })
 }
 
 /** Quante attivita' aperte ha in carico ciascuno: serve per la ripartizione. */

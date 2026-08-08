@@ -7,6 +7,11 @@ import type {
   Risposte,
 } from '@/lib/domain/questionnaire'
 import { campoVisibile } from '@/lib/domain/questionnaire'
+import {
+  CaricaFotoSopralluogo,
+  type FotoSopralluogo,
+} from '@/components/carica-foto-sopralluogo'
+import { normalizzaPod, POD_LUNGHEZZA_MAX } from '@/lib/domain/pod'
 
 /**
  * Renderer dei questionari condizionali.
@@ -20,12 +25,17 @@ export function Questionario({
   errori,
   soloLettura,
   onChange,
+  surveyId,
+  fotoPerCampo,
 }: {
   definizione: DefinizioneQuestionario
   risposte: Risposte
   errori?: Readonly<Record<string, string>>
   soloLettura?: boolean
   onChange: (code: string, valore: Risposta) => void
+  /** Obbligatorio per i campi `foto` del sopralluogo. */
+  surveyId?: string
+  fotoPerCampo?: Readonly<Record<string, readonly FotoSopralluogo[]>>
 }) {
   return (
     <div className="space-y-8">
@@ -47,7 +57,9 @@ export function Questionario({
                 <div
                   key={campo.code}
                   className={
-                    campo.type === 'testo_lungo' || campo.type === 'scelta_multipla'
+                    campo.type === 'testo_lungo' ||
+                    campo.type === 'scelta_multipla' ||
+                    campo.type === 'foto'
                       ? 'md:col-span-2'
                       : ''
                   }
@@ -57,7 +69,22 @@ export function Questionario({
                     valore={risposte[campo.code]}
                     errore={errori?.[campo.code]}
                     soloLettura={soloLettura ?? false}
+                    surveyId={surveyId}
+                    foto={fotoPerCampo?.[campo.code]}
                     onChange={(v) => onChange(campo.code, v)}
+                    onFotoCaricata={(id) => {
+                      const ids = Array.isArray(risposte[campo.code])
+                        ? (risposte[campo.code] as string[])
+                        : []
+                      if (ids.includes(id)) return
+                      onChange(campo.code, [...ids, id])
+                    }}
+                    onFotoEliminata={(id) => {
+                      const ids = Array.isArray(risposte[campo.code])
+                        ? (risposte[campo.code] as string[]).filter((v) => v !== id)
+                        : []
+                      onChange(campo.code, ids.length > 0 ? ids : null)
+                    }}
                   />
                 </div>
               ))}
@@ -74,13 +101,21 @@ function CampoQuestionario({
   valore,
   errore,
   soloLettura,
+  surveyId,
+  foto,
   onChange,
+  onFotoCaricata,
+  onFotoEliminata,
 }: {
   campo: Campo
   valore: Risposta
   errore?: string | undefined
   soloLettura: boolean
+  surveyId?: string
+  foto?: readonly FotoSopralluogo[]
   onChange: (valore: Risposta) => void
+  onFotoCaricata?: (fileId: string) => void
+  onFotoEliminata?: (fileId: string) => void
 }) {
   const bordo = errore ? 'var(--color-eco-red-400)' : 'var(--bordo)'
   const stileInput = {
@@ -110,6 +145,8 @@ function CampoQuestionario({
   const messaggioErrore = errore ? (
     <span className="mt-1 block text-xs text-eco-red-400">{errore}</span>
   ) : null
+
+  const ePod = campo.format === 'pod' || campo.code === 'pod'
 
   if (campo.type === 'booleano') {
     return (
@@ -224,15 +261,36 @@ function CampoQuestionario({
   }
 
   if (campo.type === 'foto') {
+    if (!surveyId) {
+      return (
+        <div
+          className="rounded-md border border-dashed p-3"
+          style={{ borderColor: 'var(--bordo)' }}
+        >
+          {etichetta}
+          <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+            Caricamento fotografie non disponibile in questo contesto.
+          </p>
+        </div>
+      )
+    }
+
     return (
       <div
         className="rounded-md border border-dashed p-3"
-        style={{ borderColor: 'var(--bordo)' }}
+        style={{ borderColor: bordo, background: 'rgba(5,10,20,0.35)' }}
       >
         {etichetta}
-        <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-          Il caricamento delle fotografie arriva con il modulo documentale.
-        </p>
+        {aiuto}
+        <CaricaFotoSopralluogo
+          surveyId={surveyId}
+          fieldCode={campo.code}
+          files={foto ?? []}
+          disabled={soloLettura}
+          onCaricata={onFotoCaricata}
+          onEliminata={onFotoEliminata}
+        />
+        {messaggioErrore}
       </div>
     )
   }
@@ -245,6 +303,10 @@ function CampoQuestionario({
         step={campo.type === 'numero' ? 'any' : undefined}
         min={campo.min}
         max={campo.max}
+        maxLength={ePod ? POD_LUNGHEZZA_MAX : undefined}
+        placeholder={ePod ? 'IT001E12345678' : undefined}
+        autoCapitalize={ePod ? 'characters' : undefined}
+        spellCheck={ePod ? false : undefined}
         value={
           valore === null || valore === undefined || Array.isArray(valore)
             ? ''
@@ -258,6 +320,7 @@ function CampoQuestionario({
             const n = Number.parseFloat(grezzo)
             return onChange(Number.isFinite(n) ? n : grezzo)
           }
+          if (ePod) return onChange(normalizzaPod(grezzo) || null)
           onChange(grezzo)
         }}
         className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]"

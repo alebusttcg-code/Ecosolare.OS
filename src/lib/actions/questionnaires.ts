@@ -7,6 +7,7 @@ import { getDb } from '@/db'
 import { activities, opportunities, surveyTemplates, surveys } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
+import { correggiDefinizioneQuestionario } from '@/lib/domain/etichette-ui'
 import {
   calcolaPunteggio,
   criticitaRilevate,
@@ -72,7 +73,9 @@ export async function savePrequalification(
   })
   if (!template) return { ok: false, errors: { _: 'Questionario non trovato.' } }
 
-  const definizione = template.definition as DefinizioneQuestionario
+  const definizione = correggiDefinizioneQuestionario(
+    template.definition as DefinizioneQuestionario,
+  )
   const risposte = dati.risposte as Risposte
 
   const esito = calcolaPunteggio(definizione, risposte)
@@ -149,7 +152,7 @@ export async function createSurvey(
       where: eq(opportunities.id, dati.opportunityId),
       columns: { businessLine: true },
     })
-    if (!opportunita) return { ok: false, errors: { _: 'Opportunita non trovata.' } }
+    if (!opportunita) return { ok: false, errors: { _: 'Opportunità non trovata.' } }
 
     const template = await db.query.surveyTemplates.findFirst({
       where: and(
@@ -237,7 +240,7 @@ export async function saveSurvey(
   })
   if (!sopralluogo) return { ok: false, errors: { _: 'Sopralluogo non trovato.' } }
   if (sopralluogo.status === 'completato') {
-    return { ok: false, errors: { _: 'Il sopralluogo e gia stato completato.' } }
+    return { ok: false, errors: { _: 'Il sopralluogo è già stato completato.' } }
   }
 
   const template = await db.query.surveyTemplates.findFirst({
@@ -245,7 +248,9 @@ export async function saveSurvey(
   })
   if (!template) return { ok: false, errors: { _: 'Checklist non trovata.' } }
 
-  const definizione = template.definition as DefinizioneQuestionario
+  const definizione = correggiDefinizioneQuestionario(
+    template.definition as DefinizioneQuestionario,
+  )
   const risposte = dati.risposte as Risposte
 
   const violazioni = validaRisposte(definizione, risposte)
@@ -301,7 +306,7 @@ export async function saveSurvey(
           subject: 'Preparare il preventivo',
           notes:
             criticita.length > 0
-              ? `Criticita rilevate in sopralluogo: ${criticita.map((c) => c.label).join(', ')}.`
+              ? `Criticità rilevate in sopralluogo: ${criticita.map((c) => c.label).join(', ')}.`
               : null,
           opportunityId: opportunita.id,
           contactId: opportunita.contactId,

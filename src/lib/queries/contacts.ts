@@ -16,6 +16,7 @@ import {
   type UtenteConId,
 } from '@/lib/auth/scope-query'
 import { normalizePhone } from '@/lib/domain/phone'
+import type { Blocco, StatoPianificabilita } from '@/lib/domain/readiness'
 
 export interface ContattoInElenco {
   readonly id: string
@@ -168,6 +169,8 @@ export async function getContactDetail(utente: UtenteConId, id: string) {
           title: projects.title,
           stage: projects.stage,
           stageLabel: projectStages.label,
+          readinessState: projects.readinessState,
+          readinessBlockers: projects.readinessBlockers,
         })
         .from(projects)
         .innerJoin(projectStages, eq(projectStages.code, projects.stage))
@@ -189,7 +192,20 @@ export async function getContactDetail(utente: UtenteConId, id: string) {
     opportunita: sueOpportunita,
     attivita: sueAttivita,
     clienteDal,
-    commesse: sueCommesse,
+    commesse: sueCommesse.map((c) => {
+      const tutti = (c.readinessBlockers ?? []) as Blocco[]
+      const bloccanti = tutti.filter((b) => b.gravita === 'bloccante')
+      return {
+        id: c.id,
+        code: c.code,
+        title: c.title,
+        stage: c.stage,
+        stageLabel: c.stageLabel,
+        readinessState: c.readinessState as StatoPianificabilita,
+        bloccanti,
+        documentiMancanti: bloccanti.filter((b) => b.tipo === 'documento'),
+      }
+    }),
     /** True solo dopo almeno una firma di preventivo. */
     eCliente: clienteDal !== null,
   }

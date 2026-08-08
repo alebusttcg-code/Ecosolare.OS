@@ -35,6 +35,7 @@ export interface CommessaInElenco {
   readonly bloccanti: readonly Blocco[]
   readonly giorniDiBlocco: number | null
   readonly revenueNet: string
+  readonly clienteId: string
   readonly cliente: string
   readonly responsabile: string | null
   /** Valorizzato quando la commessa è in uno stato chiuso. */
@@ -80,6 +81,7 @@ export async function listProjects(
       revenueNet: projects.revenueNet,
       completedAt: projects.completedAt,
       stageSince: projects.stageSince,
+      clienteId: contacts.id,
       clienteNome: contacts.firstName,
       clienteCognome: contacts.lastName,
       responsabile: users.name,
@@ -111,6 +113,7 @@ export async function listProjects(
           ? null
           : Math.max(0, Math.floor((adesso - r.blockedSince.getTime()) / 86_400_000)),
       revenueNet: r.revenueNet,
+      clienteId: r.clienteId,
       cliente: [r.clienteNome, r.clienteCognome].filter(Boolean).join(' '),
       responsabile: r.responsabile ?? r.responsabileEmail,
       completedAt: r.completedAt,

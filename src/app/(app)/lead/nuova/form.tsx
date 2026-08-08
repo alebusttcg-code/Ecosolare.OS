@@ -154,7 +154,12 @@ export function FormNuovoLead({
                 className="flex items-center justify-between gap-3 text-sm"
               >
                 <div>
-                  <div>{d.nome}</div>
+                  <Link
+                    href={`/clienti/${d.id}`}
+                    className="collega text-eco-blue-300 hover:underline"
+                  >
+                    {d.nome}
+                  </Link>
                   <div className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
                     {d.telefono ?? 'senza telefono'} ·{' '}
                     {d.motivi.map((m) => ETICHETTA_MOTIVO[m] ?? m).join(', ')}
@@ -187,9 +192,14 @@ export function FormNuovoLead({
           style={{ borderColor: 'var(--bordo)', background: 'rgba(255,255,255,0.03)' }}
         >
           <p className="font-medium">
-            {[contattoEsistente.firstName, contattoEsistente.lastName]
-              .filter(Boolean)
-              .join(' ')}
+            <Link
+              href={`/clienti/${contattoEsistente.id}`}
+              className="collega text-eco-blue-300 hover:underline"
+            >
+              {[contattoEsistente.firstName, contattoEsistente.lastName]
+                .filter(Boolean)
+                .join(' ')}
+            </Link>
           </p>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
             {[contattoEsistente.phone, contattoEsistente.email].filter(Boolean).join(' · ') ||

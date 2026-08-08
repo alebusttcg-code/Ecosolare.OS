@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import type { StatoPianificabilita } from '@/lib/domain/readiness'
@@ -59,20 +60,17 @@ export default async function CommessaPage({
           ← Cantieri e commesse
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{c.title}</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            <LinkNome href={`/clienti/${dati.clienteId}`} hero>
+              {cliente || 'Senza nome'}
+            </LinkNome>
+          </h1>
           <Badge tone={stato.tono}>{stato.testo}</Badge>
           <Badge tone="blu">{dati.stageLabel}</Badge>
         </div>
         <p className="mt-1.5 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          {c.code} ·{' '}
-          <Link
-            href={`/clienti/${dati.clienteId}`}
-            className="collega"
-            style={{ color: 'var(--color-eco-blue-300)' }}
-          >
-            {cliente}
-          </Link>{' '}
-          · contratto {dati.contractCode} del {formattaData(dati.signedAt)}
+          {c.title} · {c.code} · contratto {dati.contractCode} del{' '}
+          {formattaData(dati.signedAt)}
           {dati.sitoLabel ? ` · ${dati.sitoIndirizzo}, ${dati.sitoComune}` : ''}
         </p>
         <div className="mt-4 filetto barra-cresce" />
@@ -168,7 +166,11 @@ export default async function CommessaPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card title={`Documenti (${docApprovati}/${dati.documenti.length})`} indice={1}>
+          <Card
+            id="documenti"
+            title={`Documenti (${docApprovati}/${dati.documenti.length})`}
+            indice={1}
+          >
             {dati.documenti.length === 0 ? (
               <Vuoto messaggio="Nessun requisito documentale." />
             ) : (

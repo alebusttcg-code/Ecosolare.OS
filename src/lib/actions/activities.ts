@@ -68,8 +68,8 @@ export async function completeActivity(
   const attivita = await db.query.activities.findFirst({
     where: eq(activities.id, dati.activityId),
   })
-  if (!attivita) return { ok: false, errors: { _: 'Attivita non trovata.' } }
-  if (attivita.completedAt) return { ok: false, errors: { _: 'Attivita gia completata.' } }
+  if (!attivita) return { ok: false, errors: { _: 'Attività non trovata.' } }
+  if (attivita.completedAt) return { ok: false, errors: { _: 'Attività già completata.' } }
 
   const opportunita = attivita.opportunityId
     ? await db.query.opportunities.findFirst({
@@ -88,7 +88,7 @@ export async function completeActivity(
       ok: false,
       errors: {
         prossima:
-          'Indicare la prossima azione: un opportunita aperta non puo restare senza.',
+          'Indicare la prossima azione: un\'opportunità aperta non può restare senza.',
       },
     }
   }

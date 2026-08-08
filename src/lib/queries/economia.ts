@@ -176,6 +176,7 @@ export async function getPanoramicaEconomica(
 
 export interface PreventivoApertoInElenco {
   readonly versionId: string
+  readonly opportunityId: string
   readonly code: string
   readonly titolo: string
   readonly cliente: string
@@ -196,6 +197,7 @@ export async function elencoPreventiviAperti(
   const righe = await db
     .select({
       versionId: quoteVersions.id,
+      opportunityId: opportunities.id,
       code: quotes.code,
       titolo: quotes.title,
       firstName: contacts.firstName,
@@ -224,6 +226,7 @@ export async function elencoPreventiviAperti(
 
   return righe.map((r) => ({
     versionId: r.versionId,
+    opportunityId: r.opportunityId,
     code: r.code,
     titolo: r.titolo,
     cliente: [r.firstName, r.lastName].filter(Boolean).join(' '),

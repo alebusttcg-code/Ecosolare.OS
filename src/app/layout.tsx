@@ -9,7 +9,8 @@ export const metadata: Metadata = {
   title: 'EcoSolare OS',
   description: 'Sistema operativo aziendale EcoSolare',
   robots: { index: false, follow: false },
-  icons: { apple: '/pwa/icona-180.png' },
+  // Favicon e apple-touch-icon: `src/app/icon.png` e `src/app/apple-icon.png`
+  // (marchio solare EcoSolare su fondo abisso, come la PWA).
   appleWebApp: {
     capable: true,
     title: 'EcoSolare',

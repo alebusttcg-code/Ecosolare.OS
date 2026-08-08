@@ -22,11 +22,14 @@ export function Dialogo({
   titolo,
   onChiudi,
   children,
+  larghezza = 'md',
 }: {
   aperto: boolean
   titolo: string
   onChiudi: () => void
   children: ReactNode
+  /** Larghezza massima del pannello (es. anteprima fotocamera). */
+  larghezza?: 'md' | 'lg'
 }) {
   const titoloId = useId()
   const pannello = useRef<HTMLDivElement>(null)
@@ -77,7 +80,7 @@ export function Dialogo({
         aria-modal="true"
         aria-labelledby={titoloId}
         tabIndex={-1}
-        className="relative z-[1] flex max-h-full w-full max-w-md flex-col rounded-2xl border outline-none"
+        className={`relative z-[1] flex max-h-full w-full ${larghezza === 'lg' ? 'max-w-lg' : 'max-w-md'} flex-col rounded-2xl border outline-none`}
         style={{
           background:
             'linear-gradient(165deg, rgba(14,24,40,0.98) 0%, rgba(5,10,20,0.99) 100%)',

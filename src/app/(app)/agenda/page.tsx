@@ -1,5 +1,6 @@
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import Link from 'next/link'
+import { LinkNome, nomePersona } from '@/components/link-nome'
 import { Badge, Card, Intestazione, Vuoto, formattaData } from '@/components/ui'
 import { getDb } from '@/db'
 import { contacts, opportunities, surveyTemplates, surveys, users } from '@/db/schema'
@@ -19,6 +20,7 @@ export default async function SopralluoghiPage() {
       hasCriticalIssues: surveys.hasCriticalIssues,
       estimatedPowerKw: surveys.estimatedPowerKw,
       templateName: surveyTemplates.name,
+      opportunityId: opportunities.id,
       opportunityCode: opportunities.code,
       opportunityTitle: opportunities.title,
       clienteNome: contacts.firstName,
@@ -54,15 +56,18 @@ export default async function SopralluoghiPage() {
                 className="riga flex items-center justify-between gap-4 rounded-md py-3.5 first:pt-0 last:pb-0"
               >
                 <div className="min-w-0">
-                  <Link
-                    href={`/agenda/${r.id}`}
-                    className="collega text-sm font-medium transition-colors hover:text-eco-gold-300"
-                    style={{ color: 'var(--color-eco-blue-300)' }}
-                  >
-                    {[r.clienteNome, r.clienteCognome].filter(Boolean).join(' ')}
-                  </Link>
+                  <LinkNome href={`/lead/${r.opportunityId}`} className="text-sm font-medium">
+                    {nomePersona(r.clienteNome, r.clienteCognome)}
+                  </LinkNome>
                   <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                    {r.opportunityCode} · {r.templateName}
+                    <Link
+                      href={`/agenda/${r.id}`}
+                      className="collega text-eco-blue-300 hover:underline"
+                    >
+                      {r.templateName}
+                    </Link>
+                    {' · '}
+                    {r.opportunityCode}
                     {r.tecnico ? ` · ${r.tecnico}` : ''}
                     {r.estimatedPowerKw ? ` · ${r.estimatedPowerKw} kWp` : ''}
                   </div>

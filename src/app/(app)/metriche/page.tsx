@@ -11,6 +11,8 @@ import {
   formattaPercentuale,
   motiviDiPerdita,
   ripartisci,
+  totaleAzienda,
+  type RigaRipartizione,
 } from '@/lib/domain/funnel'
 import { formattaImporto } from '@/lib/domain/money'
 import { getCoorteCommerciale, periodiDisponibili, trovaPeriodo } from '@/lib/queries/metrics'
@@ -35,12 +37,12 @@ export default async function MetrichePage({
   const tempi = calcolaTempi(coorte)
   const valori = calcolaValori(coorte)
   const maturita = calcolaMaturita(coorte)
+  const azienda = totaleAzienda(coorte)
   const perFonte = ripartisci(coorte, (p) => p.fonte)
   const perCommerciale = ripartisci(coorte, (p) => p.commerciale, 'Non assegnato')
   const perLinea = ripartisci(coorte, (p) => p.lineaBusiness)
   const perdite = motiviDiPerdita(coorte)
 
-  const contratti = imbuto.find((t) => t.codice === 'contratto')!
   const massimoImbuto = Math.max(1, ...imbuto.map((t) => t.conteggio))
 
   return (
@@ -82,35 +84,47 @@ export default async function MetrichePage({
         </Card>
       ) : (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat label="Lead ricevuti" value={coorte.length} icona="◭" indice={0} />
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+            <Stat label="Lead" value={azienda.lead} icona="◭" indice={0} />
             <Stat
-              label="Contratti firmati"
-              value={contratti.conteggio}
-              tone="positivo"
-              icona="✓"
+              label="Sopralluoghi"
+              value={azienda.sopralluoghi}
+              icona="◎"
               indice={1}
-              hint={`conversione ${formattaPercentuale(contratti.daLead)}`}
+              hint={`da lead ${formattaPercentuale(azienda.tassoSopralluogo)}`}
             />
             <Stat
-              label="Valore acquisito"
-              value={valori.valoreContratti / 100}
+              label="Contratti"
+              value={azienda.contratti}
+              tone="positivo"
+              icona="✓"
+              indice={2}
+              hint={`chiusura ${formattaPercentuale(azienda.conversione)}`}
+            />
+            <Stat
+              label="Fatturato"
+              value={azienda.valore / 100}
               formato="euro"
               icona="€"
-              indice={2}
+              indice={3}
             />
             <Stat
               label="Ticket medio"
               value={(valori.ticketMedio ?? 0) / 100}
               formato="euro"
               icona="◇"
-              indice={3}
+              indice={4}
               hint={valori.ticketMedio === null ? 'nessun contratto' : undefined}
+            />
+            <Stat
+              label="In corso"
+              value={maturita.ancoraAperte}
+              icona="…"
+              indice={5}
+              hint={formattaImporto(valori.valoreInCorso)}
             />
           </div>
 
-          {/* La maturità della coorte va detta accanto ai numeri, non in fondo:
-              è ciò che impedisce la lettura sbagliata più comune. */}
           {maturita.ancoraAperte > 0 ? (
             <div
               className="rounded-xl border p-4 text-sm"
@@ -129,6 +143,29 @@ export default async function MetrichePage({
             </div>
           ) : null}
 
+          <Card title="Totale azienda" accento="oro" indice={0}>
+            <p className="mb-4 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+              Stessi indicatori della tabella per commerciale, sommati su tutta la
+              coorte del periodo.
+            </p>
+            <TabellaPrestazioni
+              righe={[azienda]}
+              colonnaChiave="Ambito"
+              evidenziaPrima
+            />
+          </Card>
+
+          <Card title="Per commerciale" accento="blu" indice={1}>
+            <p className="mb-4 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+              Lead assegnati, sopralluoghi effettuati, tassi e fatturato da contratti
+              firmati. Ordinati per fatturato generato.
+            </p>
+            <TabellaPrestazioni
+              righe={perCommerciale}
+              colonnaChiave="Commerciale"
+            />
+          </Card>
+
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <Card title="Imbuto commerciale" indice={1}>
@@ -136,7 +173,9 @@ export default async function MetrichePage({
                   {imbuto.map((tappa, indice) => (
                     <li key={tappa.codice} className="riga rounded-md py-1">
                       <div className="flex items-center gap-4">
-                        <span className="w-28 shrink-0 truncate text-sm sm:w-44">{tappa.etichetta}</span>
+                        <span className="w-28 shrink-0 truncate text-sm sm:w-44">
+                          {tappa.etichetta}
+                        </span>
                         <div
                           className="h-2 flex-1 overflow-hidden rounded-full"
                           style={{ background: 'rgba(255,255,255,0.04)' }}
@@ -212,57 +251,39 @@ export default async function MetrichePage({
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Ripartizione titolo="Per fonte" righe={perFonte} indice={1} />
-            <Ripartizione titolo="Per commerciale" righe={perCommerciale} indice={2} />
+            <Ripartizione titolo="Per linea di business" righe={perLinea} indice={2} />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Ripartizione titolo="Per linea di business" righe={perLinea} indice={1} />
-
-            <Card title="Dove si perde" accento="rosso" indice={2}>
-              {perdite.length === 0 ? (
-                <Vuoto messaggio="Nessuna pratica persa in questo periodo." />
-              ) : (
-                <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
-                  {perdite.map((m) => (
-                    <li
-                      key={m.motivo}
-                      className="riga flex items-center justify-between gap-4 rounded-md py-2.5 first:pt-0 last:pb-0"
-                    >
-                      <span className="text-sm">{m.motivo}</span>
-                      <div className="flex shrink-0 items-center gap-4 text-sm">
-                        <span className="tabular-nums" style={{ color: 'var(--testo-tenue)' }}>
-                          {m.conteggio} · {formattaPercentuale(m.quota)}
-                        </span>
-                        <span
-                          className="w-24 text-right tabular-nums"
-                          style={{ color: 'var(--color-eco-red-400)' }}
-                        >
-                          {formattaImporto(m.valorePerso)}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="mt-4 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                L&apos;importo è il valore dei preventivi che non si sono chiusi per quel
-                motivo.
-              </p>
-            </Card>
-          </div>
-
-          <Card title="Pipeline ancora aperta" indice={1}>
-            <div className="flex flex-wrap items-baseline gap-x-10 gap-y-3">
-              <Voce
-                etichetta="Valore in corso"
-                valore={formattaImporto(valori.valoreInCorso)}
-              />
-              <Voce
-                etichetta="Preventivi inviati"
-                valore={formattaImporto(valori.valorePreventiviInviati)}
-              />
-              <Voce etichetta="Pratiche aperte" valore={String(maturita.ancoraAperte)} />
-            </div>
+          <Card title="Dove si perde" accento="rosso" indice={2}>
+            {perdite.length === 0 ? (
+              <Vuoto messaggio="Nessuna pratica persa in questo periodo." />
+            ) : (
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
+                {perdite.map((m) => (
+                  <li
+                    key={m.motivo}
+                    className="riga flex items-center justify-between gap-4 rounded-md py-2.5 first:pt-0 last:pb-0"
+                  >
+                    <span className="text-sm">{m.motivo}</span>
+                    <div className="flex shrink-0 items-center gap-4 text-sm">
+                      <span className="tabular-nums" style={{ color: 'var(--testo-tenue)' }}>
+                        {m.conteggio} · {formattaPercentuale(m.quota)}
+                      </span>
+                      <span
+                        className="w-24 text-right tabular-nums"
+                        style={{ color: 'var(--color-eco-red-400)' }}
+                      >
+                        {formattaImporto(m.valorePerso)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-4 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+              L&apos;importo è il valore dei preventivi che non si sono chiusi per quel
+              motivo.
+            </p>
           </Card>
         </div>
       )}
@@ -294,13 +315,72 @@ function Tempo({
   )
 }
 
-function Voce({ etichetta, valore }: { etichetta: string; valore: string }) {
+function TabellaPrestazioni({
+  righe,
+  colonnaChiave,
+  evidenziaPrima = false,
+}: {
+  righe: readonly RigaRipartizione[]
+  colonnaChiave: string
+  evidenziaPrima?: boolean
+}) {
+  if (righe.length === 0) {
+    return <Vuoto messaggio="Nessun dato." />
+  }
+
   return (
-    <div>
-      <div className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
-        {etichetta}
-      </div>
-      <div className="mt-0.5 text-lg font-semibold tabular-nums">{valore}</div>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[40rem] text-sm">
+        <thead>
+          <tr
+            className="border-b text-left text-xs"
+            style={{ borderColor: 'var(--bordo-tenue)', color: 'var(--testo-fioco)' }}
+          >
+            <th className="pb-2 pr-3 font-medium">{colonnaChiave}</th>
+            <th className="pb-2 text-right font-medium">Lead</th>
+            <th className="pb-2 text-right font-medium">Soprall.</th>
+            <th className="pb-2 text-right font-medium">Lead→sopr.</th>
+            <th className="pb-2 text-right font-medium">Contratti</th>
+            <th className="pb-2 text-right font-medium">Chiusura</th>
+            <th className="pb-2 text-right font-medium">Fatturato</th>
+          </tr>
+        </thead>
+        <tbody>
+          {righe.map((r, i) => {
+            const evidenzia = evidenziaPrima && i === 0
+            return (
+              <tr
+                key={r.chiave}
+                className="riga border-b last:border-0"
+                style={{
+                  borderColor: 'var(--bordo-tenue)',
+                  background: evidenzia ? 'rgba(217,164,65,0.06)' : undefined,
+                }}
+              >
+                <td className={`py-2.5 pr-3 ${evidenzia ? 'font-medium' : ''}`}>{r.chiave}</td>
+                <td className="py-2.5 text-right tabular-nums">{r.lead}</td>
+                <td className="py-2.5 text-right tabular-nums">{r.sopralluoghi}</td>
+                <td
+                  className="py-2.5 text-right tabular-nums"
+                  style={{ color: 'var(--color-eco-blue-300)' }}
+                >
+                  {formattaPercentuale(r.tassoSopralluogo)}
+                </td>
+                <td className="py-2.5 text-right tabular-nums">{r.contratti}</td>
+                <td
+                  className="py-2.5 text-right tabular-nums"
+                  style={{ color: 'var(--color-eco-gold-300)' }}
+                >
+                  {formattaPercentuale(r.conversione)}
+                </td>
+                <td className="py-2.5 text-right font-medium tabular-nums">
+                  {formattaImporto(r.valore)}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -311,53 +391,12 @@ function Ripartizione({
   indice,
 }: {
   titolo: string
-  righe: readonly { chiave: string; lead: number; contratti: number; conversione: number | null; valore: number }[]
+  righe: readonly RigaRipartizione[]
   indice: number
 }) {
   return (
     <Card title={titolo} indice={indice}>
-      {righe.length === 0 ? (
-        <Vuoto messaggio="Nessun dato." />
-      ) : (
-        <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr
-              className="border-b text-left text-xs"
-              style={{ borderColor: 'var(--bordo-tenue)', color: 'var(--testo-fioco)' }}
-            >
-              <th className="pb-2 font-medium">Voce</th>
-              <th className="pb-2 text-right font-medium">Lead</th>
-              <th className="pb-2 text-right font-medium">Contratti</th>
-              <th className="pb-2 text-right font-medium">Conv.</th>
-              <th className="pb-2 text-right font-medium">Valore</th>
-            </tr>
-          </thead>
-          <tbody>
-            {righe.map((r) => (
-              <tr
-                key={r.chiave}
-                className="riga border-b last:border-0"
-                style={{ borderColor: 'var(--bordo-tenue)' }}
-              >
-                <td className="py-2">{r.chiave}</td>
-                <td className="py-2 text-right tabular-nums">{r.lead}</td>
-                <td className="py-2 text-right tabular-nums">{r.contratti}</td>
-                <td
-                  className="py-2 text-right tabular-nums"
-                  style={{ color: 'var(--color-eco-gold-300)' }}
-                >
-                  {formattaPercentuale(r.conversione)}
-                </td>
-                <td className="py-2 text-right tabular-nums">
-                  {formattaImporto(r.valore)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      )}
+      <TabellaPrestazioni righe={righe} colonnaChiave="Voce" />
     </Card>
   )
 }
