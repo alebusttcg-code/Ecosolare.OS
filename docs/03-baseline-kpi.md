@@ -1,93 +1,150 @@
-# Sprint 0 — Misura della baseline KPI
+# KPI — come li misuriamo
 
-**Perché serve:** senza il "prima", il "dopo" non dimostra nulla e il ROI del progetto resta un'opinione. Questa è l'unica occasione per misurarlo: una volta che il sistema è in uso, il "prima" non è più ricostruibile.
-
-**Sforzo:** 4–6 ore in totale. Non di più — la precisione al giorno è sufficiente, quella all'ora è inutile.
-
----
-
-## Metodo
-
-**1. Scegli il campione: 20–30 pratiche degli ultimi 6–12 mesi.**
-Non solo quelle andate bene. La proporzione giusta è indicativamente:
-- 10–15 vinte e concluse (servono per i dati di cantiere, ore e margine)
-- 8–10 perse (servono per la conversione e i motivi di perdita)
-- 3–5 problematiche o bloccate a lungo (servono per i giorni di blocco, che sono il KPI più azionabile)
-
-Se prendi solo le pratiche riuscite, la baseline risulterà migliore della realtà e a fine progetto i miglioramenti sembreranno inferiori a quelli veri.
-
-**2. Ricostruisci ogni riga da ciò che esiste:** WhatsApp, email, Google Calendar, fatture, bolle di consegna, fogli di lavoro cartacei.
-
-**3. Accetta l'approssimazione.** "Circa 4 giorni" è un dato utilizzabile. Aspettare il dato esatto significa non finire mai.
-
-**4. Dove un dato non è ricostruibile, scrivi `n/d`. Non stimarlo a sentimento.**
-
-> **Il numero di `n/d` è esso stesso il risultato più importante di questo esercizio.**
-> Se su 30 pratiche non riesci a dire quando è arrivato il contatto o quanto hai marginato, quello non è un buco nel foglio: è la dimostrazione quantificata del problema che il sistema deve risolvere, ed è il dato più convincente da mostrare fra sei mesi.
+**Decisione:** [D-012](01-registro-decisioni.md) — non ricostruire il passato a mano.
+I numeri partono **da quando usi questo software** per ogni lead.
 
 ---
 
-## Come compilare il foglio
+## Baseline prospettica (percorso adottato)
 
-Apri [`baseline-kpi-template.csv`](baseline-kpi-template.csv) in Google Sheets (*File → Importa → Carica*). Una riga per pratica.
+### Cosa significa
 
-| Colonna | Cosa scrivere | Dove cercarlo |
-|---|---|---|
-| `id` | Riferimento interno (numero preventivo, nome cliente abbreviato) | — |
-| `linea` | `fv` / `elettrico` / `idraulico` | — |
-| `fonte` | Come è arrivato: sito, passaparola, cliente esistente, campagna, telefono… | Memoria, email |
-| `data_primo_contatto` | Quando è arrivata la richiesta | WhatsApp, email, registro chiamate |
-| `data_prima_risposta` | Quando **qualcuno ha risposto davvero** al cliente | Stessa fonte |
-| `data_appuntamento_fissato` | Quando è stato fissato | Calendar |
-| `data_sopralluogo` | Quando è stato fatto | Calendar |
-| `data_invio_preventivo` | Data di invio della **prima** versione | Email |
-| `n_versioni_preventivo` | Quante versioni sono state prodotte | Cartelle, email |
-| `n_richiami_dati_mancanti` | Quante volte si è ricontattato il cliente perché mancava un dato o un documento | Memoria, WhatsApp |
-| `valore_preventivo` | Imponibile della versione inviata | Preventivo |
-| `esito` | `vinto` / `perso` / `aperto` | — |
-| `motivo_perdita` | Prezzo, tempi, concorrente, silenzio, non idoneo… | Memoria |
-| `data_firma` | Firma o accettazione | Contratto |
-| `data_inizio_cantiere` | Primo giorno di lavoro in campo | Fogli di lavoro, calendar |
-| `data_fine_cantiere` | Ultimo giorno | Fogli di lavoro |
-| `giorni_blocco` | Giorni in cui la commessa è stata ferma in attesa di qualcosa | Stima |
-| `motivo_blocco` | Documenti, materiali, pratica, cliente, meteo, altro | — |
-| `ore_previste` / `ore_effettive` | Ore di manodopera | Preventivo / fogli di lavoro |
-| `costo_materiali_previsto` / `costo_materiali_reale` | Materiali | Preventivo / fatture fornitore |
-| `data_fattura_saldo` / `data_incasso_saldo` | Fatturazione e incasso del saldo | Contabilità |
-| `note` | Qualunque cosa sia andata storta | — |
+Non c’è un foglio Excel del «prima». La baseline è **il primo periodo in cui tutti
+i lead passano dal CRM** — tipicamente i primi **30 giorni** di uso reale.
+
+Da lì confronti:
+- mese 1 vs mese 2 vs mese 3…
+- oppure trimestre su trimestre
+
+Non dimostri «prima eravamo lenti, ora siamo veloci» con dati certi del passato.
+Dimostri «**nel tempo miglioriamo**» e «**oggi sappiamo sempre** tempi, conversioni,
+blocchi».
+
+### Dove vedi i KPI
+
+Apri **Metriche commerciali** nel menu (`/metriche`).
+
+Calcola automaticamente, per i lead **entrati** nel periodo scelto:
+
+| KPI | Cosa misura |
+|-----|-------------|
+| Speed-to-lead | Ore dalla richiesta alla prima risposta registrata |
+| Imbuto | Quanti passano sopralluogo → preventivo → contratto |
+| Conversione | Vinti / (vinti + persi) sulla stessa coorte |
+| Tempi medi | Giorni tra le tappe (mediana) |
+| Ticket medio | Valore medio dei contratti firmati |
+| Per fonte / commerciale / linea | Stessi numeri, suddivisi |
+
+Finché non ci sono lead nel periodo, la pagina è vuota: **è normale**.
 
 ---
 
-## KPI che si ricavano dal foglio
+## Cosa devi fare tu (3 regole)
 
-Una volta compilato, questi sono i numeri della baseline. Sono gli stessi che il sistema calcolerà in automatico, così il confronto sarà diretto.
+### 1. Ogni nuovo contatto entra nel sistema
 
-| KPI | Come si calcola dal foglio |
-|---|---|
-| **Speed-to-lead** (mediana) | mediana di `data_prima_risposta − data_primo_contatto` |
-| Lead → appuntamento | % righe con `data_appuntamento_fissato` valorizzata |
-| Appuntamento → sopralluogo | % righe con `data_sopralluogo` valorizzata |
-| **Sopralluogo → preventivo** (mediana giorni) | mediana di `data_invio_preventivo − data_sopralluogo` |
-| **Conversione** | `vinto` / (`vinto` + `perso`) |
-| Conversione per fonte | stessa formula, raggruppata per `fonte` |
-| Ticket medio | media di `valore_preventivo` sui `vinto`, per linea |
-| Contratto → cantiere (mediana giorni) | mediana di `data_inizio_cantiere − data_firma` |
-| Durata commessa | mediana di `data_fine_cantiere − data_firma` |
-| **Giorni medi di blocco e motivo prevalente** | media di `giorni_blocco`, moda di `motivo_blocco` |
-| Rilavorazione informativa | media di `n_richiami_dati_mancanti` |
-| Scostamento ore | Σ`ore_effettive` / Σ`ore_previste` |
-| Scostamento materiali | Σ`costo_materiali_reale` / Σ`costo_materiali_previsto` |
-| **Tempo di incasso** (mediana giorni) | mediana di `data_incasso_saldo − data_fattura_saldo` |
-| **Ricostruibilità** | % celle `n/d` sul totale — la misura di quanto oggi l'azienda *non sa* di sé |
+- Form sito → endpoint intake (quando attivo)
+- Oppure **Lead → Nuovo lead** a mano
 
-Usa la **mediana**, non la media, per tutti i tempi: una pratica dimenticata per due mesi sposterebbe la media e nasconderebbe il comportamento normale.
+Se un lead resta su WhatsApp e non lo registri, **non esiste per le metriche**.
+
+### 2. Usa il CRM nel flusso reale
+
+Per ogni lead, nel gestionale:
+
+- assegna responsabile e prossima azione
+- registra sopralluogo, preventivo inviato, firma
+- chiudi come **perso** con motivo (non lasciare zombie)
+
+La **prima risposta** al cliente si registra completando la prima attività di
+contatto (`chiamata`, `email`, `whatsapp`, ecc.): da lì parte lo speed-to-lead.
+
+### 3. Guarda le metriche una volta al mese
+
+Stesso giorno ogni mese (es. primo lunedì):
+
+1. Apri `/metriche`
+2. Seleziona «Ultimi 30 giorni» o «Mese corrente»
+3. Annota 3 numeri in un posto tuo (Note, email a te stesso):
+   - speed-to-lead (ore)
+   - conversione
+   - lead ricevuti
+
+Dopo 90 giorni avrai già un mini «prima/dopo» interno al software.
+
+---
+
+## Quando consideriamo la baseline «chiusa»
+
+| Milestone | Criterio |
+|----------|----------|
+| **T0** | Primo lead vero registrato in produzione (data da annotare) |
+| **Baseline iniziale** | 30 giorni consecutivi con ≥ 80% dei lead entrati via sistema |
+| **Primo confronto utile** | Dopo almeno **60–90 giorni** e **15+ lead** nella coorte |
+
+Annota T0 qui quando parte:
+
+```
+T0 (primo lead in produzione): ___________
+Baseline 30 gg completata:     ___________
+```
+
+---
+
+## Prova locale (test manuali + /metriche)
+
+### Percorso consigliato
+
+1. **Lead → Nuovo lead** — compila e salva
+2. **Attività** → completa «Primo contatto» (+ prossima azione) → registra lo **speed-to-lead**
+3. Dalla scheda lead: **+ Nuovo preventivo** se vuoi vedere la sezione preventivi sul lead
+4. **Metriche** → periodo **Ultimi 30 giorni**
+
+Con un solo lead i numeri sono pochi: normale. L'imbuto cresce man mano che registri sopralluogo, invio preventivo, firma.
+
+> **Preventivi e firme** elenca tutti i preventivi dell'azienda. La **scheda lead** mostra solo quelli di *quel* lead. Se apri un lead senza preventivo, la sezione resta vuota anche se in elenco generale ne vedi altri.
+
+### Cosa guardare in /metriche
+
+| Sezione | Significato |
+|---------|-------------|
+| Lead ricevuti | Quanti contatti entrati nel periodo |
+| Speed-to-lead | Ore dalla richiesta alla prima risposta |
+| Imbuto | Quanti passano a sopralluogo → preventivo → contratto |
+| Conversione | Vinti / (vinti + persi) — serve lead chiusi |
+| Coorte non matura | Avviso se molti lead sono ancora aperti (normale all'inizio) |
+
+---
+
+## Cosa fa il software (non devi calcolare nulla)
+
+- `first_response_at` sul lead → speed-to-lead
+- Date su sopralluogo, preventivo inviato, contratto → tempi e imbuto
+- `lost_reason` → motivi di perdita
+- Readiness commessa → giorni di blocco (lato cantiere, pagina Cantieri)
+
+Il motore è in `src/lib/domain/funnel.ts` e la pagina legge `getCoorteCommerciale`.
+
+---
+
+## Percorso storico (non adottato)
+
+Ricostruire 20–30 pratiche passate da WhatsApp/email resta **opzionale**. Strumenti
+se servisse in futuro:
+
+- [`baseline-kpi-template.csv`](baseline-kpi-template.csv) — template
+- [`baseline-campione.md`](baseline-campione.md) — guida compilazione
+- `npm run baseline` — calcolo da CSV
+
+Non è richiesto per andare avanti.
 
 ---
 
 ## Cosa aspettarsi
 
-Tre risultati sono frequenti in aziende con questo profilo, e vale la pena saperlo prima per non interpretarli come errori di compilazione:
-
-- **Lo speed-to-lead sarà peggiore del previsto**, perché la percezione registra le risposte rapide e dimentica quelle lente.
-- **Molte celle di `costo_materiali_reale` e `ore_effettive` risulteranno `n/d`.** È la prova che il margine reale oggi non è calcolabile, cioè la giustificazione economica dell'intera Fase 5.
-- **I giorni di blocco supereranno le attese**, e il motivo prevalente sarà quasi certamente documenti o materiali. È la conferma che la funzione di *readiness* (§6.3 del blueprint) è la priorità giusta.
+- **Prime settimane:** pochi dati, metriche instabili — normale.
+- **Conversione:** serve tempo (ciclo commerciale ~30–60 gg); non giudicare la
+  coorte «ultimi 30 giorni» prima che i lead maturino (`calcolaMaturita` in
+  `/metriche` avvisa quando la coorte è ancora giovane).
+- **Il vero beneficio subito:** sapere **adesso** quanti lead sono aperti, chi
+  risponde, cosa blocca i cantieri — anche senza confronto col passato.

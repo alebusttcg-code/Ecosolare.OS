@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { changeStage } from '@/lib/actions/opportunities'
 import type { StageDefinition } from '@/lib/domain/pipeline'
 
@@ -30,7 +31,7 @@ export function CambiaStato({
   const avvisa = useAvvisi()
   const [destinazione, setDestinazione] = useState(statoCorrente)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   const stato = stages.find((s) => s.code === destinazione)
   const serveMotivo = stato?.isLost ?? false
@@ -40,7 +41,7 @@ export function CambiaStato({
     <form
       action={(formData) => {
         setErrors({})
-        avvia(async () => {
+        esegui(async () => {
           const scadenza = String(formData.get('nextActionDueAt') ?? '')
           const esito = await changeStage({
             opportunityId,

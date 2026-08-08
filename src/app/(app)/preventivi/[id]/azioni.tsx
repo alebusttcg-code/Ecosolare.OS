@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { newQuoteVersion, recordQuoteOutcome, sendQuote } from '@/lib/actions/quotes'
 import type { StatoVersione } from '@/lib/domain/quote-lifecycle'
 
@@ -20,12 +21,12 @@ export function AzioniPreventivo({
   const [messaggio, setMessaggio] = useState<string | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
   const [mostraRifiuto, setMostraRifiuto] = useState(false)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   function invia() {
     setErrore(null)
     setMessaggio(null)
-    avvia(async () => {
+    esegui(async () => {
       const esito = await sendQuote(versionId)
       if (!esito.ok) {
         setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
@@ -42,7 +43,7 @@ export function AzioniPreventivo({
 
   function nuovaVersione() {
     setErrore(null)
-    avvia(async () => {
+    esegui(async () => {
       const esito = await newQuoteVersion(quoteId)
       if (esito.ok) {
         avvisa('Nuova versione creata.')
@@ -53,7 +54,7 @@ export function AzioniPreventivo({
 
   function registraEsito(esito: 'accettato' | 'rifiutato', motivo?: string) {
     setErrore(null)
-    avvia(async () => {
+    esegui(async () => {
       const risultato = await recordQuoteOutcome({
         versionId,
         esito,

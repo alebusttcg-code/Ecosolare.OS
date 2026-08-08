@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { cambiaPassword } from '@/lib/actions/auth'
+import { useAzioneServer } from '@/lib/use-azione-server'
 
 const CAMPO =
   'w-full rounded-lg border px-3 py-2.5 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]'
@@ -10,13 +11,13 @@ const CAMPO =
 export function ModuloCambioPassword() {
   const router = useRouter()
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   return (
     <form
       action={(formData) => {
         setErrors({})
-        avvia(async () => {
+        esegui(async () => {
           const esito = await cambiaPassword({
             corrente: String(formData.get('corrente') ?? ''),
             nuova: String(formData.get('nuova') ?? ''),

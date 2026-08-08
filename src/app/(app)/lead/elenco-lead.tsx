@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Dialogo } from '@/components/dialogo'
+import { BottoneChiama, BottoneWhatsApp } from '@/components/bottoni-contatto'
 import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
 import { componeIndirizzo } from '@/lib/geo/tipi-via'
 import type { LeadInElenco } from '@/lib/queries/opportunities'
@@ -52,6 +53,8 @@ export function ElencoLead({
 }) {
   const [ricerca, setRicerca] = useState('')
   const [selezionato, setSelezionato] = useState<LeadInElenco | null>(null)
+
+  const chiudi = useCallback(() => setSelezionato(null), [])
 
   const filtrati = useMemo(
     () => lead.filter((l) => corrisponde(l, ricerca)),
@@ -144,10 +147,10 @@ export function ElencoLead({
               attuale.code
             : ''
         }
-        onChiudi={() => setSelezionato(null)}
+        onChiudi={chiudi}
       >
         {attuale ? (
-          <DettaglioLead lead={attuale} puoModificare={puoModificare} />
+          <DettaglioLead lead={attuale} puoModificare={puoModificare} onNaviga={chiudi} />
         ) : null}
       </Dialogo>
     </div>
@@ -157,9 +160,11 @@ export function ElencoLead({
 function DettaglioLead({
   lead,
   puoModificare,
+  onNaviga,
 }: {
   lead: LeadInElenco
   puoModificare: boolean
+  onNaviga: () => void
 }) {
   const indirizzo = rigaIndirizzo(lead)
 
@@ -223,30 +228,14 @@ function DettaglioLead({
         style={{ borderColor: 'rgba(255,255,255,0.08)' }}
       >
         {lead.phone ? (
-          <a
-            href={`tel:${lead.phoneE164 ?? lead.phone}`}
-            className="bottone-fantasma rounded-lg border px-3.5 py-2 text-sm"
-            style={{ borderColor: 'var(--bordo)' }}
-          >
-            <span aria-hidden style={{ color: 'var(--color-eco-gold-300)' }}>✆</span>{' '}
-            Chiama
-          </a>
+          <BottoneChiama telefono={lead.phone} telefonoE164={lead.phoneE164} />
         ) : null}
-        {lead.phoneE164 ? (
-          <a
-            href={`https://wa.me/${lead.phoneE164.replace('+', '')}`}
-            target="_blank"
-            rel="noreferrer"
-            className="bottone-fantasma rounded-lg border px-3.5 py-2 text-sm"
-            style={{ borderColor: 'var(--bordo)' }}
-          >
-            WhatsApp
-          </a>
-        ) : null}
+        {lead.phoneE164 ? <BottoneWhatsApp telefonoE164={lead.phoneE164} /> : null}
         <span className="flex-1" />
         {puoModificare ? (
           <Link
             href={`/lead/${lead.id}/modifica`}
+            onClick={onNaviga}
             className="bottone-oro rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso"
           >
             Modifica
@@ -254,6 +243,7 @@ function DettaglioLead({
         ) : null}
         <Link
           href={`/lead/${lead.id}`}
+          onClick={onNaviga}
           className="bottone-fantasma rounded-lg border px-4 py-2 text-sm"
           style={{ borderColor: 'var(--bordo)' }}
         >

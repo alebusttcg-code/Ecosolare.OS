@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { Campo } from '@/components/ui'
 import { createSite } from '@/lib/actions/sites'
 
@@ -11,7 +12,7 @@ export function NuovoImmobile({ contactId }: { contactId: string }) {
   const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   if (!aperto) {
     return (
@@ -30,7 +31,7 @@ export function NuovoImmobile({ contactId }: { contactId: string }) {
     <form
       action={(formData) => {
         setErrors({})
-        avvia(async () => {
+        esegui(async () => {
           const esito = await createSite({
             contactId,
             label: String(formData.get('label') ?? ''),

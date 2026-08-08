@@ -9,6 +9,12 @@ import {
   projects,
   sites,
 } from '@/db/schema'
+import { scopeFor } from '@/lib/auth/policy'
+import {
+  filtroCommessaAssegnata,
+  filtroContattoAssegnato,
+  type UtenteConId,
+} from '@/lib/auth/scope-query'
 import { normalizePhone } from '@/lib/domain/phone'
 
 export interface ContattoInElenco {
@@ -29,10 +35,14 @@ export interface ContattoInElenco {
  * (accettazione + firma → contratto). Prima di quel momento resta in Lead.
  */
 export async function searchContacts(
+  utente: UtenteConId,
   termine: string,
   pagina = 1,
   perPagina = 25,
 ): Promise<{ righe: ContattoInElenco[]; totale: number }> {
+  const scope = scopeFor(utente, 'contact')
+  if (scope === 'none') return { righe: [], totale: 0 }
+
   const db = getDb()
   const q = termine.trim()
 
@@ -51,6 +61,9 @@ export async function searchContacts(
   )`
 
   const filtri = [isNull(contacts.deletedAt), sql`${primaFirma} is not null`]
+  if (scope === 'assigned') {
+    filtri.push(filtroContattoAssegnato(utente.id))
+  }
 
   if (q !== '') {
     const comeTelefono = normalizePhone(q).e164
@@ -93,13 +106,25 @@ export async function searchContacts(
   return { righe, totale: totaleRiga?.totale ?? 0 }
 }
 
-export async function getContactDetail(id: string) {
+export async function getContactDetail(utente: UtenteConId, id: string) {
+  const scope = scopeFor(utente, 'contact')
+  if (scope === 'none') return null
+
   const db = getDb()
 
   const contatto = await db.query.contacts.findFirst({
     where: and(eq(contacts.id, id), isNull(contacts.deletedAt)),
   })
   if (!contatto) return null
+
+  if (scope === 'assigned') {
+    const [raggiungibile] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, id), filtroContattoAssegnato(utente.id)))
+      .limit(1)
+    if (!raggiungibile) return null
+  }
 
   const [suoiSiti, sueOpportunita, sueAttivita, clienteDalRiga, sueCommesse] =
     await Promise.all([
@@ -146,7 +171,13 @@ export async function getContactDetail(id: string) {
         })
         .from(projects)
         .innerJoin(projectStages, eq(projectStages.code, projects.stage))
-        .where(and(eq(projects.contactId, id), isNull(projects.deletedAt)))
+        .where(
+          and(
+            eq(projects.contactId, id),
+            isNull(projects.deletedAt),
+            ...(scope === 'assigned' ? [filtroCommessaAssegnata(utente.id)] : []),
+          ),
+        )
         .orderBy(desc(projects.createdAt)),
     ])
 

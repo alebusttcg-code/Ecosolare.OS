@@ -39,9 +39,22 @@ const ETICHETTA_RUOLO: Record<Role, string> = {
  * bancario e' uno strumento operativo, e mostrarlo a chi puo' solo consultare
  * gli incassi sarebbe una voce che non porta a nulla.
  */
-const VOCI: readonly (VoceMenu & { resource: Resource; azione?: Action })[] = [
+const VOCI: readonly (VoceMenu & {
+  resource: Resource
+  azione?: Action
+  /** Visibile solo a questo ruolo (es. panoramica economica direzione). */
+  soloRuolo?: Role
+})[] = [
   { href: '/', label: 'Dashboard', icona: '◈', gruppo: 'direzione', resource: 'dashboard' },
   { href: '/metriche', label: 'Metriche commerciali', icona: '▦', gruppo: 'direzione', resource: 'dashboard' },
+  {
+    href: '/economia',
+    label: 'Economia',
+    icona: '€',
+    gruppo: 'economia',
+    resource: 'project_economics',
+    soloRuolo: 'amministratore',
+  },
 
   { href: '/lead', label: 'Lead', icona: '◭', gruppo: 'ciclo', resource: 'opportunity' },
   { href: '/agenda', label: 'Agenda e sopralluoghi', icona: '⌂', gruppo: 'ciclo', resource: 'survey' },
@@ -77,15 +90,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     '/approvazioni': approvazioni,
   }
 
-  const voci = VOCI.filter((v) => can(utente, v.azione ?? 'read', v.resource)).map(
-    ({ href, label, icona, gruppo }) => ({
+  const voci = VOCI.filter(
+    (v) =>
+      (!v.soloRuolo || utente.role === v.soloRuolo) &&
+      can(utente, v.azione ?? 'read', v.resource),
+  ).map(({ href, label, icona, gruppo }) => ({
       href,
       label,
       icona,
       gruppo,
       badge: badge[href] ?? 0,
-    }),
-  )
+    }))
 
   const capacita = [
     utente.canViewCosts ? 'Vede i costi' : null,

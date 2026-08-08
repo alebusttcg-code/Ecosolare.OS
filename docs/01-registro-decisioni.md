@@ -285,3 +285,30 @@ rispettivi DPA, insieme a Google (D-006 punto 2). Entrambi sono società
 statunitensi con sottoscrizione al Data Privacy Framework: i dati restano nella
 regione UE scelta, ma il titolare resta EcoSolare ed è comunque necessaria la
 nomina.
+
+---
+
+## D-012 — Baseline KPI prospettica, non ricostruzione storica
+
+**Data:** 8 agosto 2026 · **Decisore:** Federico Leporati · **Stato:** attiva
+
+Non è possibile ricostruire in modo affidabile 20–30 pratiche passate da
+WhatsApp, email e cartaceo. **Si rinuncia al foglio baseline retrospettivo**
+(`docs/baseline-kpi-template.csv`) come requisito di go-live.
+
+**Alternativa adottata:** misurare i KPI **da quando ogni lead entra nel
+sistema** (intake + CRM). Il termine di paragone non è «prima del software vs
+dopo», ma **periodo su periodo** (es. primi 30 giorni vs mese 3 vs mese 6).
+
+**Conseguenze:**
+- La pagina **Metriche commerciali** (`/metriche`) è la fonte ufficiale dei KPI.
+- Ogni nuovo contatto deve passare dal sistema; altrimenti i numeri restano buchi.
+- Il confronto ROI «prima/dopo» non sarà dimostrabile con dati quantitativi del
+  passato: si dimostra **miglioramento nel tempo** e **ricostruibilità** (sapere
+  sempre stato, tempi, margini previsti).
+- Il foglio CSV e `npm run baseline` restano disponibili **se in futuro** si
+  volesse ricostruire un campione storico, ma non bloccano il progetto.
+
+**Riferimento operativo:** [`docs/03-baseline-kpi.md`](03-baseline-kpi.md) (sezione
+«Baseline prospettica»).
+

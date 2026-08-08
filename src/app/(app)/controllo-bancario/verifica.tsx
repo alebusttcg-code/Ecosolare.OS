@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { segnaVerificato } from '@/lib/actions/banca'
 
 /**
@@ -17,7 +18,7 @@ export function VerificaRiscontro({ checkId }: { checkId: string }) {
   const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   if (!aperto) {
     return (
@@ -36,7 +37,7 @@ export function VerificaRiscontro({ checkId }: { checkId: string }) {
     <form
       action={(dati) => {
         setErrore(null)
-        avvia(async () => {
+        esegui(async () => {
           const esito = await segnaVerificato({
             checkId,
             nota: String(dati.get('nota') ?? ''),

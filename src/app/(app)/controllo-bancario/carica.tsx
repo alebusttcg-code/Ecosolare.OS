@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useRef, useState, useTransition } from 'react'
+import { useRef, useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { caricaEstrattoConto, type EsitoImportazione } from '@/lib/actions/banca'
 
 /**
@@ -17,7 +18,7 @@ export function CaricaEstratto() {
   const modulo = useRef<HTMLFormElement>(null)
   const [errore, setErrore] = useState<string | null>(null)
   const [esito, setEsito] = useState<EsitoImportazione | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   return (
     <div>
@@ -26,7 +27,7 @@ export function CaricaEstratto() {
         action={(dati) => {
           setErrore(null)
           setEsito(null)
-          avvia(async () => {
+          esegui(async () => {
             const risultato = await caricaEstrattoConto(dati)
             if (risultato.ok) {
               setEsito(risultato.data)

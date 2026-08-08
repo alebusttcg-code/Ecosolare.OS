@@ -13,7 +13,7 @@ import type { DefinizioneQuestionario } from '@/lib/domain/questionnaire'
  */
 export const PREQUALIFICA_FV: DefinizioneQuestionario = {
   code: 'prequalifica_fv',
-  version: 1,
+  version: 2,
   name: 'Prequalifica fotovoltaico',
   sections: [
     {
@@ -51,8 +51,25 @@ export const PREQUALIFICA_FV: DefinizioneQuestionario = {
           showIf: { campo: 'proprietario', uguale: false },
         },
         {
+          code: 'indirizzo',
+          label: 'Indirizzo',
+          type: 'testo_lungo',
+          help: 'Via e civico dalla scheda lead: puoi correggerli qui.',
+        },
+        {
           code: 'comune',
           label: 'Comune',
+          type: 'testo',
+          help: 'Comune dalla scheda lead: puoi correggerlo qui.',
+        },
+        {
+          code: 'cap',
+          label: 'CAP',
+          type: 'testo',
+        },
+        {
+          code: 'provincia',
+          label: 'Provincia',
           type: 'testo',
         },
         {

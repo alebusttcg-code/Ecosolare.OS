@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import {
   setDocumentStatus,
   setMaterialStatus,
@@ -10,6 +10,7 @@ import {
   setProjectConfirmation,
   toggleProjectTask,
 } from '@/lib/actions/project-items'
+import { useAzioneServer } from '@/lib/use-azione-server'
 
 /** Piccolo selettore che salva subito e ricalcola la pianificabilità. */
 function Selettore({
@@ -59,7 +60,7 @@ export function ControlloDocumento({
   const router = useRouter()
   const [errore, setErrore] = useState<string | null>(null)
   const [chiedeMotivo, setChiedeMotivo] = useState(false)
-  const [, avvia] = useTransition()
+  const { esegui } = useAzioneServer()
 
   function cambia(nuovo: string, motivo?: string) {
     setErrore(null)
@@ -68,7 +69,7 @@ export function ControlloDocumento({
       setChiedeMotivo(true)
       return
     }
-    avvia(async () => {
+    esegui(async () => {
       const esito = await setDocumentStatus({
         requirementId,
         status: nuovo as 'approvato',
@@ -128,10 +129,10 @@ export function ControlloMateriale({
   critico: boolean
 }) {
   const router = useRouter()
-  const [, avvia] = useTransition()
+  const { esegui } = useAzioneServer()
 
   const salva = (patch: { status?: string; critical?: boolean }) =>
-    avvia(async () => {
+    esegui(async () => {
       await setMaterialStatus({
         materialId,
         status: (patch.status ?? stato) as 'ordinato',
@@ -180,7 +181,7 @@ export function ControlloPratica({
   stato: string
 }) {
   const router = useRouter()
-  const [, avvia] = useTransition()
+  const { esegui } = useAzioneServer()
 
   return (
     <Selettore
@@ -188,7 +189,7 @@ export function ControlloPratica({
       opzioni={STATI_PRATICA}
       larghezza="w-40"
       onCambia={(nuovo) =>
-        avvia(async () => {
+        esegui(async () => {
           await setPracticeStatus({ practiceId, status: nuovo as 'inviata' })
           router.refresh()
         })
@@ -212,7 +213,7 @@ export function ControlloPagamento({
   stato: string
 }) {
   const router = useRouter()
-  const [, avvia] = useTransition()
+  const { esegui } = useAzioneServer()
 
   return (
     <Selettore
@@ -220,7 +221,7 @@ export function ControlloPagamento({
       opzioni={STATI_PAGAMENTO}
       larghezza="w-32"
       onCambia={(nuovo) =>
-        avvia(async () => {
+        esegui(async () => {
           await setPaymentStatus({ milestoneId, status: nuovo as 'incassato' })
           router.refresh()
         })
@@ -239,7 +240,7 @@ export function ControlloTask({
   etichetta: string
 }) {
   const router = useRouter()
-  const [, avvia] = useTransition()
+  const { esegui } = useAzioneServer()
 
   return (
     <label className="flex cursor-pointer items-center gap-2.5 text-sm">
@@ -247,7 +248,7 @@ export function ControlloTask({
         type="checkbox"
         checked={completato}
         onChange={() =>
-          avvia(async () => {
+          esegui(async () => {
             await toggleProjectTask(taskId)
             router.refresh()
           })
@@ -277,7 +278,7 @@ export function ControlloConferma({
   etichetta: string
 }) {
   const router = useRouter()
-  const [, avvia] = useTransition()
+  const { esegui } = useAzioneServer()
 
   return (
     <label className="flex cursor-pointer items-center gap-2.5 text-sm">
@@ -285,7 +286,7 @@ export function ControlloConferma({
         type="checkbox"
         checked={attivo}
         onChange={(e) =>
-          avvia(async () => {
+          esegui(async () => {
             await setProjectConfirmation({ projectId, campo, valore: e.target.checked })
             router.refresh()
           })

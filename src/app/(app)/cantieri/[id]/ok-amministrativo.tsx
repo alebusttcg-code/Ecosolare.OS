@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { ScegliFile } from '@/components/scegli-file'
 import {
   caricaContabile,
@@ -39,14 +40,14 @@ export function OkAmministrativo({
   const router = useRouter()
   const avvisa = useAvvisi()
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   function carica(file: File) {
     setErrore(null)
     const dati = new FormData()
     dati.set('milestoneId', milestoneId)
     dati.set('file', file)
-    avvia(async () => {
+    esegui(async () => {
       const esito = await caricaContabile(dati)
       if (esito.ok) {
         avvisa('Contabile caricata.')
@@ -67,7 +68,7 @@ export function OkAmministrativo({
           type="button"
           disabled={inCorso}
           onClick={() =>
-            avvia(async () => {
+            esegui(async () => {
               await revocaOkAmministrativo(milestoneId)
               avvisa('Via libera revocato.', 'info')
               router.refresh()
@@ -124,7 +125,7 @@ export function OkAmministrativo({
               : undefined
           }
           onClick={() =>
-            avvia(async () => {
+            esegui(async () => {
               setErrore(null)
               const esito = await concediOkAmministrativo({ milestoneId })
               if (esito.ok) {

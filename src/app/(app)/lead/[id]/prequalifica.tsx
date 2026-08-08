@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { Questionario } from '@/components/questionario'
 import { savePrequalification } from '@/lib/actions/questionnaires'
 import {
@@ -35,8 +36,20 @@ export function Prequalifica({
   const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [risposte, setRisposte] = useState<Risposte>(risposteIniziali)
+  const [punteggio, setPunteggio] = useState(punteggioSalvato)
   const [messaggio, setMessaggio] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
+
+  const haDatiLead = useMemo(
+    () =>
+      Boolean(
+        risposteIniziali.indirizzo ||
+          risposteIniziali.comune ||
+          risposteIniziali.cap ||
+          risposteIniziali.provincia,
+      ),
+    [risposteIniziali],
+  )
 
   const esito = useMemo(() => calcolaPunteggio(definizione, risposte), [definizione, risposte])
   const completezza = useMemo(
@@ -50,12 +63,13 @@ export function Prequalifica({
 
   function salva() {
     setMessaggio(null)
-    avvia(async () => {
+    esegui(async () => {
       const risultato = await savePrequalification({ opportunityId, templateId, risposte })
       if (!risultato.ok) {
         setMessaggio(Object.values(risultato.errors)[0] ?? 'Salvataggio non riuscito.')
         return
       }
+      setPunteggio({ punteggio: risultato.data.punteggio, massimo: risultato.data.massimo })
       const parti = [`Salvato. Punteggio ${risultato.data.punteggio}/${risultato.data.massimo}.`]
       if (risultato.data.campiMancanti.length > 0) {
         parti.push(`Non compilati: ${risultato.data.campiMancanti.join(', ')}.`)
@@ -69,10 +83,10 @@ export function Prequalifica({
     return (
       <div className="flex items-center justify-between gap-4">
         <div className="text-sm">
-          {punteggioSalvato ? (
+          {punteggio ? (
             <>
               <span className="font-medium tabular-nums">
-                {punteggioSalvato.punteggio}/{punteggioSalvato.massimo}
+                {punteggio.punteggio}/{punteggio.massimo}
               </span>
               <span className="ml-2 text-xs" style={{ color: 'var(--testo-tenue)' }}>
                 punteggio di prequalifica
@@ -88,7 +102,7 @@ export function Prequalifica({
           className="bottone-fantasma shrink-0 rounded-lg border px-3 py-1.5 text-xs"
           style={{ borderColor: 'var(--bordo)' }}
         >
-          {punteggioSalvato ? 'Rivedi' : 'Compila'}
+          {punteggio ? 'Rivedi' : 'Compila'}
         </button>
       </div>
     )
@@ -117,6 +131,7 @@ export function Prequalifica({
 
       <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
         Il punteggio ordina le priorità, non decide: la valutazione commerciale resta tua.
+        {haDatiLead ? ' Indirizzo e comune dalla scheda lead sono precompilati e modificabili.' : ''}
       </p>
 
       <Questionario definizione={definizione} risposte={risposte} onChange={aggiorna} />

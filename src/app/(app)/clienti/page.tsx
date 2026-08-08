@@ -11,11 +11,11 @@ export default async function ClientiPage({
   searchParams: Promise<{ q?: string; p?: string }>
 }) {
   // L'autorizzazione si verifica anche qui, non solo nel menu (ADR-006).
-  await guard('read', 'contact')
+  const utente = await guard('read', 'contact')
 
   const { q = '', p = '1' } = await searchParams
   const pagina = Math.max(1, Number.parseInt(p, 10) || 1)
-  const { righe, totale } = await searchContacts(q, pagina)
+  const { righe, totale } = await searchContacts(utente, q, pagina)
   const perPagina = 25
   const pagine = Math.max(1, Math.ceil(totale / perPagina))
 

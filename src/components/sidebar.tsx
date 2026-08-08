@@ -3,14 +3,15 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { RicercaGlobale, apriRicerca } from '@/components/ricerca-globale'
+import { useBloccaScroll } from '@/lib/use-blocca-scroll'
 
 export interface VoceMenu {
   readonly href: string
   readonly label: string
   readonly icona: string
-  readonly gruppo: 'direzione' | 'ciclo' | 'lavoro' | 'amministrazione'
+  readonly gruppo: 'direzione' | 'economia' | 'ciclo' | 'lavoro' | 'amministrazione'
   /** Contatore a destra della voce (attività scadute, approvazioni…). */
   readonly badge?: number
 }
@@ -40,7 +41,16 @@ export function Sidebar({
   azioneEsci: ReactNode
 }) {
   const percorso = usePathname()
+  const percorsoPrec = useRef(percorso)
   const [aperta, setAperta] = useState(false)
+
+  useEffect(() => {
+    if (percorsoPrec.current === percorso) return
+    percorsoPrec.current = percorso
+    setAperta(false)
+  }, [percorso])
+
+  useBloccaScroll(aperta)
 
   useEffect(() => {
     if (!aperta) return
@@ -48,17 +58,13 @@ export function Sidebar({
       if (e.key === 'Escape') setAperta(false)
     }
     document.addEventListener('keydown', suTasto)
-    const precedente = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', suTasto)
-      document.body.style.overflow = precedente
-    }
+    return () => document.removeEventListener('keydown', suTasto)
   }, [aperta])
 
   /** Le aree, nell'ordine in cui si attraversano lavorando. */
   const gruppi = [
     { codice: 'direzione' as const, titolo: null },
+    { codice: 'economia' as const, titolo: 'Economia' },
     { codice: 'ciclo' as const, titolo: 'Ciclo di lavoro' },
     { codice: 'lavoro' as const, titolo: 'Da fare' },
     { codice: 'amministrazione' as const, titolo: 'Amministrazione' },
@@ -136,7 +142,7 @@ export function Sidebar({
             'linear-gradient(180deg, rgba(10,18,32,0.96) 0%, rgba(5,10,20,0.98) 100%)',
         }}
       >
-        <div className="flex items-start justify-between px-5 pb-5 pt-6">
+        <div className="px-5 pb-5 pt-6">
           <Link href="/" onClick={chiudi} className="group block min-w-0">
             <Image
               src="/brand/ecosolare-logo.png"
@@ -148,44 +154,10 @@ export function Sidebar({
               style={{ filter: 'drop-shadow(0 2px 8px rgba(217,164,65,0.18))' }}
             />
           </Link>
-          <button
-            type="button"
-            onClick={chiudi}
-            aria-label="Chiudi il menu"
-            className="bottone-fantasma -mr-1 rounded-lg border px-2.5 py-1 text-xs lg:hidden"
-            style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
-          >
-            Chiudi
-          </button>
         </div>
         <div className="px-5">
           <div className="filetto" />
           <p className="mt-3 eyebrow">Operating System</p>
-        </div>
-
-        <div className="mt-4 px-3">
-          <button
-            type="button"
-            onClick={() => {
-              chiudi()
-              apriRicerca()
-            }}
-            className="flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-white/[0.04]"
-            style={{
-              borderColor: 'var(--bordo-tenue)',
-              background: 'rgba(5,10,20,0.4)',
-              color: 'var(--testo-fioco)',
-            }}
-          >
-            <span aria-hidden style={{ color: 'var(--color-eco-gold-400)' }}>⌕</span>
-            <span className="flex-1 text-left">Cerca…</span>
-            <kbd
-              className="hidden rounded border px-1.5 py-0.5 font-mono text-[10px] lg:block"
-              style={{ borderColor: 'var(--bordo-tenue)' }}
-            >
-              ⌘K
-            </kbd>
-          </button>
         </div>
 
         <nav className="mt-4 flex-1 overflow-y-auto px-3 pb-4">

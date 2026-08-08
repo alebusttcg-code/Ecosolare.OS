@@ -10,7 +10,8 @@ import {
   projectStages,
   projects,
 } from '@/db/schema'
-import { can } from '@/lib/auth/policy'
+import { scopeFor } from '@/lib/auth/policy'
+import { filtroCommessaAssegnata, filtroContattoAssegnato } from '@/lib/auth/scope-query'
 import { getCurrentUser } from '@/lib/auth/session'
 import { normalizePhone } from '@/lib/domain/phone'
 
@@ -43,8 +44,12 @@ export async function cercaGlobale(termine: string): Promise<RisultatoRicerca[]>
   const comeTelefono = normalizePhone(q).e164
   const db = getDb()
 
+  const scopeContatto = scopeFor(utente, 'contact')
+  const scopeLead = scopeFor(utente, 'opportunity')
+  const scopeProgetto = scopeFor(utente, 'project')
+
   const [anagrafica, lead, cantieri] = await Promise.all([
-    can(utente, 'read', 'contact')
+    scopeContatto !== 'none'
       ? db
           .select({
             id: contacts.id,
@@ -57,6 +62,7 @@ export async function cercaGlobale(termine: string): Promise<RisultatoRicerca[]>
           .where(
             and(
               isNull(contacts.deletedAt),
+              ...(scopeContatto === 'assigned' ? [filtroContattoAssegnato(utente.id)] : []),
               or(
                 ilike(contacts.lastName, testo),
                 ilike(contacts.firstName, testo),
@@ -70,7 +76,7 @@ export async function cercaGlobale(termine: string): Promise<RisultatoRicerca[]>
           .limit(5)
       : Promise.resolve([]),
 
-    can(utente, 'read', 'opportunity')
+    scopeLead !== 'none'
       ? db
           .select({
             id: opportunities.id,
@@ -106,7 +112,7 @@ export async function cercaGlobale(termine: string): Promise<RisultatoRicerca[]>
           .limit(6)
       : Promise.resolve([]),
 
-    can(utente, 'read', 'project')
+    scopeProgetto !== 'none'
       ? db
           .select({
             id: projects.id,
@@ -122,6 +128,7 @@ export async function cercaGlobale(termine: string): Promise<RisultatoRicerca[]>
           .where(
             and(
               isNull(projects.deletedAt),
+              ...(scopeProgetto === 'assigned' ? [filtroCommessaAssegnata(utente.id)] : []),
               or(
                 ilike(projects.title, testo),
                 ilike(projects.code, testo),

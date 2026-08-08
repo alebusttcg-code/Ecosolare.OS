@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { createQuote } from '@/lib/actions/quotes'
 
 export function NuovoPreventivo({
@@ -16,7 +17,7 @@ export function NuovoPreventivo({
   const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   if (!aperto) {
     return (
@@ -34,7 +35,7 @@ export function NuovoPreventivo({
     <form
       action={(formData) => {
         setErrore(null)
-        avvia(async () => {
+        esegui(async () => {
           const esito = await createQuote({
             opportunityId,
             title: String(formData.get('title') ?? ''),

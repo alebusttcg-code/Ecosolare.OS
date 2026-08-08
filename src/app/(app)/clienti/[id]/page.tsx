@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Badge, Card, Vuoto, formattaData, formattaEuro } from '@/components/ui'
+import { BottoneChiama, BottoneWhatsApp } from '@/components/bottoni-contatto'
 import { guard } from '@/lib/auth/session'
 import { getContactDetail } from '@/lib/queries/contacts'
 import { getStages } from '@/lib/queries/pipeline'
@@ -13,10 +14,10 @@ export default async function SchedaClientePage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  await guard('read', 'contact')
+  const utente = await guard('read', 'contact')
 
   const { id } = await params
-  const [dettaglio, stages] = await Promise.all([getContactDetail(id), getStages()])
+  const [dettaglio, stages] = await Promise.all([getContactDetail(utente, id), getStages()])
   if (!dettaglio) notFound()
 
   const { contatto, siti, opportunita, attivita, clienteDal, commesse, eCliente } =
@@ -40,27 +41,7 @@ export default async function SchedaClientePage({
           </Link>
           <h1 className="mt-1 text-xl font-semibold">{nome}</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-            {contatto.phone ? (
-              <a
-                href={`tel:${contatto.phoneE164 ?? contatto.phone}`}
-                className="collega text-eco-blue-300"
-              >
-                {contatto.phone}
-              </a>
-            ) : null}
-            {contatto.phone && contatto.phoneE164 ? (
-              <>
-                {' · '}
-                <a
-                  href={`https://wa.me/${contatto.phoneE164.replace('+', '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="collega text-eco-blue-300"
-                >
-                  WhatsApp
-                </a>
-              </>
-            ) : null}
+            {contatto.phone ? contatto.phone : null}
             {contatto.phone && contatto.email ? ' · ' : null}
             {contatto.email ? (
               <a href={`mailto:${contatto.email}`} className="collega text-eco-blue-300">
@@ -70,7 +51,11 @@ export default async function SchedaClientePage({
             {!contatto.phone && !contatto.email ? 'Nessun recapito' : null}
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {contatto.phone ? (
+            <BottoneChiama telefono={contatto.phone} telefonoE164={contatto.phoneE164} />
+          ) : null}
+          {contatto.phoneE164 ? <BottoneWhatsApp telefonoE164={contatto.phoneE164} /> : null}
           {eCliente ? (
             <Badge tone="positivo">Cliente</Badge>
           ) : (

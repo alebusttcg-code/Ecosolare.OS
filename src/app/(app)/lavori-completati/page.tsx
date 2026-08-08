@@ -13,9 +13,9 @@ export const metadata = { title: 'Lavori completati — EcoSolare OS' }
  * senza mischiarli a quelli ancora aperti.
  */
 export default async function LavoriCompletatiPage() {
-  await guard('read', 'project')
+  const utente = await guard('read', 'project')
 
-  const righe = await listProjects('completate')
+  const righe = await listProjects(utente, 'completate')
 
   return (
     <div>

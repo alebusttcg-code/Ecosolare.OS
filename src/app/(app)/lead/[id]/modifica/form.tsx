@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { Bottone, Campo } from '@/components/ui'
 import { IndirizzoItalia, type IndirizzoIniziale } from '@/components/indirizzo-italia'
 import { updateLead } from '@/lib/actions/opportunities'
@@ -36,14 +37,14 @@ export function FormModificaLead({
   const router = useRouter()
   const avvisa = useAvvisi()
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   return (
     <form
       action={(formData) => {
         setErrors({})
         const canale = String(formData.get('preferredChannel') ?? '')
-        avvia(async () => {
+        esegui(async () => {
           const esito = await updateLead({
             opportunityId,
             firstName: String(formData.get('firstName') ?? ''),

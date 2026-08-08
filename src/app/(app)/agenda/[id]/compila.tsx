@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { Questionario } from '@/components/questionario'
 import { saveSurvey } from '@/lib/actions/questionnaires'
 import {
@@ -40,7 +41,7 @@ export function CompilaSopralluogo({
   const [note, setNote] = useState(noteIniziali)
   const [errori, setErrori] = useState<Record<string, string>>({})
   const [messaggio, setMessaggio] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   const completezza = useMemo(
     () => calcolaCompletezza(definizione, risposte),
@@ -68,7 +69,7 @@ export function CompilaSopralluogo({
   function salva(completa: boolean) {
     setMessaggio(null)
     setErrori({})
-    avvia(async () => {
+    esegui(async () => {
       const esito = await saveSurvey({ surveyId, risposte, notes: note, completa })
 
       if (!esito.ok) {

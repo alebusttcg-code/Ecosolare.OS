@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { Badge } from '@/components/ui'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { createUser, resetPassword, updateUser } from '@/lib/actions/admin'
 import type { Role } from '@/lib/auth/policy'
 
@@ -48,7 +49,7 @@ function NuovoUtente() {
   const [credenziali, setCredenziali] = useState<{ email: string; password: string } | null>(
     null,
   )
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   if (credenziali) {
     return (
@@ -77,7 +78,7 @@ function NuovoUtente() {
       action={(formData) => {
         setErrors({})
         const email = String(formData.get('email') ?? '')
-        avvia(async () => {
+        esegui(async () => {
           const esito = await createUser({
             email,
             name: String(formData.get('name') ?? '') || undefined,
@@ -295,7 +296,7 @@ function RigaUtente({
   const [aperto, setAperto] = useState(false)
   const [ruolo, setRuolo] = useState<Role>(utente.role)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   return (
     <div
@@ -329,7 +330,7 @@ function RigaUtente({
         <form
           action={(formData) => {
             setErrors({})
-            avvia(async () => {
+            esegui(async () => {
               const esito = await updateUser({
                 userId: utente.id,
                 role: ruolo,
@@ -418,7 +419,7 @@ function RigaUtente({
 function RigeneraPassword({ utente }: { utente: UtenteInElenco }) {
   const [nuova, setNuova] = useState<string | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   if (nuova) {
     return (
@@ -439,7 +440,7 @@ function RigeneraPassword({ utente }: { utente: UtenteInElenco }) {
         disabled={inCorso}
         onClick={() => {
           setErrore(null)
-          avvia(async () => {
+          esegui(async () => {
             const esito = await resetPassword({ userId: utente.id })
             if (esito.ok) setNuova(esito.data.passwordIniziale)
             else setErrore(esito.errors._ ?? 'Operazione non riuscita.')

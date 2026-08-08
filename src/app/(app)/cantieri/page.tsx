@@ -16,9 +16,9 @@ const PIANIFICABILITA: Record<
 }
 
 export default async function CommessePage() {
-  await guard('read', 'project')
+  const utente = await guard('read', 'project')
 
-  const righe = await listProjects('attive')
+  const righe = await listProjects(utente, 'attive')
 
   const pianificabili = righe.filter((r) => r.readinessState === 'pianificabile').length
   const bloccate = righe.filter((r) => r.readinessState === 'non_pianificabile').length

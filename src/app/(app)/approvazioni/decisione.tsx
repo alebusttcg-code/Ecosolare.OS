@@ -1,19 +1,20 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { decideApproval } from '@/lib/actions/quotes'
 
 export function Decisione({ approvalId }: { approvalId: string }) {
   const router = useRouter()
   const avvisa = useAvvisi()
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   function decidi(approva: boolean, nota: string) {
     setErrore(null)
-    avvia(async () => {
+    esegui(async () => {
       const esito = await decideApproval({ approvalId, approva, nota: nota || undefined })
       if (esito.ok) {
         avvisa(approva ? 'Preventivo approvato.' : 'Preventivo respinto.', approva ? 'successo' : 'info')

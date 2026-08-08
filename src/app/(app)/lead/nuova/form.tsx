@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { Bottone, Campo } from '@/components/ui'
 import { IndirizzoItalia } from '@/components/indirizzo-italia'
 import {
@@ -48,7 +49,7 @@ export function FormNuovoLead({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [duplicati, setDuplicati] = useState<readonly DuplicatoLead[]>([])
   const [bozza, setBozza] = useState<OpportunityInput | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
   const [usaEsistente, setUsaEsistente] = useState(Boolean(contattoEsistente))
 
   function leggiForm(formData: FormData): OpportunityInput {
@@ -89,7 +90,7 @@ export function FormNuovoLead({
 
   function invia(input: OpportunityInput) {
     setBozza(input)
-    avvia(async () => {
+    esegui(async () => {
       const esito = await createOpportunity(input)
       if (esito.ok) {
         avvisa('Lead creato.')

@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
+import { useBloccaScroll } from '@/lib/use-blocca-scroll'
 
 /**
  * Popup centrato sul *viewport reale*, fuori dal layout della pagina.
@@ -28,6 +30,16 @@ export function Dialogo({
 }) {
   const titoloId = useId()
   const pannello = useRef<HTMLDivElement>(null)
+  const percorso = usePathname()
+  const percorsoPrec = useRef(percorso)
+
+  useEffect(() => {
+    if (percorsoPrec.current === percorso) return
+    percorsoPrec.current = percorso
+    if (aperto) onChiudi()
+  }, [percorso, aperto, onChiudi])
+
+  useBloccaScroll(aperto)
 
   useEffect(() => {
     if (!aperto) return
@@ -39,17 +51,8 @@ export function Dialogo({
     }
     document.addEventListener('keydown', suTasto)
 
-    const { overflow: overflowBody, paddingRight } = document.body.style
-    const scrollbar = window.innerWidth - document.documentElement.clientWidth
-    document.body.style.overflow = 'hidden'
-    if (scrollbar > 0) {
-      document.body.style.paddingRight = `${scrollbar}px`
-    }
-
     return () => {
       document.removeEventListener('keydown', suTasto)
-      document.body.style.overflow = overflowBody
-      document.body.style.paddingRight = paddingRight
       precedente?.focus()
     }
   }, [aperto, onChiudi])
@@ -60,11 +63,12 @@ export function Dialogo({
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8"
       role="presentation"
-      onClick={onChiudi}
     >
-      <div
+      <button
+        type="button"
+        aria-label="Chiudi"
         className="absolute inset-0 bg-black/72 backdrop-blur-[3px]"
-        aria-hidden
+        onClick={onChiudi}
       />
 
       <div
@@ -73,8 +77,7 @@ export function Dialogo({
         aria-modal="true"
         aria-labelledby={titoloId}
         tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-full w-full max-w-md flex-col rounded-2xl border outline-none"
+        className="relative z-[1] flex max-h-full w-full max-w-md flex-col rounded-2xl border outline-none"
         style={{
           background:
             'linear-gradient(165deg, rgba(14,24,40,0.98) 0%, rgba(5,10,20,0.99) 100%)',

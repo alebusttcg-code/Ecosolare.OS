@@ -1,9 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cercaGlobale, type RisultatoRicerca } from '@/lib/actions/search'
+import { useBloccaScroll } from '@/lib/use-blocca-scroll'
 
 const GRUPPI: Record<RisultatoRicerca['tipo'], string> = {
   anagrafica: 'Anagrafica',
@@ -35,6 +36,14 @@ export function RicercaGlobale() {
   const campo = useRef<HTMLInputElement>(null)
   const sequenza = useRef(0)
 
+  const chiudi = useCallback(() => {
+    setAperta(false)
+    setTesto('')
+    setRisultati([])
+    setAttivo(0)
+    setInCorso(false)
+  }, [])
+
   useEffect(() => {
     const apri = () => setAperta(true)
     const suTasto = (e: KeyboardEvent) => {
@@ -51,21 +60,18 @@ export function RicercaGlobale() {
     }
   }, [])
 
+  useBloccaScroll(aperta)
+
   useEffect(() => {
     if (!aperta) return
     campo.current?.focus()
 
     const suEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setAperta(false)
+      if (e.key === 'Escape') chiudi()
     }
     document.addEventListener('keydown', suEscape)
-    const overflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', suEscape)
-      document.body.style.overflow = overflow
-    }
-  }, [aperta])
+    return () => document.removeEventListener('keydown', suEscape)
+  }, [aperta, chiudi])
 
   const pulito = testo.trim()
   // Sotto i due caratteri non si cerca: i risultati restano in memoria ma
@@ -86,14 +92,6 @@ export function RicercaGlobale() {
     }, 240)
     return () => clearTimeout(timer)
   }, [pulito])
-
-  const chiudi = () => {
-    setAperta(false)
-    setTesto('')
-    setRisultati([])
-    setAttivo(0)
-    setInCorso(false)
-  }
 
   const vai = (r: RisultatoRicerca) => {
     chiudi()
@@ -119,18 +117,21 @@ export function RicercaGlobale() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[110] overflow-y-auto p-4 pt-[10vh] sm:pt-[14vh]"
+      className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-8"
       role="presentation"
-      onClick={chiudi}
     >
-      <div className="absolute inset-0 bg-black/72 backdrop-blur-[3px]" aria-hidden />
+      <button
+        type="button"
+        aria-label="Chiudi la ricerca"
+        className="absolute inset-0 bg-black/72 backdrop-blur-[3px]"
+        onClick={chiudi}
+      />
 
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Ricerca globale"
-        onClick={(e) => e.stopPropagation()}
-        className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border"
+        className="relative z-[1] mx-auto w-full max-w-xl overflow-hidden rounded-2xl border"
         style={{
           background:
             'linear-gradient(165deg, rgba(14,24,40,0.98) 0%, rgba(5,10,20,0.99) 100%)',

@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { ScegliFile } from '@/components/scegli-file'
 import { deleteDocumentFile, uploadDocument } from '@/lib/actions/documents'
 import { DIMENSIONE_MASSIMA, formattaDimensione } from '@/lib/domain/upload'
@@ -32,7 +33,7 @@ export function CaricaDocumento({
   const router = useRouter()
   const avvisa = useAvvisi()
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   function carica(file: File) {
     setErrore(null)
@@ -48,7 +49,7 @@ export function CaricaDocumento({
     dati.set('requirementId', requirementId)
     dati.set('file', file)
 
-    avvia(async () => {
+    esegui(async () => {
       const esito = await uploadDocument(dati)
       if (esito.ok) {
         avvisa('Documento caricato.')
@@ -82,7 +83,7 @@ export function CaricaDocumento({
                 type="button"
                 disabled={inCorso}
                 onClick={() =>
-                  avvia(async () => {
+                  esegui(async () => {
                     await deleteDocumentFile(f.id)
                     avvisa('Documento eliminato.', 'info')
                     router.refresh()

@@ -1,5 +1,11 @@
 import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 import { getDb } from '@/db'
+import { scopeFor } from '@/lib/auth/policy'
+import {
+  commessaVisibile,
+  filtroCommessaAssegnata,
+  type UtenteConId,
+} from '@/lib/auth/scope-query'
 import {
   contacts,
   contracts,
@@ -45,10 +51,19 @@ export interface CommessaInElenco {
  * un lavoro già finito senza mischiarlo a quelli aperti».
  */
 export async function listProjects(
+  utente: UtenteConId,
   ambito: 'attive' | 'completate' = 'attive',
 ): Promise<CommessaInElenco[]> {
+  const scope = scopeFor(utente, 'project')
+  if (scope === 'none') return []
+
   const adesso = Date.now()
   const chiuse = ambito === 'completate'
+
+  const condizioni = [isNull(projects.deletedAt), eq(projectStages.isClosed, chiuse)]
+  if (scope === 'assigned') {
+    condizioni.push(filtroCommessaAssegnata(utente.id))
+  }
 
   const righe = await getDb()
     .select({
@@ -74,7 +89,7 @@ export async function listProjects(
     .innerJoin(projectStages, eq(projectStages.code, projects.stage))
     .innerJoin(contacts, eq(contacts.id, projects.contactId))
     .leftJoin(users, eq(users.id, projects.ownerId))
-    .where(and(isNull(projects.deletedAt), eq(projectStages.isClosed, chiuse)))
+    .where(and(...condizioni))
     .orderBy(
       chiuse ? desc(projects.completedAt) : asc(projectStages.sortOrder),
       desc(projects.createdAt),
@@ -104,7 +119,9 @@ export async function listProjects(
   })
 }
 
-export async function getProjectDetail(id: string) {
+export async function getProjectDetail(utente: UtenteConId, id: string) {
+  if (!(await commessaVisibile(utente, id))) return null
+
   const db = getDb()
 
   const [riga] = await db

@@ -259,8 +259,7 @@ Vercel invia quando lancia il cron.
   l'accesso a password è venuta meno ([D-003a-bis](01-registro-decisioni.md)).
 - **Un evento che fallisce definitivamente non avvisa nessuno**: resta `fallito`
   in `outbox_events` e va cercato.
-- **Vercel** non è ancora configurato: se ne parla quando il funzionamento in
-  locale contro Supabase è verificato.
+- **Vercel** — vedi [08-deploy-staging-vercel.md](08-deploy-staging-vercel.md) per il deploy staging in `fra1`.
 
 ---
 

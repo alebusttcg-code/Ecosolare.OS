@@ -2,17 +2,24 @@ import { and, desc, eq, isNull } from 'drizzle-orm'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
+import { BottoneChiama, BottoneWhatsApp } from '@/components/bottoni-contatto'
 import { getDb } from '@/db'
 import {
   activities,
   contacts,
   opportunities,
   opportunityStatusHistory,
+  sites,
   surveyTemplates,
   surveys,
   users,
 } from '@/db/schema'
 import { guard } from '@/lib/auth/session'
+import {
+  arricchisciDefinizionePrequalifica,
+  risposteDaLead,
+  unisciRispostePrequalifica,
+} from '@/lib/domain/prequalifica-lead'
 import { getStages } from '@/lib/queries/pipeline'
 import { getQuotesForOpportunity } from '@/lib/queries/quotes'
 import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnaire'
@@ -40,11 +47,18 @@ export default async function DettaglioLeadPage({
       clienteId: contacts.id,
       clienteTelefono: contacts.phone,
       clienteTelefonoE164: contacts.phoneE164,
+      clienteAziendaId: contacts.companyId,
+      sitoIndirizzo: sites.addressLine,
+      sitoComune: sites.city,
+      sitoProvincia: sites.province,
+      sitoCap: sites.postalCode,
+      sitoTipoEdificio: sites.buildingType,
       proprietario: users.name,
       proprietarioEmail: users.email,
     })
     .from(opportunities)
     .innerJoin(contacts, eq(contacts.id, opportunities.contactId))
+    .leftJoin(sites, eq(sites.id, opportunities.siteId))
     .leftJoin(users, eq(users.id, opportunities.ownerId))
     .where(and(eq(opportunities.id, id), isNull(opportunities.deletedAt)))
     .limit(1)
@@ -88,6 +102,22 @@ export default async function DettaglioLeadPage({
   ])
 
   const opp = riga.opp
+  const definizionePrequalifica = templatePrequalifica
+    ? arricchisciDefinizionePrequalifica(
+        templatePrequalifica.definition as DefinizioneQuestionario,
+      )
+    : null
+  const rispostePrequalifica = unisciRispostePrequalifica(
+    risposteDaLead({
+      addressLine: riga.sitoIndirizzo,
+      city: riga.sitoComune,
+      province: riga.sitoProvincia,
+      postalCode: riga.sitoCap,
+      buildingType: riga.sitoTipoEdificio,
+      haAzienda: Boolean(riga.clienteAziendaId),
+    }),
+    (opp.prequalification ?? {}) as Risposte,
+  )
   const stato = stages.find((s) => s.code === opp.stage)
   const etichetta = (code: string | null) =>
     code ? (stages.find((s) => s.code === code)?.label ?? code) : '—'
@@ -117,27 +147,13 @@ export default async function DettaglioLeadPage({
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {riga.clienteTelefono ? (
-              <a
-                href={`tel:${riga.clienteTelefonoE164 ?? riga.clienteTelefono}`}
-                className="bottone-fantasma rounded-lg border px-3 py-1.5 text-sm"
-                style={{ borderColor: 'var(--bordo)' }}
-              >
-                <span aria-hidden style={{ color: 'var(--color-eco-gold-300)' }}>
-                  ✆
-                </span>{' '}
-                Chiama
-              </a>
+              <BottoneChiama
+                telefono={riga.clienteTelefono}
+                telefonoE164={riga.clienteTelefonoE164}
+              />
             ) : null}
             {riga.clienteTelefonoE164 ? (
-              <a
-                href={`https://wa.me/${riga.clienteTelefonoE164.replace('+', '')}`}
-                target="_blank"
-                rel="noreferrer"
-                className="bottone-fantasma rounded-lg border px-3 py-1.5 text-sm"
-                style={{ borderColor: 'var(--bordo)' }}
-              >
-                WhatsApp
-              </a>
+              <BottoneWhatsApp telefonoE164={riga.clienteTelefonoE164} />
             ) : null}
             <Link
               href={`/lead/${opp.id}/modifica`}
@@ -175,13 +191,13 @@ export default async function DettaglioLeadPage({
             )}
           </Card>
 
-          {templatePrequalifica ? (
+          {templatePrequalifica && definizionePrequalifica ? (
             <Card title="Prequalifica">
               <Prequalifica
                 opportunityId={opp.id}
                 templateId={templatePrequalifica.id}
-                definizione={templatePrequalifica.definition as DefinizioneQuestionario}
-                risposteIniziali={(opp.prequalification ?? {}) as Risposte}
+                definizione={definizionePrequalifica}
+                risposteIniziali={rispostePrequalifica}
                 punteggioSalvato={
                   opp.score !== null && opp.scoreMax !== null
                     ? { punteggio: opp.score, massimo: opp.scoreMax }

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { updateSetting } from '@/lib/actions/admin'
+import { useAzioneServer } from '@/lib/use-azione-server'
 
 export interface ConfigurazioneInElenco {
   readonly key: string
@@ -20,14 +21,14 @@ export interface ConfigurazioneInElenco {
 export function ModificaConfigurazione({ voce }: { voce: ConfigurazioneInElenco }) {
   const [errore, setErrore] = useState<string | null>(null)
   const [salvato, setSalvato] = useState(false)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   return (
     <form
       action={(formData) => {
         setErrore(null)
         setSalvato(false)
-        avvia(async () => {
+        esegui(async () => {
           const esito = await updateSetting({
             key: voce.key,
             value: String(formData.get('value') ?? ''),

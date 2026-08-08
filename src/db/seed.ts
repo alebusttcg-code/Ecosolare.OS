@@ -1,3 +1,4 @@
+import { and, eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import {
@@ -214,6 +215,16 @@ async function main(): Promise<void> {
         },
       ])
       .onConflictDoNothing()
+
+    await db
+      .update(surveyTemplates)
+      .set({ isActive: false })
+      .where(
+        and(
+          eq(surveyTemplates.code, PREQUALIFICA_FV.code),
+          eq(surveyTemplates.version, 1),
+        ),
+      )
     console.log('Questionari: 2 verificati (prequalifica e sopralluogo fotovoltaico).')
 
     const statiCommessa = [

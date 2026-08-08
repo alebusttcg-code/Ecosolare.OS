@@ -1,15 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { createSurvey } from '@/lib/actions/questionnaires'
 
 export function NuovoSopralluogo({ opportunityId }: { opportunityId: string }) {
   const router = useRouter()
   const avvisa = useAvvisi()
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   return (
     <div className="text-right">
@@ -17,7 +18,7 @@ export function NuovoSopralluogo({ opportunityId }: { opportunityId: string }) {
         type="button"
         disabled={inCorso}
         onClick={() =>
-          avvia(async () => {
+          esegui(async () => {
             setErrore(null)
             const esito = await createSurvey({ opportunityId })
             if (esito.ok) {

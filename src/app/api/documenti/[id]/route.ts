@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/db'
 import { documentFiles } from '@/db/schema'
 import { AuthorizationError } from '@/lib/auth/policy'
+import { assertDocumentoInScope } from '@/lib/auth/scope-query'
 import { guard } from '@/lib/auth/session'
 import { getArchivio } from '@/lib/storage'
 
@@ -24,16 +25,17 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
+  const { id } = await params
+
   try {
-    await guard('read', 'document')
+    const utente = await guard('read', 'document')
+    await assertDocumentoInScope(utente, id)
   } catch (errore) {
     if (errore instanceof AuthorizationError) {
       return NextResponse.json({ errore: 'Accesso non consentito.' }, { status: 403 })
     }
     throw errore
   }
-
-  const { id } = await params
 
   const file = await getDb().query.documentFiles.findFirst({
     where: eq(documentFiles.id, id),

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState } from 'react'
 import {
   formattaImporto,
   formattaPercentuale,
@@ -10,6 +10,7 @@ import {
 } from '@/lib/domain/money'
 import { calcolaPreventivo } from '@/lib/domain/pricing'
 import { saveQuoteLines } from '@/lib/actions/quotes'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import type { RigaVisibile } from '@/lib/queries/quotes'
 
 export interface VoceCatalogo {
@@ -63,7 +64,7 @@ export function EditorPreventivo({
   const [sconto, setSconto] = useState(scontoIniziale)
   const [messaggio, setMessaggio] = useState<string | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   const totali = useMemo(
     () =>
@@ -125,7 +126,7 @@ export function EditorPreventivo({
   function salva() {
     setMessaggio(null)
     setErrore(null)
-    avvia(async () => {
+    esegui(async () => {
       const esito = await saveQuoteLines({
         versionId,
         globalDiscountPct: sconto,

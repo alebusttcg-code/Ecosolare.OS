@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { completeActivity } from '@/lib/actions/activities'
 
 const TIPI = [
@@ -38,7 +39,7 @@ export function CompletaAttivita({
   const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   if (!aperto) {
     return (
@@ -57,7 +58,7 @@ export function CompletaAttivita({
     <form
       action={(formData) => {
         setErrore(null)
-        avvia(async () => {
+        esegui(async () => {
           const scadenza = String(formData.get('dueAt') ?? '')
           const esito = await completeActivity({
             activityId,

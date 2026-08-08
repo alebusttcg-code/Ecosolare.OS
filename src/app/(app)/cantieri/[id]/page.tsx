@@ -42,7 +42,7 @@ export default async function CommessaPage({
   const utente = await guard('read', 'project')
   const { id } = await params
 
-  const dati = await getProjectDetail(id)
+  const dati = await getProjectDetail(utente, id)
   if (!dati) notFound()
 
   const c = dati.commessa

@@ -78,7 +78,7 @@ export default async function MetrichePage({
 
       {coorte.length === 0 ? (
         <Card>
-          <Vuoto messaggio="Nessun lead entrato in questo periodo." />
+          <Vuoto messaggio="Nessun lead entrato in questo periodo. Crea un lead da Lead → Nuovo lead e completa la prima attività di contatto." />
         </Card>
       ) : (
         <div className="space-y-8">

@@ -127,11 +127,11 @@ export function Stat({
 
   const corpo = (
     <div
-      className={`pannello relative px-5 py-4 ${href ? 'pannello-interattivo' : ''}`}
+      className={`pannello relative flex h-full min-h-[8.25rem] flex-col px-5 py-4 ${href ? 'pannello-interattivo' : ''}`}
       style={ritardo(indice)}
     >
       <div className="flex items-start justify-between gap-3">
-        <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+        <span className="text-xs leading-snug" style={{ color: 'var(--testo-tenue)' }}>
           {label}
         </span>
         {icona ? (
@@ -145,23 +145,25 @@ export function Stat({
         ) : null}
       </div>
       <div
-        className="mt-2 text-3xl font-semibold tracking-tight"
+        className="mt-2 flex-1 text-3xl font-semibold leading-none tracking-tight tabular-nums"
         style={{ color: tone === 'neutro' ? 'var(--testo)' : colore }}
       >
         <Contatore valore={value} formato={formato} />
       </div>
-      {hint ? (
-        <div className="mt-1 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-          {hint}
-        </div>
-      ) : null}
+      <p
+        className="mt-2 min-h-[2rem] text-xs leading-snug"
+        style={{ color: 'var(--testo-fioco)' }}
+        aria-hidden={!hint}
+      >
+        {hint ?? '\u00A0'}
+      </p>
     </div>
   )
 
   return (
-    <Inclina className="rivela">
+    <Inclina className="rivela h-full">
       {href ? (
-        <Link href={href} className="block outline-none focus-visible:ring-2 focus-visible:ring-eco-blue-400/40 rounded-[inherit]">
+        <Link href={href} className="block h-full outline-none focus-visible:ring-2 focus-visible:ring-eco-blue-400/40 rounded-[inherit]">
           {corpo}
         </Link>
       ) : (

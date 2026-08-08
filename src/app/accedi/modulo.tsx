@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { accedi } from '@/lib/actions/auth'
+import { useAzioneServer } from '@/lib/use-azione-server'
 
 const CAMPO =
   'w-full rounded-lg border px-3 py-2.5 text-sm transition-all duration-200 outline-none focus:border-eco-blue-400 focus:shadow-[0_0_0_3px_rgba(91,155,213,0.14)]'
@@ -16,13 +17,13 @@ export function ModuloAccesso() {
    * battitura si finirebbe a riscrivere ogni volta anche l'indirizzo giusto.
    */
   const [email, setEmail] = useState('')
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   return (
     <form
       action={(formData) => {
         setErrore(null)
-        avvia(async () => {
+        esegui(async () => {
           const esito = await accedi({
             email,
             password: String(formData.get('password') ?? ''),

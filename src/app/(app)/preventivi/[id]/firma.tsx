@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
+import { useAzioneServer } from '@/lib/use-azione-server'
 import { signContractAndOpenProject } from '@/lib/actions/projects'
 
 /**
@@ -18,7 +19,7 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
   const avvisa = useAvvisi()
   const [aperto, setAperto] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
-  const [inCorso, avvia] = useTransition()
+  const { inCorso, esegui } = useAzioneServer()
 
   const oggi = new Date().toISOString().slice(0, 10)
 
@@ -42,7 +43,7 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
     <form
       action={(fd) => {
         setErrore(null)
-        avvia(async () => {
+        esegui(async () => {
           const data = String(fd.get('signedAt') ?? '')
           const esito = await signContractAndOpenProject({
             quoteVersionId: versionId,
