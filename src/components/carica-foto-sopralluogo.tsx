@@ -6,6 +6,7 @@ import { useAvvisi } from '@/components/avvisi'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { ScegliFile } from '@/components/scegli-file'
 import { deleteSurveyPhoto, uploadSurveyPhoto } from '@/lib/actions/survey-files'
+import { normalizzaAllegato } from '@/lib/domain/normalizza-allegato'
 import { DIMENSIONE_MASSIMA, formattaDimensione } from '@/lib/domain/upload'
 
 export interface FotoSopralluogo {
@@ -51,12 +52,24 @@ export function CaricaFotoSopralluogo({
       return
     }
 
-    const dati = new FormData()
-    dati.set('surveyId', surveyId)
-    dati.set('fieldCode', fieldCode)
-    dati.set('file', file)
-
     esegui(async () => {
+      let allegato: File
+      try {
+        allegato = await normalizzaAllegato(file)
+      } catch (errore) {
+        setErrore(
+          errore instanceof Error
+            ? errore.message
+            : 'Non è stato possibile preparare la foto per il caricamento.',
+        )
+        return
+      }
+
+      const dati = new FormData()
+      dati.set('surveyId', surveyId)
+      dati.set('fieldCode', fieldCode)
+      dati.set('file', allegato)
+
       const esito = await uploadSurveyPhoto(dati)
       if (esito.ok) {
         onCaricata?.(esito.data.fileId)

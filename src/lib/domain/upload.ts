@@ -10,13 +10,14 @@
  * formato non può nascondere.
  */
 
-export type TipoImmagine = 'image/jpeg' | 'image/png'
+export type TipoImmagine = 'image/jpeg' | 'image/png' | 'image/webp'
 
 export type TipoFileAmmesso = TipoImmagine | 'application/pdf'
 
 export const TIPI_AMMESSI: readonly TipoFileAmmesso[] = [
   'image/jpeg',
   'image/png',
+  'image/webp',
   'application/pdf',
 ]
 
@@ -24,6 +25,7 @@ export const TIPI_AMMESSI: readonly TipoFileAmmesso[] = [
 export const ETICHETTE_TIPO: Record<TipoFileAmmesso, string> = {
   'image/jpeg': 'JPEG',
   'image/png': 'PNG',
+  'image/webp': 'WebP',
   'application/pdf': 'PDF',
 }
 
@@ -31,6 +33,7 @@ export const ETICHETTE_TIPO: Record<TipoFileAmmesso, string> = {
 export const ESTENSIONI: Record<TipoFileAmmesso, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
+  'image/webp': 'webp',
   'application/pdf': 'pdf',
 }
 
@@ -44,6 +47,31 @@ const FIRME: readonly { tipo: TipoFileAmmesso; byte: readonly number[] }[] = [
   { tipo: 'application/pdf', byte: [0x25, 0x50, 0x44, 0x46, 0x2d] }, // "%PDF-"
 ]
 
+function eWebp(byte: Uint8Array): boolean {
+  // RIFF....WEBP
+  return (
+    byte.length >= 12 &&
+    byte[0] === 0x52 &&
+    byte[1] === 0x49 &&
+    byte[2] === 0x46 &&
+    byte[3] === 0x46 &&
+    byte[8] === 0x57 &&
+    byte[9] === 0x45 &&
+    byte[10] === 0x42 &&
+    byte[11] === 0x50
+  )
+}
+
+function eHeic(byte: Uint8Array): boolean {
+  // ISO BMFF: ....ftyp + brand heic/heif/mif1/msf1
+  if (byte.length < 12) return false
+  if (byte[4] !== 0x66 || byte[5] !== 0x74 || byte[6] !== 0x79 || byte[7] !== 0x70) {
+    return false
+  }
+  const brand = String.fromCharCode(byte[8]!, byte[9]!, byte[10]!, byte[11]!)
+  return brand === 'heic' || brand === 'heif' || brand === 'mif1' || brand === 'msf1'
+}
+
 /**
  * Riconosce il formato dai byte iniziali.
  * Restituisce null se non corrisponde a nessuno dei formati ammessi.
@@ -53,7 +81,13 @@ export function riconosciTipo(byte: Uint8Array): TipoFileAmmesso | null {
     if (byte.length < firma.byte.length) continue
     if (firma.byte.every((atteso, i) => byte[i] === atteso)) return firma.tipo
   }
+  if (eWebp(byte)) return 'image/webp'
   return null
+}
+
+/** Solo per messaggi d'errore più precisi (HEIC non è accettato come tale). */
+export function sembraHeic(byte: Uint8Array): boolean {
+  return eHeic(byte)
 }
 
 export type EsitoValidazione =
@@ -79,9 +113,16 @@ export function validaFile(params: {
 
   const tipoReale = riconosciTipo(params.byte)
   if (tipoReale === null) {
+    if (sembraHeic(params.byte)) {
+      return {
+        ok: false,
+        motivo:
+          'Questa foto è in formato HEIC (tipico iPhone). Usa «Scatta foto» oppure esporta in JPEG/PNG prima di caricarla.',
+      }
+    }
     return {
       ok: false,
-      motivo: 'Formato non riconosciuto. Sono ammessi JPEG, PNG e PDF.',
+      motivo: 'Formato non riconosciuto. Sono ammessi JPEG, PNG, WebP e PDF.',
     }
   }
 
@@ -98,7 +139,7 @@ export function validaFoto(params: {
   const esito = validaFile({ ...params, tipoDichiarato: '' })
   if (!esito.ok) return esito
   if (esito.tipo === 'application/pdf') {
-    return { ok: false, motivo: 'Per le fotografie del sopralluogo servono JPEG o PNG.' }
+    return { ok: false, motivo: 'Per le fotografie del sopralluogo servono JPEG, PNG o WebP.' }
   }
   return esito
 }

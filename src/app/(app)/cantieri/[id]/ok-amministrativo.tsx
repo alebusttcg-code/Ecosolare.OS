@@ -10,6 +10,7 @@ import {
   concediOkAmministrativo,
   revocaOkAmministrativo,
 } from '@/lib/actions/banca'
+import { normalizzaAllegato } from '@/lib/domain/normalizza-allegato'
 import { formattaDimensione } from '@/lib/domain/upload'
 
 export interface ContabileCaricata {
@@ -44,10 +45,21 @@ export function OkAmministrativo({
 
   function carica(file: File) {
     setErrore(null)
-    const dati = new FormData()
-    dati.set('milestoneId', milestoneId)
-    dati.set('file', file)
     esegui(async () => {
+      let allegato: File
+      try {
+        allegato = await normalizzaAllegato(file)
+      } catch (errore) {
+        setErrore(
+          errore instanceof Error
+            ? errore.message
+            : 'Non è stato possibile preparare il file per il caricamento.',
+        )
+        return
+      }
+      const dati = new FormData()
+      dati.set('milestoneId', milestoneId)
+      dati.set('file', allegato)
       const esito = await caricaContabile(dati)
       if (esito.ok) {
         avvisa('Contabile caricata.')

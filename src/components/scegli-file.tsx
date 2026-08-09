@@ -51,7 +51,11 @@ export function ScegliFile({
       <label className={STILE} style={{ borderColor: 'var(--bordo)' }}>
         <input
           type="file"
-          accept={soloImmagini ? 'image/jpeg,image/png' : 'image/jpeg,image/png,application/pdf'}
+          accept={
+            soloImmagini
+              ? 'image/*,.heic,.heif'
+              : 'image/*,.heic,.heif,application/pdf,.pdf'
+          }
           className="hidden"
           disabled={disabled}
           onChange={gestisci}

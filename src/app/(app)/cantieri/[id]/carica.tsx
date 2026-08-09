@@ -6,6 +6,7 @@ import { useAvvisi } from '@/components/avvisi'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { ScegliFile } from '@/components/scegli-file'
 import { deleteDocumentFile, uploadDocument } from '@/lib/actions/documents'
+import { normalizzaAllegato } from '@/lib/domain/normalizza-allegato'
 import { DIMENSIONE_MASSIMA, formattaDimensione } from '@/lib/domain/upload'
 
 export interface FileCaricato {
@@ -45,11 +46,31 @@ export function CaricaDocumento({
       return
     }
 
-    const dati = new FormData()
-    dati.set('requirementId', requirementId)
-    dati.set('file', file)
-
     esegui(async () => {
+      let allegato: File
+      try {
+        // HEIC/WebP dalla galleria → JPEG; PDF e JPEG/PNG restano invariati.
+        allegato = await normalizzaAllegato(file)
+      } catch (errore) {
+        setErrore(
+          errore instanceof Error
+            ? errore.message
+            : 'Non è stato possibile preparare la foto per il caricamento.',
+        )
+        return
+      }
+
+      if (allegato.size > DIMENSIONE_MASSIMA) {
+        setErrore(
+          `Il file pesa ${formattaDimensione(allegato.size)}: il limite è ${formattaDimensione(DIMENSIONE_MASSIMA)}.`,
+        )
+        return
+      }
+
+      const dati = new FormData()
+      dati.set('requirementId', requirementId)
+      dati.set('file', allegato)
+
       const esito = await uploadDocument(dati)
       if (esito.ok) {
         avvisa('Documento caricato.')
