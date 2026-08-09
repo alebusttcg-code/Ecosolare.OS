@@ -17,7 +17,6 @@ import {
   ControlloMateriale,
   ControlloPagamento,
   ControlloPratica,
-  ControlloTask,
 } from './controlli'
 
 export const metadata = { title: 'Cantieri e commesse — EcoSolare OS' }
@@ -54,7 +53,6 @@ export default async function CommessaPage({
   const stato = PIANIFICABILITA[c.readinessState as StatoPianificabilita]
   const cliente = [dati.clienteNome, dati.clienteCognome].filter(Boolean).join(' ')
 
-  const taskFatti = dati.task.filter((t) => t.completedAt !== null).length
   const docApprovati = dati.documenti.filter((d) => d.status === 'approvato').length
 
   return (
@@ -272,37 +270,7 @@ export default async function CommessaPage({
         </div>
 
         <div className="space-y-6">
-          <Card title={`Attività (${taskFatti}/${dati.task.length})`} indice={1}>
-            {dati.task.length === 0 ? (
-              <Vuoto messaggio="Nessuna attività." />
-            ) : (
-              <ul className="space-y-3">
-                {dati.task.map((t) => (
-                  <li key={t.id}>
-                    <ControlloTask
-                      taskId={t.id}
-                      completato={t.completedAt !== null}
-                      etichetta={t.label}
-                    />
-                    {t.dueAt && t.completedAt === null ? (
-                      <span
-                        className="ml-6 text-xs"
-                        style={{
-                          color: t.inRitardo
-                            ? 'var(--color-eco-gold-300)'
-                            : 'var(--testo-fioco)',
-                        }}
-                      >
-                        entro {formattaData(t.dueAt)}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          <Card id="piano-pagamenti" title="Piano pagamenti" indice={2}>
+          <Card id="piano-pagamenti" title="Piano pagamenti" indice={1}>
             {dati.pagamenti.length === 0 ? (
               <Vuoto messaggio="Nessuna scadenza." />
             ) : (
@@ -341,7 +309,7 @@ export default async function CommessaPage({
           </Card>
 
           {utente.canViewCosts ? (
-            <Card title="Economia prevista" accento="oro" indice={3}>
+            <Card title="Economia prevista" accento="oro" indice={2}>
               <dl className="space-y-2.5 text-sm">
                 <div className="flex justify-between">
                   <dt style={{ color: 'var(--testo-tenue)' }}>Ricavo</dt>
