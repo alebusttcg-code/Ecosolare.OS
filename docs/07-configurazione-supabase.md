@@ -254,7 +254,7 @@ In locale la coda va smaltita a mano:
 npm run outbox
 ```
 
-In produzione ci pensa il cron in `vercel.json`, ogni cinque minuti. Serve:
+In produzione ci pensa il cron in `vercel.json` (1× al giorno su Hobby: 07:00 UTC). Serve:
 
 ```bash
 MAINTENANCE_TOKEN=<openssl rand -hex 32>

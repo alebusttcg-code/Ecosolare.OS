@@ -125,7 +125,7 @@ Poi accedi all'URL Vercel, login, cambio password obbligatorio.
 |---|---|
 | Login | Email + password su URL staging |
 | Upload documento | Cantieri → commessa → carica PDF → ricarica pagina (file ancora lì) |
-| Cron outbox | Vercel → Cron Jobs → ultima esecuzione OK (ogni 5 min) |
+| Cron outbox | Vercel → Cron Jobs → ultima esecuzione OK (1×/giorno, 07:00 UTC; Hobby) |
 | Intake | `curl -X POST …/api/intake` con header `x-intake-token` |
 | Regione | Vercel → Settings → Functions → fra1 |
 
