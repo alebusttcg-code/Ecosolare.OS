@@ -23,6 +23,7 @@ import {
   users,
 } from '@/db/schema'
 import type { Blocco, StatoPianificabilita } from '@/lib/domain/readiness'
+import { unoAllaVolta } from '@/lib/uno-alla-volta'
 
 export interface CommessaInElenco {
   readonly id: string
@@ -155,73 +156,78 @@ export async function getProjectDetail(utente: UtenteConId, id: string) {
   if (!riga) return null
 
   const [documenti, files, materiali, pratiche, task, pagamenti, contabili, storico, stati] =
-    await Promise.all([
-    db
-      .select()
-      .from(documentRequirements)
-      .where(eq(documentRequirements.projectId, id))
-      .orderBy(asc(documentRequirements.sortOrder)),
-    db
-      .select({
-        id: documentFiles.id,
-        requirementId: documentFiles.requirementId,
-        filename: documentFiles.filename,
-        mimeType: documentFiles.mimeType,
-        sizeBytes: documentFiles.sizeBytes,
-        versionNo: documentFiles.versionNo,
-      })
-      .from(documentFiles)
-      .innerJoin(
-        documentRequirements,
-        eq(documentRequirements.id, documentFiles.requirementId),
-      )
-      .where(eq(documentRequirements.projectId, id))
-      .orderBy(desc(documentFiles.versionNo)),
-    db
-      .select()
-      .from(projectMaterials)
-      .where(eq(projectMaterials.projectId, id))
-      .orderBy(asc(projectMaterials.description)),
-    db
-      .select()
-      .from(projectPractices)
-      .where(eq(projectPractices.projectId, id)),
-    db
-      .select()
-      .from(projectTasks)
-      .where(eq(projectTasks.projectId, id))
-      .orderBy(asc(projectTasks.sortOrder)),
-    db
-      .select({
-        milestone: paymentMilestones,
-        concessoDa: users.name,
-        concessoDaEmail: users.email,
-      })
-      .from(paymentMilestones)
-      .leftJoin(users, eq(users.id, paymentMilestones.adminOkBy))
-      .where(eq(paymentMilestones.projectId, id))
-      .orderBy(asc(paymentMilestones.sortOrder)),
-    db
-      .select({
-        id: paymentReceipts.id,
-        milestoneId: paymentReceipts.milestoneId,
-        filename: paymentReceipts.filename,
-        sizeBytes: paymentReceipts.sizeBytes,
-      })
-      .from(paymentReceipts)
-      .innerJoin(
-        paymentMilestones,
-        eq(paymentMilestones.id, paymentReceipts.milestoneId),
-      )
-      .where(eq(paymentMilestones.projectId, id))
-      .orderBy(desc(paymentReceipts.uploadedAt)),
-    db
-      .select()
-      .from(projectStatusHistory)
-      .where(eq(projectStatusHistory.projectId, id))
-      .orderBy(desc(projectStatusHistory.changedAt)),
-    db.select().from(projectStages).orderBy(asc(projectStages.sortOrder)),
-  ])
+    await unoAllaVolta([
+      () =>
+        db
+          .select()
+          .from(documentRequirements)
+          .where(eq(documentRequirements.projectId, id))
+          .orderBy(asc(documentRequirements.sortOrder)),
+      () =>
+        db
+          .select({
+            id: documentFiles.id,
+            requirementId: documentFiles.requirementId,
+            filename: documentFiles.filename,
+            mimeType: documentFiles.mimeType,
+            sizeBytes: documentFiles.sizeBytes,
+            versionNo: documentFiles.versionNo,
+          })
+          .from(documentFiles)
+          .innerJoin(
+            documentRequirements,
+            eq(documentRequirements.id, documentFiles.requirementId),
+          )
+          .where(eq(documentRequirements.projectId, id))
+          .orderBy(desc(documentFiles.versionNo)),
+      () =>
+        db
+          .select()
+          .from(projectMaterials)
+          .where(eq(projectMaterials.projectId, id))
+          .orderBy(asc(projectMaterials.description)),
+      () =>
+        db.select().from(projectPractices).where(eq(projectPractices.projectId, id)),
+      () =>
+        db
+          .select()
+          .from(projectTasks)
+          .where(eq(projectTasks.projectId, id))
+          .orderBy(asc(projectTasks.sortOrder)),
+      () =>
+        db
+          .select({
+            milestone: paymentMilestones,
+            concessoDa: users.name,
+            concessoDaEmail: users.email,
+          })
+          .from(paymentMilestones)
+          .leftJoin(users, eq(users.id, paymentMilestones.adminOkBy))
+          .where(eq(paymentMilestones.projectId, id))
+          .orderBy(asc(paymentMilestones.sortOrder)),
+      () =>
+        db
+          .select({
+            id: paymentReceipts.id,
+            milestoneId: paymentReceipts.milestoneId,
+            filename: paymentReceipts.filename,
+            sizeBytes: paymentReceipts.sizeBytes,
+          })
+          .from(paymentReceipts)
+          .innerJoin(
+            paymentMilestones,
+            eq(paymentMilestones.id, paymentReceipts.milestoneId),
+          )
+          .where(eq(paymentMilestones.projectId, id))
+          .orderBy(desc(paymentReceipts.uploadedAt)),
+      () =>
+        db
+          .select()
+          .from(projectStatusHistory)
+          .where(eq(projectStatusHistory.projectId, id))
+          .orderBy(desc(projectStatusHistory.changedAt)),
+      () => db.select().from(projectStages).orderBy(asc(projectStages.sortOrder)),
+    ])
 
   const blocchi = (riga.commessa.readinessBlockers ?? []) as Blocco[]
 

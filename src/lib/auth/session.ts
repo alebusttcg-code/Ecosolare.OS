@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { cache } from 'react'
 import { sessioneCorrente } from '@/auth'
 import { getDb } from '@/db'
 import { users } from '@/db/schema'
@@ -26,8 +27,12 @@ export interface CurrentUser extends PolicySubject {
  * se un amministratore revoca una capacita' mentre l'utente e' collegato, la
  * sessione resterebbe indietro. Il costo e' una query per richiesta; il beneficio
  * e' che una revoca ha effetto immediato.
+ *
+ * `cache` di React: layout e pagina chiamano entrambi `guard`/`getCurrentUser`
+ * nello stesso request — senza dedup sono due round-trip DB in parallelo sul
+ * pool serverless, e la soft-navigation può restare appesa.
  */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const sessione = await sessioneCorrente()
   if (!sessione) return null
 
@@ -48,7 +53,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!utente || !utente.isActive) return null
 
   return utente
-}
+})
 
 /** Come `getCurrentUser`, ma solleva invece di restituire null. */
 export async function requireUser(): Promise<CurrentUser> {

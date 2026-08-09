@@ -1,7 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
-  contacts,
   documentFiles,
   documentRequirements,
   projectTasks,
@@ -19,9 +18,11 @@ export type UtenteConId = PolicySubject & { readonly id: string }
  * Contratto esplicito per Fase 4 (work order); oggi usa `project_tasks`.
  */
 export function filtroCommessaAssegnata(utenteId: string) {
+  // `projects.id` / `contacts.id` letterali: con ${projects.id} Drizzle emette
+  // solo "id" e in subquery diventa project_tasks.id → exists sempre falso.
   return sql`exists (
     select 1 from ${projectTasks}
-    where ${projectTasks.projectId} = ${projects.id}
+    where ${projectTasks.projectId} = projects.id
       and ${projectTasks.assignedTo} = ${utenteId}
   )`
 }
@@ -30,8 +31,8 @@ export function filtroCommessaAssegnata(utenteId: string) {
 export function filtroContattoAssegnato(utenteId: string) {
   return sql`exists (
     select 1 from ${projects}
-    inner join ${projectTasks} on ${projectTasks.projectId} = ${projects.id}
-    where ${projects.contactId} = ${contacts.id}
+    inner join ${projectTasks} on ${projectTasks.projectId} = projects.id
+    where ${projects.contactId} = contacts.id
       and ${projects.deletedAt} is null
       and ${projectTasks.assignedTo} = ${utenteId}
   )`

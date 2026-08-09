@@ -33,11 +33,9 @@ export default async function BancaPage({
   const adesso = new Date()
   const novantaGiorniFa = new Date(adesso.getTime() - 90 * 86_400_000)
 
-  const [estratti, okConcessi, nonControllati] = await Promise.all([
-    listEstratti(),
-    contaOkAmministrativi(novantaGiorniFa, adesso),
-    contaNonAncoraControllati(),
-  ])
+  const estratti = await listEstratti()
+  const okConcessi = await contaOkAmministrativi(novantaGiorniFa, adesso)
+  const nonControllati = await contaNonAncoraControllati()
 
   const idCorrente = idRichiesto ?? estratti[0]?.id
   const dettaglio = idCorrente ? await getDettaglioEstratto(idCorrente) : null

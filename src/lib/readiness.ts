@@ -8,6 +8,7 @@ import {
   projects,
 } from '@/db/schema'
 import { calcolaReadiness, type DatiCommessa } from '@/lib/domain/readiness'
+import { unoAllaVolta } from '@/lib/uno-alla-volta'
 
 /**
  * Ricalcola la pianificabilità di una commessa e la conserva.
@@ -28,19 +29,21 @@ export async function ricalcolaReadiness(projectId: string): Promise<void> {
   })
   if (!commessa) return
 
-  const [documenti, materiali, pratiche, acconti] = await Promise.all([
-    db.select().from(documentRequirements).where(eq(documentRequirements.projectId, projectId)),
-    db.select().from(projectMaterials).where(eq(projectMaterials.projectId, projectId)),
-    db.select().from(projectPractices).where(eq(projectPractices.projectId, projectId)),
-    db
-      .select()
-      .from(paymentMilestones)
-      .where(
-        and(
-          eq(paymentMilestones.projectId, projectId),
-          eq(paymentMilestones.blocksStart, true),
+  const [documenti, materiali, pratiche, acconti] = await unoAllaVolta([
+    () =>
+      db.select().from(documentRequirements).where(eq(documentRequirements.projectId, projectId)),
+    () => db.select().from(projectMaterials).where(eq(projectMaterials.projectId, projectId)),
+    () => db.select().from(projectPractices).where(eq(projectPractices.projectId, projectId)),
+    () =>
+      db
+        .select()
+        .from(paymentMilestones)
+        .where(
+          and(
+            eq(paymentMilestones.projectId, projectId),
+            eq(paymentMilestones.blocksStart, true),
+          ),
         ),
-      ),
   ])
 
   const dati: DatiCommessa = {

@@ -34,10 +34,8 @@ export default async function DashboardPage() {
   // ma l'autorizzazione sulla risorsa si verifica qui.
   const utente = await guard('read', 'dashboard')
 
-  const [dati, mieScadute] = await Promise.all([
-    getDashboard(),
-    contaAttivitaScadute(utente.id),
-  ])
+  const dati = await getDashboard()
+  const mieScadute = await contaAttivitaScadute(utente.id)
 
   const massimo = Math.max(1, ...dati.perStato.map((s) => s.totale))
   const nome = (utente.name ?? utente.email).split(/[\s@]/)[0]

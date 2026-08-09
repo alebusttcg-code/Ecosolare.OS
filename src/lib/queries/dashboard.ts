@@ -29,7 +29,7 @@ export async function getDashboard(): Promise<DashboardDati> {
    */
   const contattoVivo = sql`exists (
     select 1 from ${contacts}
-    where ${contacts.id} = ${opportunities.contactId}
+    where ${contacts.id} = opportunities.contact_id
       and ${contacts.deletedAt} is null
   )`
 

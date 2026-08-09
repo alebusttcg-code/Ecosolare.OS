@@ -34,11 +34,9 @@ export default async function PreventivoPage({
   // cosa si vede (§11.4 regola 7).
   const mostraCosti = utente.canViewCosts
 
-  const [dati, catalogo, soglia] = await Promise.all([
-    getQuoteVersion(id, mostraCosti),
-    getCatalogo(mostraCosti),
-    getSetting(CHIAVI_MARGINE.sogliaMarginePct, 20),
-  ])
+  const dati = await getQuoteVersion(id, mostraCosti)
+  const catalogo = await getCatalogo(mostraCosti)
+  const soglia = await getSetting(CHIAVI_MARGINE.sogliaMarginePct, 20)
 
   if (!dati) notFound()
 

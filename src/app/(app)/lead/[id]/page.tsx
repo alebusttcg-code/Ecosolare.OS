@@ -25,6 +25,7 @@ import { getStages } from '@/lib/queries/pipeline'
 import { getQuotesForOpportunity } from '@/lib/queries/quotes'
 import { correggiDefinizioneQuestionario } from '@/lib/domain/etichette-ui'
 import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnaire'
+import { unoAllaVolta } from '@/lib/uno-alla-volta'
 import { CambiaStato } from './cambia-stato'
 import { NuovoPreventivo } from './nuovo-preventivo'
 import { NuovoSopralluogo } from './nuovo-sopralluogo'
@@ -68,40 +69,44 @@ export default async function DettaglioLeadPage({
   if (!riga) notFound()
 
   const [stages, storico, attivitaAperte, preventivi, sopralluoghi, templatePrequalifica] =
-    await Promise.all([
-    getStages(),
-    db
-      .select()
-      .from(opportunityStatusHistory)
-      .where(eq(opportunityStatusHistory.opportunityId, id))
-      .orderBy(desc(opportunityStatusHistory.changedAt)),
-    db
-      .select()
-      .from(activities)
-      .where(and(eq(activities.opportunityId, id), eq(activities.isNextAction, true)))
-      .limit(1),
-    getQuotesForOpportunity(id),
-    db
-      .select({
-        id: surveys.id,
-        status: surveys.status,
-        completedAt: surveys.completedAt,
-        hasCriticalIssues: surveys.hasCriticalIssues,
-        estimatedPowerKw: surveys.estimatedPowerKw,
-        templateName: surveyTemplates.name,
-      })
-      .from(surveys)
-      .innerJoin(surveyTemplates, eq(surveyTemplates.id, surveys.templateId))
-      .where(eq(surveys.opportunityId, id))
-      .orderBy(desc(surveys.createdAt)),
-    db.query.surveyTemplates.findFirst({
-      where: and(
-        eq(surveyTemplates.kind, 'prequalifica'),
-        eq(surveyTemplates.isActive, true),
-      ),
-      orderBy: desc(surveyTemplates.version),
-    }),
-  ])
+    await unoAllaVolta([
+      () => getStages(),
+      () =>
+        db
+          .select()
+          .from(opportunityStatusHistory)
+          .where(eq(opportunityStatusHistory.opportunityId, id))
+          .orderBy(desc(opportunityStatusHistory.changedAt)),
+      () =>
+        db
+          .select()
+          .from(activities)
+          .where(and(eq(activities.opportunityId, id), eq(activities.isNextAction, true)))
+          .limit(1),
+      () => getQuotesForOpportunity(id),
+      () =>
+        db
+          .select({
+            id: surveys.id,
+            status: surveys.status,
+            completedAt: surveys.completedAt,
+            hasCriticalIssues: surveys.hasCriticalIssues,
+            estimatedPowerKw: surveys.estimatedPowerKw,
+            templateName: surveyTemplates.name,
+          })
+          .from(surveys)
+          .innerJoin(surveyTemplates, eq(surveyTemplates.id, surveys.templateId))
+          .where(eq(surveys.opportunityId, id))
+          .orderBy(desc(surveys.createdAt)),
+      () =>
+        db.query.surveyTemplates.findFirst({
+          where: and(
+            eq(surveyTemplates.kind, 'prequalifica'),
+            eq(surveyTemplates.isActive, true),
+          ),
+          orderBy: desc(surveyTemplates.version),
+        }),
+    ])
 
   const opp = riga.opp
   const definizionePrequalifica = templatePrequalifica

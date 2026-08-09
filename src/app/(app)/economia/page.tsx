@@ -37,10 +37,8 @@ export default async function EconomiaPage({
   const periodo = risolviPeriodoEconomia(params, adesso)
   const preset = periodiEconomiaPreset(adesso)
 
-  const [panoramica, preventivi] = await Promise.all([
-    getPanoramicaEconomica(utente.canViewCosts, periodo),
-    elencoPreventiviAperti(periodo, 10),
-  ])
+  const panoramica = await getPanoramicaEconomica(utente.canViewCosts, periodo)
+  const preventivi = await elencoPreventiviAperti(periodo, 10)
 
   return (
     <div className="space-y-8">

@@ -13,6 +13,7 @@ import {
   quotes,
 } from '@/db/schema'
 import { importoDaEuro } from '@/lib/domain/money'
+import { unoAllaVolta } from '@/lib/uno-alla-volta'
 
 /** Stati di preventivo ancora «aperti» (non conclusi dal cliente). */
 const PREVENTIVI_APERTI = ['bozza', 'in_approvazione', 'approvato', 'inviato'] as const
@@ -74,83 +75,84 @@ export async function getPanoramicaEconomica(
     [contratti],
     [commesse],
     [previsti],
-  ] = await Promise.all([
-    db
-      .select({ totale: sommaNumeric(paymentMilestones.amountNet) })
-      .from(paymentMilestones)
-      .where(
-        and(
-          inArray(paymentMilestones.status, ['fatturato', 'incassato']),
-          nelPeriodoPreferendo(paymentMilestones.invoicedAt, paymentMilestones.paidAt, da, a),
+  ] = await unoAllaVolta([
+    () =>
+      db
+        .select({ totale: sommaNumeric(paymentMilestones.amountNet) })
+        .from(paymentMilestones)
+        .where(
+          and(
+            inArray(paymentMilestones.status, ['fatturato', 'incassato']),
+            nelPeriodoPreferendo(paymentMilestones.invoicedAt, paymentMilestones.paidAt, da, a),
+          ),
         ),
-      ),
-
-    db
-      .select({ totale: sommaNumeric(paymentMilestones.amountNet) })
-      .from(paymentMilestones)
-      .where(
-        and(
-          eq(paymentMilestones.status, 'incassato'),
-          nelPeriodo(paymentMilestones.paidAt, da, a),
+    () =>
+      db
+        .select({ totale: sommaNumeric(paymentMilestones.amountNet) })
+        .from(paymentMilestones)
+        .where(
+          and(
+            eq(paymentMilestones.status, 'incassato'),
+            nelPeriodo(paymentMilestones.paidAt, da, a),
+          ),
         ),
-      ),
-
-    db
-      .select({
-        importo: sommaNumeric(quoteVersions.grossTotal),
-        margine: mostraCosti
-          ? sommaNumeric(quoteVersions.marginAmount)
-          : sql<string>`'0'`,
-        conteggio: sql<number>`count(*)::int`,
-      })
-      .from(quotes)
-      .innerJoin(quoteVersions, eq(quoteVersions.id, quotes.currentVersionId))
-      .innerJoin(opportunities, eq(opportunities.id, quotes.opportunityId))
-      .innerJoin(pipelineStages, eq(pipelineStages.code, opportunities.stage))
-      .where(
-        and(
-          isNull(opportunities.deletedAt),
-          eq(pipelineStages.isOpen, true),
-          inArray(quoteVersions.status, [...PREVENTIVI_APERTI]),
-          nelPeriodoPreferendo(quoteVersions.sentAt, quotes.createdAt, da, a),
+    () =>
+      db
+        .select({
+          importo: sommaNumeric(quoteVersions.grossTotal),
+          margine: mostraCosti
+            ? sommaNumeric(quoteVersions.marginAmount)
+            : sql<string>`'0'`,
+          conteggio: sql<number>`count(*)::int`,
+        })
+        .from(quotes)
+        .innerJoin(quoteVersions, eq(quoteVersions.id, quotes.currentVersionId))
+        .innerJoin(opportunities, eq(opportunities.id, quotes.opportunityId))
+        .innerJoin(pipelineStages, eq(pipelineStages.code, opportunities.stage))
+        .where(
+          and(
+            isNull(opportunities.deletedAt),
+            eq(pipelineStages.isOpen, true),
+            inArray(quoteVersions.status, [...PREVENTIVI_APERTI]),
+            nelPeriodoPreferendo(quoteVersions.sentAt, quotes.createdAt, da, a),
+          ),
         ),
-      ),
-
-    db
-      .select({
-        importo: sommaNumeric(contracts.amountNet),
-        conteggio: sql<number>`count(*)::int`,
-      })
-      .from(contracts)
-      .where(nelPeriodo(contracts.signedAt, da, a)),
-
-    db
-      .select({
-        importo: sommaNumeric(projects.revenueNet),
-        conteggio: sql<number>`count(*)::int`,
-      })
-      .from(projects)
-      .innerJoin(projectStages, eq(projectStages.code, projects.stage))
-      .where(
-        and(
-          isNull(projects.deletedAt),
-          eq(projectStages.isClosed, false),
-          nelPeriodo(projects.createdAt, da, a),
+    () =>
+      db
+        .select({
+          importo: sommaNumeric(contracts.amountNet),
+          conteggio: sql<number>`count(*)::int`,
+        })
+        .from(contracts)
+        .where(nelPeriodo(contracts.signedAt, da, a)),
+    () =>
+      db
+        .select({
+          importo: sommaNumeric(projects.revenueNet),
+          conteggio: sql<number>`count(*)::int`,
+        })
+        .from(projects)
+        .innerJoin(projectStages, eq(projectStages.code, projects.stage))
+        .where(
+          and(
+            isNull(projects.deletedAt),
+            eq(projectStages.isClosed, false),
+            nelPeriodo(projects.createdAt, da, a),
+          ),
         ),
-      ),
-
-    db
-      .select({
-        importo: sommaNumeric(paymentMilestones.amountNet),
-        conteggio: sql<number>`count(*)::int`,
-      })
-      .from(paymentMilestones)
-      .where(
-        and(
-          eq(paymentMilestones.status, 'previsto'),
-          nelPeriodo(paymentMilestones.dueAt, da, a),
+    () =>
+      db
+        .select({
+          importo: sommaNumeric(paymentMilestones.amountNet),
+          conteggio: sql<number>`count(*)::int`,
+        })
+        .from(paymentMilestones)
+        .where(
+          and(
+            eq(paymentMilestones.status, 'previsto'),
+            nelPeriodo(paymentMilestones.dueAt, da, a),
+          ),
         ),
-      ),
   ])
 
   const fatturatoTotale = importoDaEuro(fatturatoRiga?.totale ?? '0')

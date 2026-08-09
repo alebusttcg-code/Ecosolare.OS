@@ -34,7 +34,11 @@ const inServerless = Boolean(process.env.VERCEL)
 function dimensionePool(): number {
   const configurato = Number.parseInt(process.env.DB_POOL_MAX ?? '', 10)
   if (Number.isFinite(configurato) && configurato > 0) return configurato
-  return inServerless ? 1 : 10
+  // Su Vercel restiamo bassi per il pooler Supabase, ma 1 sola connessione
+  // lasciava le navigazioni App Router in stallo quando layout e pagina
+  // interrogavano il DB insieme. 4 copre il fan-out tipico senza esaurire
+  // il transaction pooler.
+  return inServerless ? 4 : 10
 }
 
 function buildDb() {

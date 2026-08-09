@@ -57,7 +57,7 @@ export async function searchContacts(
     from ${contracts}
     inner join ${opportunities}
       on ${opportunities.id} = ${contracts.opportunityId}
-    where ${opportunities.contactId} = ${contacts.id}
+    where ${opportunities.contactId} = contacts.id
       and ${opportunities.deletedAt} is null
   )`
 
@@ -91,11 +91,13 @@ export async function searchContacts(
       email: contacts.email,
       phone: contacts.phone,
       clienteDal: sql<Date>`${primaFirma}`,
-      commesse: sql<number>`(
+      // `contacts.id` va scritto letterale: con ${contacts.id} Drizzle emette
+      // solo "id" e in subquery diventa projects.id → count sempre 0.
+      commesse: sql`(
         select count(*)::int from ${projects}
-        where ${projects.contactId} = ${contacts.id}
+        where ${projects.contactId} = contacts.id
           and ${projects.deletedAt} is null
-      )`,
+      )`.mapWith(Number),
     })
     .from(contacts)
     .where(dove)
