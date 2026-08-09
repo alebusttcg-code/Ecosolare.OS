@@ -13,7 +13,7 @@ const ETICHETTA_RUOLO: Record<Role, string> = {
   amministratore: 'Amministratore',
   contabilita: 'Contabilità',
   commerciale: 'Commerciale',
-  cantiere: 'Cantiere',
+  cantiere: 'Operativo',
 }
 
 /**
@@ -68,7 +68,7 @@ const VOCI: readonly (VoceMenu & {
   { href: '/approvazioni', label: 'Approvazioni', icona: '⚑', gruppo: 'lavoro', resource: 'quote_approval' },
 
   { href: '/amministrazione/utenti', label: 'Utenti', icona: '◇', gruppo: 'amministrazione', resource: 'user' },
-  { href: '/amministrazione/configurazioni', label: 'Configurazioni', icona: '⚙', gruppo: 'amministrazione', resource: 'settings' },
+  { href: '/amministrazione/impostazioni', label: 'Impostazioni', icona: '⚙', gruppo: 'amministrazione', resource: 'settings' },
 ]
 
 export default async function AppLayout({ children }: { children: ReactNode }) {

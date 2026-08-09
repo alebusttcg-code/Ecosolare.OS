@@ -1493,6 +1493,8 @@ export const paymentReceipts = pgTable(
     mimeType: text('mime_type').notNull(),
     sizeBytes: integer('size_bytes').notNull(),
     checksum: text('checksum'),
+    /** Copia su Drive della cartella commessa (ADR-005 / D-011). */
+    driveFileId: text('drive_file_id'),
 
     uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
     uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1593,6 +1595,79 @@ export const reconciliationChecks = pgTable(
 )
 
 /* -------------------------------------------------------------------------- */
+/*  Pianificazione cantieri (Fase 4)                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Personale senza login (operai e simili), in Amministrazione → Impostazioni.
+ *
+ * Non sono utenti del gestionale (quelli stanno in `users`): li si assegna al
+ * cantiere in pianificazione. Disattivare invece di cancellare conserva lo
+ * storico sulle assegnazioni già fatte.
+ */
+export const workers = pgTable(
+  'workers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    firstName: text('first_name').notNull(),
+    lastName: text('last_name').notNull(),
+    phone: text('phone'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [index('workers_active_idx').on(table.isActive)],
+)
+
+/**
+ * Work order: giorno operativo + squadra su una commessa.
+ *
+ * Al più un work order `pianificato` per progetto (vincolo parziale in
+ * migrazione). `annullato` resta in storico.
+ */
+export const workOrders = pgTable(
+  'work_orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    /** Giorno del cantiere (mezzogiorno UTC della data locale scelta). */
+    scheduledOn: timestamp('scheduled_on', { withTimezone: true }).notNull(),
+    notes: text('notes'),
+    status: text('status').notNull().default('pianificato'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('work_orders_project_idx').on(table.projectId),
+    index('work_orders_scheduled_idx').on(table.scheduledOn),
+    index('work_orders_status_idx').on(table.status),
+  ],
+)
+
+export const workOrderAssignments = pgTable(
+  'work_order_assignments',
+  {
+    workOrderId: uuid('work_order_id')
+      .notNull()
+      .references(() => workOrders.id, { onDelete: 'cascade' }),
+    workerId: uuid('worker_id')
+      .notNull()
+      .references(() => workers.id, { onDelete: 'restrict' }),
+    assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workOrderId, table.workerId] }),
+    index('work_order_assignments_worker_idx').on(table.workerId),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
 
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
@@ -1639,3 +1714,7 @@ export type BankTransaction = typeof bankTransactions.$inferSelect
 export type ReconciliationCheck = typeof reconciliationChecks.$inferSelect
 export type OutboxEvent = typeof outboxEvents.$inferSelect
 export type NewOutboxEvent = typeof outboxEvents.$inferInsert
+export type Worker = typeof workers.$inferSelect
+export type NewWorker = typeof workers.$inferInsert
+export type WorkOrder = typeof workOrders.$inferSelect
+export type WorkOrderAssignment = typeof workOrderAssignments.$inferSelect

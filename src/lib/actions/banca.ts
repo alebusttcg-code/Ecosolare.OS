@@ -16,11 +16,15 @@ import {
 } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
+import { TIPO_COPIA_CONTABILE } from '@/lib/drive/gestori'
+import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
+import { eliminaFile as eliminaFileDrive } from '@/lib/drive/client'
 import { leggiCsv } from '@/lib/domain/estratto-conto'
 import { importoAStringa, importoDaEuro } from '@/lib/domain/money'
 import { riconcilia, type PagamentoAtteso } from '@/lib/domain/riconciliazione'
 import { validaFile } from '@/lib/domain/upload'
 import { ripulisciNome } from '@/lib/domain/upload'
+import { accoda } from '@/lib/outbox'
 import { getArchivio } from '@/lib/storage'
 import type { ActionResult } from './opportunities'
 import { ricalcolaReadiness } from '@/lib/readiness'
@@ -171,32 +175,101 @@ export async function caricaContabile(
   })
 
   const nome = ripulisciNome(file.name)
-  const [riga] = await db
-    .insert(paymentReceipts)
-    .values({
-      milestoneId,
-      storageKey: archiviato.chiave,
-      filename: nome,
-      mimeType: esito.tipo,
-      sizeBytes: archiviato.dimensione,
-      checksum: archiviato.checksum,
-      uploadedBy: utente.id,
-    })
-    .returning({
-      id: paymentReceipts.id,
-      filename: paymentReceipts.filename,
-      sizeBytes: paymentReceipts.sizeBytes,
+  const riga = await db.transaction(async (tx) => {
+    const [salvata] = await tx
+      .insert(paymentReceipts)
+      .values({
+        milestoneId,
+        storageKey: archiviato.chiave,
+        filename: nome,
+        mimeType: esito.tipo,
+        sizeBytes: archiviato.dimensione,
+        checksum: archiviato.checksum,
+        uploadedBy: utente.id,
+      })
+      .returning({
+        id: paymentReceipts.id,
+        filename: paymentReceipts.filename,
+        sizeBytes: paymentReceipts.sizeBytes,
+      })
+
+    await accoda(tx, {
+      type: TIPO_COPIA_CONTABILE,
+      payload: { paymentReceiptId: salvata!.id },
+      dedupKey: `${TIPO_COPIA_CONTABILE}:${salvata!.id}`,
     })
 
+    return salvata!
+  })
+
   revalidatePath(`/cantieri/${scadenza.projectId}`)
+  avviaSmaltimentoOutbox()
   return {
     ok: true,
     data: {
-      id: riga!.id,
-      filename: riga!.filename,
-      sizeBytes: riga!.sizeBytes,
+      id: riga.id,
+      filename: riga.filename,
+      sizeBytes: riga.sizeBytes,
     },
   }
+}
+
+/** Elimina una contabile da archivio, Drive (se presente) e database. */
+export async function deleteContabile(receiptId: string): Promise<ActionResult> {
+  const utente = await guard('delete', 'invoice')
+
+  if (!z.uuid().safeParse(receiptId).success) {
+    return { ok: false, errors: { _: 'Identificativo non valido.' } }
+  }
+
+  const db = getDb()
+  const file = await db.query.paymentReceipts.findFirst({
+    where: eq(paymentReceipts.id, receiptId),
+  })
+  if (!file) return { ok: false, errors: { _: 'Contabile non trovata.' } }
+
+  const scadenza = await db.query.paymentMilestones.findFirst({
+    where: eq(paymentMilestones.id, file.milestoneId),
+  })
+  if (!scadenza) return { ok: false, errors: { _: 'Scadenza non trovata.' } }
+
+  if (scadenza.adminOkAt) {
+    return {
+      ok: false,
+      errors: {
+        _: 'Revoca prima il via libera amministrativo: la contabile è il documento su cui si fonda.',
+      },
+    }
+  }
+
+  if (file.driveFileId) {
+    try {
+      await eliminaFileDrive(file.driveFileId)
+    } catch (errore) {
+      // Non bloccare l’eliminazione locale se Drive è momentaneamente giù:
+      // la riga e l’archivio devono comunque sparire dalla scheda.
+      console.warn('[drive] eliminazione contabile non riuscita', {
+        receiptId,
+        driveFileId: file.driveFileId,
+        errore: errore instanceof Error ? errore.message : errore,
+      })
+    }
+  }
+
+  await getArchivio().elimina(file.storageKey)
+  await db.delete(paymentReceipts).where(eq(paymentReceipts.id, receiptId))
+
+  await recordEntityChange({
+    actorId: utente.id,
+    actorLabel: utente.email,
+    action: 'delete',
+    entityType: 'payment_receipt',
+    entityId: receiptId,
+  })
+
+  revalidatePath(`/cantieri/${scadenza.projectId}`)
+  revalidatePath('/controllo-bancario')
+  return { ok: true, data: undefined }
 }
 
 /* -------------------------------------------------------------------------- */

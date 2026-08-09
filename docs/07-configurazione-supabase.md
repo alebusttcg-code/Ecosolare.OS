@@ -199,26 +199,48 @@ Alla firma di un contratto il sistema crea `<Cliente> / <codice commessa>` in un
 Drive condiviso e vi copia i documenti caricati. L'archivio di riferimento resta
 Supabase: Drive è una copia ([ADR-011](adr/011-drive-specchio-non-archivio.md)).
 
-**Serve un Drive condiviso, non una cartella del tuo Drive personale.** Un
-service account non ha spazio proprio e non può possedere file in un «Il mio
-Drive»: con una cartella personale ogni creazione fallisce con *storage quota
-exceeded*.
+Un service account **non ha quota** su «Il mio Drive»: condividere la cartella
+non basta, i file falliscono con *storage quota exceeded* (le cartelle vuote
+possono invece comparire). Scegli una delle strade sotto.
 
-1. **Google Cloud Console** → nuovo progetto (o quello esistente) → *APIs &
-   Services* → abilita **Google Drive API**.
-2. *Credentials* → **Create credentials** → *Service account*. Creato, apri la
-   scheda *Keys* → **Add key** → *JSON*: scarica il file.
-3. In **Google Drive** crea un *Drive condiviso* (menu a sinistra → *Drive
-   condivisi* → *Nuovo*). Aprilo, **Gestisci membri**, aggiungi l'indirizzo del
-   service account (`...@....iam.gserviceaccount.com`) come **Gestore dei
-   contenuti**.
-4. L'id del Drive condiviso è nell'URL: `drive.google.com/drive/folders/<id>`.
+1. **Google Cloud Console** → *APIs & Services* → abilita **Google Drive API**.
+
+### Opzione A — Drive condiviso (Workspace, consigliata in azienda)
+
+2. *Credentials* → **Service account** → *Keys* → JSON.
+3. In Drive: *Drive condivisi* → *Nuovo* → aggiungi il service account come
+   **Gestore dei contenuti**.
+4. `GOOGLE_DRIVE_ID` = id del Drive (dall'URL).
 
 ```bash
 GOOGLE_DRIVE_ID=<id del Drive condiviso>
 GOOGLE_SERVICE_ACCOUNT_EMAIL=<client_email dal file JSON>
-GOOGLE_SERVICE_ACCOUNT_KEY="<private_key dal file JSON, con gli a capo come \n>"
+GOOGLE_SERVICE_ACCOUNT_KEY="<private_key, a capo come \n>"
 ```
+
+### Opzione B — Cartella in «Il mio Drive» (es. EcoSolare OS su Gmail)
+
+Serve OAuth dell’utente **proprietario** della cartella (non basta il service
+account).
+
+2. *Credentials* → **OAuth client ID** → tipo **Desktop app**. Nelle URI di
+   reindirizzamento autorizza `http://127.0.0.1:53682/callback`.
+3. In `.env.local`:
+
+```bash
+GOOGLE_DRIVE_ID=<id della cartella EcoSolare OS>
+GOOGLE_OAUTH_CLIENT_ID=...
+GOOGLE_OAUTH_CLIENT_SECRET=...
+```
+
+4. Poi in locale:
+
+```bash
+npm run drive:autorizza
+```
+
+Copia il `GOOGLE_OAUTH_REFRESH_TOKEN` stampato in `.env.local` e su Vercel.
+Verifica con `npm run drive:verifica`, poi `npm run outbox`.
 
 ### Far girare la coda
 
@@ -245,7 +267,7 @@ Vercel invia quando lancia il cron.
 
 | Sintomo | Causa quasi certa |
 |---|---|
-| `storage quota exceeded` | stai usando una cartella del Drive personale invece di un Drive condiviso |
+| `storage quota exceeded` | cartella di Il mio Drive con solo service account: usa OAuth (`drive:autorizza`) o un Drive condiviso |
 | `File not found: <id>` | il service account non è membro del Drive condiviso, oppure lo è come semplice lettore |
 | `invalid_grant` | la chiave privata ha perso gli a capo: devono essere scritti come `\n` |
 | L'evento resta «in attesa» | nessuno chiama la coda: `npm run outbox` in locale, cron in produzione |

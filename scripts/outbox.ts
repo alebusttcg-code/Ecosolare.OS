@@ -3,25 +3,23 @@
  *
  *   npm run outbox
  *
- * In produzione ci pensa il cron di Vercel (`vercel.json`). In locale nessuno
- * chiama l'endpoint, quindi senza questo comando gli eventi resterebbero in
- * attesa e la cartella su Drive non comparirebbe mai — con la spiacevole
- * conseguenza di far credere che l'integrazione non funzioni.
+ * In produzione ci pensano il cron di Vercel e lo smaltimento avviato dopo
+ * ogni upload/firma. In locale nessuno chiama l'endpoint, quindi senza questo
+ * comando (o senza Drive configurato) gli eventi resterebbero in attesa.
  */
-import { gestoriDrive } from '../src/lib/drive/gestori'
-import { elaboraOutbox } from '../src/lib/outbox'
+import { smaltisciCodaDrive } from '../src/lib/drive/smaltisci'
+import { driveConfigurato } from '../src/lib/drive/client'
 
 async function main(): Promise<void> {
-  const gestori = gestoriDrive()
-
-  if (Object.keys(gestori).length === 0) {
+  if (!driveConfigurato()) {
     console.log(
-      'Google Drive non è configurato: gli eventi in coda verranno segnati come falliti.\n' +
+      'Google Drive non è configurato: gli eventi restano in coda.\n' +
         'Compila GOOGLE_DRIVE_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL e GOOGLE_SERVICE_ACCOUNT_KEY.',
     )
+    process.exit(0)
   }
 
-  const esito = await elaboraOutbox(gestori)
+  const esito = await smaltisciCodaDrive({ ripristinaFalliti: true })
   console.log(
     `Elaborati ${esito.elaborati}: ${esito.completati} completati, ` +
       `${esito.rimandati} rimandati, ${esito.falliti} falliti.`,

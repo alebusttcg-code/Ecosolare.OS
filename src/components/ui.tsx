@@ -314,9 +314,12 @@ export function formattaEuro(valore: string | null): string {
   if (valore === null) return '—'
   const numero = Number.parseFloat(valore)
   if (Number.isNaN(numero)) return '—'
+  // useGrouping: true — il locale it-IT di default (min2) non mette il punto
+  // sulle migliaia sotto 10.000 (es. 5600 € invece di 5.600 €).
   return new Intl.NumberFormat('it-IT', {
     style: 'currency',
     currency: 'EUR',
     maximumFractionDigits: 0,
+    useGrouping: true,
   }).format(numero)
 }

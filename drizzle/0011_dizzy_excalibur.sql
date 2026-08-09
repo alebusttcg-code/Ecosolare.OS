@@ -1,0 +1,1 @@
+ALTER TABLE "payment_receipts" ADD COLUMN "drive_file_id" text;

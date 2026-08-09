@@ -78,6 +78,20 @@
       "when": 1786177630080,
       "tag": "0010_rich_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786298786139,
+      "tag": "0011_dizzy_excalibur",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786307119050,
+      "tag": "0012_fat_madelyne_pryor",
+      "breakpoints": true
     }
   ]
 }

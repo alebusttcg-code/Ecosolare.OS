@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import { Badge, Card, Intestazione, Stat, Vuoto, formattaEuro } from '@/components/ui'
+import { Badge, Card, Intestazione, Stat, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import type { StatoPianificabilita } from '@/lib/domain/readiness'
 import { listProjects } from '@/lib/queries/projects'
+import { mappaPianificazioniAttive } from '@/lib/queries/schedule'
 
 export const metadata = { title: 'Cantieri e commesse — EcoSolare OS' }
 
@@ -19,6 +20,7 @@ export default async function CommessePage() {
   const utente = await guard('read', 'project')
 
   const righe = await listProjects(utente, 'attive')
+  const pianificazioni = await mappaPianificazioniAttive(righe.map((r) => r.id))
 
   const pianificabili = righe.filter((r) => r.readinessState === 'pianificabile').length
   const bloccate = righe.filter((r) => r.readinessState === 'non_pianificabile').length
@@ -65,6 +67,7 @@ export default async function CommessePage() {
             <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
               {righe.map((r) => {
                 const stato = PIANIFICABILITA[r.readinessState]
+                const piano = pianificazioni.get(r.id)
 
                 return (
                   <li key={r.id} className="first:pt-0 last:pb-0">
@@ -86,13 +89,25 @@ export default async function CommessePage() {
                             {r.code} · {r.stageLabel}
                             {r.responsabile ? ` · ${r.responsabile}` : ''}
                           </div>
+                          {piano ? (
+                            <div
+                              className="mt-1 text-xs"
+                              style={{ color: 'var(--color-eco-green-400)' }}
+                            >
+                              {formattaData(piano.scheduledOn)} · {piano.operaiLabel}
+                            </div>
+                          ) : null}
                         </div>
 
                         <div className="flex shrink-0 items-center gap-3">
                           <span className="text-sm tabular-nums">
                             {formattaEuro(r.revenueNet)}
                           </span>
-                          <Badge tone={stato.tono}>{stato.testo}</Badge>
+                          {piano ? (
+                            <Badge tone="positivo">Pianificato</Badge>
+                          ) : (
+                            <Badge tone={stato.tono}>{stato.testo}</Badge>
+                          )}
                         </div>
                       </div>
 

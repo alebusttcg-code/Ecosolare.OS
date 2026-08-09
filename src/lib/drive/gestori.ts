@@ -1,7 +1,15 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb } from '@/db'
-import { companies, contacts, documentFiles, documentRequirements, projects } from '@/db/schema'
+import {
+  companies,
+  contacts,
+  documentFiles,
+  documentRequirements,
+  paymentMilestones,
+  paymentReceipts,
+  projects,
+} from '@/db/schema'
 import type { Gestore } from '@/lib/outbox'
 import { getArchivio } from '@/lib/storage'
 import { caricaFile, creaCartella, driveConfigurato } from './client'
@@ -21,9 +29,11 @@ import { nomeCartellaCliente, nomeCartellaCommessa } from './nomi'
 
 export const TIPO_CARTELLA_CLIENTE = 'drive.cartella_cliente'
 export const TIPO_COPIA_DOCUMENTO = 'drive.copia_documento'
+export const TIPO_COPIA_CONTABILE = 'drive.copia_contabile'
 
 const cartellaSchema = z.object({ projectId: z.uuid() })
 const copiaSchema = z.object({ documentFileId: z.uuid() })
+const copiaContabileSchema = z.object({ paymentReceiptId: z.uuid() })
 
 /**
  * Crea la cartella del cliente e, dentro, quella della commessa.
@@ -156,17 +166,68 @@ const copiaDocumento: Gestore = async (payload) => {
     .where(eq(documentFiles.id, documentFileId))
 }
 
+/** Copia su Drive una contabile di pagamento già archiviata. */
+const copiaContabile: Gestore = async (payload) => {
+  const { paymentReceiptId } = copiaContabileSchema.parse(payload)
+  const db = getDb()
+
+  const [riga] = await db
+    .select({
+      storageKey: paymentReceipts.storageKey,
+      filename: paymentReceipts.filename,
+      mimeType: paymentReceipts.mimeType,
+      driveFileId: paymentReceipts.driveFileId,
+      cartella: projects.driveFolderId,
+      etichetta: paymentMilestones.label,
+    })
+    .from(paymentReceipts)
+    .innerJoin(paymentMilestones, eq(paymentMilestones.id, paymentReceipts.milestoneId))
+    .innerJoin(projects, eq(projects.id, paymentMilestones.projectId))
+    .where(eq(paymentReceipts.id, paymentReceiptId))
+    .limit(1)
+
+  if (!riga) {
+    console.warn('[drive] contabile inesistente, copia annullata', { paymentReceiptId })
+    return
+  }
+
+  if (riga.driveFileId) return
+
+  if (!riga.cartella) {
+    throw new Error('La cartella della commessa su Drive non esiste ancora.')
+  }
+
+  const contenuto = await getArchivio().leggi(riga.storageKey)
+  if (!contenuto) {
+    throw new Error(`File non trovato in archivio: ${riga.storageKey}`)
+  }
+
+  const nome = `Contabile — ${riga.etichetta} — ${riga.filename}`
+  const driveFileId = await caricaFile({
+    nome,
+    mimeType: riga.mimeType,
+    contenuto,
+    cartellaId: riga.cartella,
+  })
+
+  await db
+    .update(paymentReceipts)
+    .set({ driveFileId })
+    .where(eq(paymentReceipts.id, paymentReceiptId))
+}
+
 /**
  * I gestori attivi.
  *
- * Se Drive non è configurato la mappa è vuota, e l'outbox segna gli eventi
- * come falliti invece di ritentarli all'infinito: sono in attesa di una
- * configurazione, non di un servizio che torni su.
+ * Se Drive non è configurato la mappa è vuota: chi chiama deve astenersi da
+ * `elaboraOutbox` (vedere `smaltisciCodaDrive`), altrimenti gli eventi
+ * Drive verrebbero segnati `fallito` per «nessun gestore».
  */
 export function gestoriDrive(): Record<string, Gestore> {
   if (!driveConfigurato()) return {}
   return {
     [TIPO_CARTELLA_CLIENTE]: cartellaCliente,
     [TIPO_COPIA_DOCUMENTO]: copiaDocumento,
+    [TIPO_COPIA_CONTABILE]: copiaContabile,
   }
 }

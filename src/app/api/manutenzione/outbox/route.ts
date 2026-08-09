@@ -1,8 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { env } from '@/env'
-import { gestoriDrive } from '@/lib/drive/gestori'
-import { elaboraOutbox } from '@/lib/outbox'
+import { smaltisciCodaDrive } from '@/lib/drive/smaltisci'
 
 /**
  * Smaltisce la coda degli effetti esterni (ADR-005).
@@ -24,7 +23,7 @@ function confrontoSicuro(a: string, b: string): boolean {
   return timingSafeEqual(bufferA, bufferB)
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
+async function elabora(request: Request): Promise<NextResponse> {
   const atteso = env().MAINTENANCE_TOKEN
 
   // Senza token configurato l'endpoint è disattivo, non aperto: un endpoint
@@ -37,6 +36,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   // Vercel Cron manda `authorization: Bearer <CRON_SECRET>`; un chiamante
   // esterno può usare l'intestazione dedicata. Entrambe portano allo stesso
   // confronto in tempo costante.
+  //
+  // Su Hobby il segreto cron può coincidere con MAINTENANCE_TOKEN se si
+  // configura CRON_SECRET = MAINTENANCE_TOKEN in Vercel.
   const fornito =
     request.headers.get('x-maintenance-token') ??
     request.headers.get('authorization')?.replace(/^Bearer /, '') ??
@@ -46,6 +48,17 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ errore: 'Non autorizzato.' }, { status: 401 })
   }
 
-  const esito = await elaboraOutbox({ ...gestoriDrive() })
+  // Il cron ripristina anche i falliti (es. «nessun gestore» prima che Drive
+  // fosse configurato) e riaccoda le copie ancora senza drive_file_id.
+  const esito = await smaltisciCodaDrive({ ripristinaFalliti: true })
   return NextResponse.json(esito)
+}
+
+/** Vercel Cron invoca GET: senza questo handler la coda non partiva mai. */
+export async function GET(request: Request): Promise<NextResponse> {
+  return elabora(request)
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
+  return elabora(request)
 }

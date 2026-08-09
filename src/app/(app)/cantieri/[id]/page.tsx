@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { LinkNome } from '@/components/link-nome'
+import { PannelloCollassabile } from '@/components/pannello-collassabile'
 import { Badge, Card, Vuoto, formattaData, formattaEuro } from '@/components/ui'
+import { can } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
 import {
   ancoraDiBlocco,
@@ -9,8 +11,10 @@ import {
   type StatoPianificabilita,
 } from '@/lib/domain/readiness'
 import { getProjectDetail } from '@/lib/queries/projects'
+import { getWorkOrderAttivo, listWorkers } from '@/lib/queries/schedule'
 import { CaricaDocumento } from './carica'
 import { OkAmministrativo } from './ok-amministrativo'
+import { PannelloPianificazione } from './pianifica'
 import {
   ControlloConferma,
   ControlloDocumento,
@@ -49,11 +53,17 @@ export default async function CommessaPage({
   const dati = await getProjectDetail(utente, id)
   if (!dati) notFound()
 
+  const [workOrder, operai] = await Promise.all([
+    getWorkOrderAttivo(id),
+    can(utente, 'read', 'schedule') ? listWorkers() : Promise.resolve([]),
+  ])
+
   const c = dati.commessa
   const stato = PIANIFICABILITA[c.readinessState as StatoPianificabilita]
   const cliente = [dati.clienteNome, dati.clienteCognome].filter(Boolean).join(' ')
 
   const docApprovati = dati.documenti.filter((d) => d.status === 'approvato').length
+  const puoPianificare = can(utente, 'create', 'schedule')
 
   return (
     <div className="space-y-6">
@@ -172,11 +182,28 @@ export default async function CommessaPage({
         </div>
       </section>
 
+      <Card
+        id="pianificazione"
+        title="Pianificazione cantiere"
+        accento={workOrder ? 'verde' : c.readinessState === 'pianificabile' ? 'oro' : 'neutro'}
+        indice={0}
+      >
+        <PannelloPianificazione
+          projectId={c.id}
+          readinessPianificabile={c.readinessState === 'pianificabile'}
+          plannedStartAt={c.plannedStartAt}
+          workOrder={workOrder}
+          operai={operai}
+          puoScrivere={puoPianificare}
+        />
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card
+          <PannelloCollassabile
             id="documenti"
             title={`Documenti (${docApprovati}/${dati.documenti.length})`}
+            prefissoAncora="documento"
             indice={1}
           >
             {dati.documenti.length === 0 ? (
@@ -208,7 +235,7 @@ export default async function CommessaPage({
                 ))}
               </ul>
             )}
-          </Card>
+          </PannelloCollassabile>
 
           <Card id="materiali" title="Materiali" indice={2}>
             {dati.materiali.length === 0 ? (
@@ -330,7 +357,8 @@ export default async function CommessaPage({
                 </div>
               </dl>
               <p className="mt-3 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                Il margine reale richiede ore e costi di cantiere: arriva con le Fasi 4 e 5.
+                Qui vedi il previsto da preventivo. Il margine reale arriverà quando
+                registreremo ore di cantiere, costi effettivi e consuntivo.
               </p>
             </Card>
           ) : null}

@@ -10,10 +10,14 @@ import { env } from '@/env'
  * richieste HTTP, e l'autenticazione è un JWT firmato con una chiave RSA che
  * `node:crypto` sa già firmare.
  *
- * **Serve una radice con permesso di scrittura.** In Workspace è un Drive
- * condiviso; con Gmail personale basta una cartella in «Il mio Drive» condivisa
- * con il service account come Editor. Senza `GOOGLE_DRIVE_ID` che punta a
- * quella radice, ogni creazione fallisce con «storage quota exceeded».
+ * **Quota.** Un service account non ha spazio su «Il mio Drive»: creare file
+ * lì fallisce con `storageQuotaExceeded` anche se la cartella è condivisa.
+ * Funziona in uno di questi modi:
+ *  1. radice = Drive condiviso Workspace + SA membro;
+ *  2. radice = cartella personale + SA che **impersona** un utente Workspace
+ *     (`GOOGLE_DRIVE_DELEGATED_USER`);
+ *  3. radice = cartella personale + OAuth dell’utente proprietario
+ *     (`GOOGLE_OAUTH_*`, vedi `npm run drive:autorizza`).
  */
 
 const AMBITO = 'https://www.googleapis.com/auth/drive'
@@ -28,52 +32,81 @@ export class DriveNonConfigurato extends Error {
   }
 }
 
-export function driveConfigurato(): boolean {
+function oauthUtenteConfigurato(): boolean {
   const c = env()
   return Boolean(
-    c.GOOGLE_DRIVE_ID && c.GOOGLE_SERVICE_ACCOUNT_EMAIL && c.GOOGLE_SERVICE_ACCOUNT_KEY,
+    c.GOOGLE_OAUTH_CLIENT_ID &&
+      c.GOOGLE_OAUTH_CLIENT_SECRET &&
+      c.GOOGLE_OAUTH_REFRESH_TOKEN,
   )
+}
+
+function serviceAccountConfigurata(): boolean {
+  const c = env()
+  return Boolean(c.GOOGLE_SERVICE_ACCOUNT_EMAIL && c.GOOGLE_SERVICE_ACCOUNT_KEY)
+}
+
+export function driveConfigurato(): boolean {
+  const c = env()
+  return Boolean(c.GOOGLE_DRIVE_ID && (oauthUtenteConfigurato() || serviceAccountConfigurata()))
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Token di accesso                                                           */
 /* -------------------------------------------------------------------------- */
 
-let tokenInCache: { valore: string; scadeIl: number } | undefined
+let tokenInCache: { valore: string; scadeIl: number; chiave: string } | undefined
 
 function base64url(dati: Buffer | string): string {
   return Buffer.from(dati).toString('base64url')
 }
 
-/**
- * Scambia un JWT firmato con un token di accesso.
- *
- * Il token dura un'ora e viene riusato: rifirmare un JWT a ogni chiamata
- * aggiungerebbe un giro di rete e una firma RSA per ogni file caricato.
- * Si rinnova con un minuto di anticipo, perché un token che scade a metà
- * di una richiesta è indistinguibile da una credenziale sbagliata.
- */
-async function tokenDiAccesso(): Promise<string> {
-  const adesso = Math.floor(Date.now() / 1000)
-  if (tokenInCache && tokenInCache.scadeIl > adesso + 60) return tokenInCache.valore
-
+function chiaveCacheToken(): string {
   const c = env()
-  if (!driveConfigurato()) throw new DriveNonConfigurato()
+  if (oauthUtenteConfigurato()) return `oauth:${c.GOOGLE_OAUTH_REFRESH_TOKEN}`
+  return `sa:${c.GOOGLE_SERVICE_ACCOUNT_EMAIL}:${c.GOOGLE_DRIVE_DELEGATED_USER ?? ''}`
+}
 
-  // Nelle variabili d'ambiente gli a capo della chiave sono scritti come «\n»:
-  // senza questa sostituzione la chiave non è leggibile e l'errore non lo dice.
+async function tokenDaOAuth(): Promise<{ valore: string; scadeIl: number }> {
+  const c = env()
+  const adesso = Math.floor(Date.now() / 1000)
+  const risposta = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: c.GOOGLE_OAUTH_CLIENT_ID!,
+      client_secret: c.GOOGLE_OAUTH_CLIENT_SECRET!,
+      refresh_token: c.GOOGLE_OAUTH_REFRESH_TOKEN!,
+      grant_type: 'refresh_token',
+    }),
+  })
+  if (!risposta.ok) {
+    throw new Error(`Autenticazione Google (OAuth) fallita (${risposta.status}): ${await risposta.text()}`)
+  }
+  const dati = (await risposta.json()) as { access_token: string; expires_in: number }
+  return { valore: dati.access_token, scadeIl: adesso + dati.expires_in }
+}
+
+async function tokenDaServiceAccount(): Promise<{ valore: string; scadeIl: number }> {
+  const adesso = Math.floor(Date.now() / 1000)
+  const c = env()
   const chiave = c.GOOGLE_SERVICE_ACCOUNT_KEY!.replace(/\\n/g, '\n')
 
+  const claims: Record<string, string | number> = {
+    iss: c.GOOGLE_SERVICE_ACCOUNT_EMAIL!,
+    scope: AMBITO,
+    aud: TOKEN_URL,
+    iat: adesso,
+    exp: adesso + 3600,
+  }
+  // Delegazione a livello di dominio: i file usano la quota dell’utente, non
+  // quella (inesistente) del service account. Serve Workspace + DwD abilitata.
+  if (c.GOOGLE_DRIVE_DELEGATED_USER) {
+    claims.sub = c.GOOGLE_DRIVE_DELEGATED_USER
+  }
+
   const intestazione = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-  const corpo = base64url(
-    JSON.stringify({
-      iss: c.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      scope: AMBITO,
-      aud: TOKEN_URL,
-      iat: adesso,
-      exp: adesso + 3600,
-    }),
-  )
+  const corpo = base64url(JSON.stringify(claims))
 
   const firma = createSign('RSA-SHA256')
   firma.update(`${intestazione}.${corpo}`)
@@ -93,8 +126,30 @@ async function tokenDiAccesso(): Promise<string> {
   }
 
   const dati = (await risposta.json()) as { access_token: string; expires_in: number }
-  tokenInCache = { valore: dati.access_token, scadeIl: adesso + dati.expires_in }
-  return dati.access_token
+  return { valore: dati.access_token, scadeIl: adesso + dati.expires_in }
+}
+
+/**
+ * Scambia credenziali con un token di accesso.
+ *
+ * Preferisce OAuth utente (cartella personale Gmail); altrimenti service
+ * account, eventualmente con impersonazione Workspace.
+ */
+export async function tokenDiAccesso(): Promise<string> {
+  const adesso = Math.floor(Date.now() / 1000)
+  const chiave = chiaveCacheToken()
+  if (tokenInCache && tokenInCache.chiave === chiave && tokenInCache.scadeIl > adesso + 60) {
+    return tokenInCache.valore
+  }
+
+  if (!driveConfigurato()) throw new DriveNonConfigurato()
+
+  const ottenuto = oauthUtenteConfigurato()
+    ? await tokenDaOAuth()
+    : await tokenDaServiceAccount()
+
+  tokenInCache = { ...ottenuto, chiave }
+  return ottenuto.valore
 }
 
 async function chiama(url: string, init: RequestInit): Promise<Response> {
@@ -150,8 +205,6 @@ export async function creaCartella(params: {
     `${API}/files?${new URLSearchParams({
       q: query,
       fields: 'files(id)',
-      // allDrives copre sia Drive condivisi Workspace sia cartelle Gmail condivise
-      // con il service account — corpora=drive richiede un id di Drive condiviso.
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',
       corpora: 'allDrives',
@@ -180,7 +233,7 @@ export async function creaCartella(params: {
  * Carica un file dentro una cartella.
  *
  * Caricamento multipart in una sola richiesta: i documenti di cui si parla —
- * PDF e foto — stanno abbondantemente sotto i 5 MB oltre i quali converrebbe
+ * PDF e foto — stanno abbondantemente sotto i 5 MB oltre ai quali converrebbe
  * il caricamento a blocchi.
  */
 export async function caricaFile(params: {
@@ -211,4 +264,27 @@ export async function caricaFile(params: {
   )
 
   return ((await risposta.json()) as { id: string }).id
+}
+
+/**
+ * Sposta un file nel cestino di Drive.
+ *
+ * Idempotente: se il file non c’è più (già cestinato o eliminato) non solleva.
+ */
+export async function eliminaFile(fileId: string): Promise<void> {
+  if (!driveConfigurato()) return
+  const risposta = await fetch(
+    `${API}/files/${encodeURIComponent(fileId)}?supportsAllDrives=true`,
+    {
+      method: 'PATCH',
+      headers: {
+        authorization: `Bearer ${await tokenDiAccesso()}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ trashed: true }),
+    },
+  )
+  if (risposta.ok || risposta.status === 404) return
+  const testo = await risposta.text()
+  throw new Error(`Drive: eliminazione fallita (${risposta.status}): ${testo}`)
 }

@@ -8,6 +8,7 @@ import { ScegliFile } from '@/components/scegli-file'
 import {
   caricaContabile,
   concediOkAmministrativo,
+  deleteContabile,
   revocaOkAmministrativo,
 } from '@/lib/actions/banca'
 import { normalizzaAllegato } from '@/lib/domain/normalizza-allegato'
@@ -101,6 +102,30 @@ export function OkAmministrativo({
     })
   }
 
+  function elimina(id: string) {
+    setErrore(null)
+    esegui(async () => {
+      try {
+        const esito = await deleteContabile(id)
+        if (esito.ok) {
+          setAppenaCaricate((precedenti) => precedenti.filter((c) => c.id !== id))
+          avvisa('Contabile eliminata.', 'info')
+          router.refresh()
+        } else {
+          setErrore(Object.values(esito.errors)[0] ?? 'Eliminazione non riuscita.')
+        }
+      } catch (errore) {
+        const messaggio =
+          errore instanceof Error ? errore.message : 'Eliminazione non riuscita.'
+        setErrore(
+          /accesso non consentito/i.test(messaggio)
+            ? 'Non hai il permesso di eliminare contabili (serve amministrazione o contabilità).'
+            : messaggio,
+        )
+      }
+    })
+  }
+
   const listaFile =
     elencate.length > 0 ? (
       <ul className="space-y-1">
@@ -121,6 +146,21 @@ export function OkAmministrativo({
             <span style={{ color: 'var(--testo-fioco)' }}>
               {formattaDimensione(c.sizeBytes)}
             </span>
+            <button
+              type="button"
+              disabled={inCorso}
+              onClick={() => elimina(c.id)}
+              className="ml-auto px-1 leading-none"
+              style={{ color: 'var(--testo-fioco)' }}
+              aria-label="Elimina la contabile"
+              title={
+                concessoIl
+                  ? 'Revoca prima il via libera, poi elimina'
+                  : 'Elimina la contabile'
+              }
+            >
+              ×
+            </button>
           </li>
         ))}
       </ul>

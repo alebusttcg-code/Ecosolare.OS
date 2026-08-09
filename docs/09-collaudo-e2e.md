@@ -48,6 +48,9 @@ l'adozione. Ogni voce: eseguire, segnare data/esito, annotare anomalie.
 | 14 | Download documento via `/api/documenti/[id]` (non path diretto) | ☐ | | |
 | 15 | OK amministrativo / pagamento (se previsto) | ☐ | | |
 | 16 | Cartella Drive creata (se outbox + credenziali OK) | ☐ | | |
+| 16b | Impostazioni → **Personale**: crea almeno un dipendente attivo | ☐ | | |
+| 16c | Su commessa **Pianificabile**: pianifica data + operai → stage «Cantiere pianificato» | ☐ | | |
+| 16d | Elenco Cantieri mostra data e operai; ripianifica / annulla funzionano | ☐ | | |
 
 ---
 
@@ -55,7 +58,7 @@ l'adozione. Ogni voce: eseguire, segnare data/esito, annotare anomalie.
 
 | # | Passo | Esito | Data | Note |
 |---|---|---|---|---|
-| 17 | Ricerca globale ⌘K trova lead/cliente/commessa | ☐ | | |
+| 17 | _(rimosso)_ Ricerca globale ⌘K | — | | |
 | 18 | Badge sidebar (attività scadute, approvazioni) coerenti | ☐ | | |
 | 19 | Dialogo/modal: chiusura con Escape, click backdrop, navigazione | ☐ | | |
 | 20 | Mobile: drawer menu si chiude dopo navigazione | ☐ | | |
@@ -68,12 +71,12 @@ l'adozione. Ogni voce: eseguire, segnare data/esito, annotare anomalie.
 | # | Passo | Esito | Data | Note |
 |---|---|---|---|---|
 | 22 | Utente `commerciale` vede tutti i lead e cantieri | ☐ | | |
-| 23 | Utente `cantiere` + **Solo campo** vede solo commesse con task assegnati | ☐ | | |
-| 24 | Field-only non accede a lead né preventivi | ☐ | | |
+| 23 | _(differito)_ Field-only / PWA: operai senza login (D-013) | — | | |
+| 24 | Utente **Operativo** (`cantiere`) pianifica; Commerciale non crea pianificazione | ☐ | | |
 | 25 | Utente senza `can_view_costs` non vede costi in API/UI | ☐ | | |
 
 > Per il test 23: crea utente cantiere con flag «Solo campo», assegna un task
-> su una commessa, verifica che l'altra commessa non compaia in elenco né in ⌘K.
+> su una commessa, verifica che l'altra commessa non compaia in elenco.
 
 ---
 

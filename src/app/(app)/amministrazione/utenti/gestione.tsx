@@ -7,10 +7,14 @@ import { createUser, resetPassword, updateUser } from '@/lib/actions/admin'
 import type { Role } from '@/lib/auth/policy'
 
 const RUOLI: readonly { value: Role; label: string; descrizione: string }[] = [
-  { value: 'amministratore', label: 'Amministratore', descrizione: 'Accesso completo, configurazioni, utenti, audit' },
+  { value: 'amministratore', label: 'Amministratore', descrizione: 'Accesso completo, impostazioni, utenti, audit' },
   { value: 'contabilita', label: 'Contabilità', descrizione: 'Fatture, pagamenti, documenti, pratiche' },
   { value: 'commerciale', label: 'Commerciale', descrizione: 'Lead, sopralluoghi, preventivi e firme' },
-  { value: 'cantiere', label: 'Cantiere', descrizione: 'Materiali, pianificazione, esecuzione, fogli di lavoro' },
+  {
+    value: 'cantiere',
+    label: 'Operativo',
+    descrizione: 'Cantieri, materiali, pianificazione e assegnazione operai',
+  },
 ]
 
 export interface UtenteInElenco {
@@ -266,22 +270,9 @@ function Capacita({
         </span>
       </label>
 
-      {ruolo === 'cantiere' ? (
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="isFieldOnly"
-            defaultChecked={campoIniziale ?? false}
-            className="mt-0.5"
-          />
-          <span>
-            Solo vista di campo
-            <span className="mt-0.5 block text-xs" style={{ color: 'var(--testo-tenue)' }}>
-              Per gli installatori: lavori assegnati, checklist, foto e ore. Nessun importo.
-            </span>
-          </span>
-        </label>
-      ) : null}
+      {/* Gli operai non hanno login: is_field_only resta in schema per compatibilità
+          ma non si propone più in UI. */}
+      {campoIniziale ? <input type="hidden" name="isFieldOnly" value="on" /> : null}
     </div>
   )
 }

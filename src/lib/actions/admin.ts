@@ -261,6 +261,6 @@ export async function updateSetting(
     after: { value: valore },
   })
 
-  revalidatePath('/amministrazione/configurazioni')
+  revalidatePath('/amministrazione/impostazioni')
   return { ok: true, data: undefined }
 }

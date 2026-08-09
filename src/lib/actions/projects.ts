@@ -26,6 +26,7 @@ import {
 import { PIANO_PAGAMENTI, PRATICHE_FV } from '@/db/templates/commessa'
 import { recordEntityChange } from '@/lib/audit'
 import { TIPO_CARTELLA_CLIENTE } from '@/lib/drive/gestori'
+import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
 import { guard } from '@/lib/auth/session'
 import { importoAStringa, importoDaEuro } from '@/lib/domain/money'
 import { ricalcolaReadiness } from '@/lib/readiness'
@@ -356,6 +357,7 @@ export async function signContractAndOpenProject(
 
   revalidatePath('/cantieri')
   revalidatePath(`/lead/${riga.opportunityId}`)
+  avviaSmaltimentoOutbox()
   return { ok: true, data: risultato }
 }
 

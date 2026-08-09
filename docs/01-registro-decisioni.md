@@ -312,3 +312,26 @@ dopo», ma **periodo su periodo** (es. primi 30 giorni vs mese 3 vs mese 6).
 **Riferimento operativo:** [`docs/03-baseline-kpi.md`](03-baseline-kpi.md) (sezione
 «Baseline prospettica»).
 
+---
+
+## D-013 — Operai senza login; pianificazione in gestionale (Fase 4, primo pezzo)
+
+**Data:** 9 agosto 2026 · **Decisore:** Federico Leporati · **Stato:** attiva
+
+I profili con accesso al gestionale restano tre (più Contabilità già in codice):
+**Amministratore**, **Commerciale**, **Operativo** (ruolo tecnico `cantiere`,
+etichetta UI aggiornata).
+
+Gli **operai di cantiere non hanno utenza né app**. L’anagrafica vive in
+**Amministrazione → Impostazioni → Personale** (gestita dall’amministratore):
+lì si aggiungono i dipendenti, tra cui quelli assegnabili ai cantieri. Chi ha
+login resta in **Utenti**. Operativo/Amministratore, in pianificazione,
+seleziona data + squadra → work order → stage `cantiere_pianificato`.
+
+**Fuori scope rispetto al blueprint M15:** PWA tecnici e capacità `is_field_only`
+come percorso d’uso. Il flag resta nello schema/policy per compatibilità, ma non
+si propone più in Amministrazione → Utenti: gli installatori non entrano nel CRM.
+
+**Cosa sblocca:** chiudere il buco dopo la readiness («chi va, e quando») senza
+costruire un secondo prodotto sul telefono.
+

@@ -64,6 +64,7 @@ export function quantitaAStringa(millesimi: number): string {
 const FORMATO_EURO = new Intl.NumberFormat('it-IT', {
   style: 'currency',
   currency: 'EUR',
+  useGrouping: true,
 })
 
 export function formattaImporto(centesimi: number): string {

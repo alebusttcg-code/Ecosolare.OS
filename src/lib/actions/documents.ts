@@ -8,6 +8,8 @@ import { documentFiles, documentRequirements } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
 import { TIPO_COPIA_DOCUMENTO } from '@/lib/drive/gestori'
+import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
+import { eliminaFile as eliminaFileDrive } from '@/lib/drive/client'
 import { accoda } from '@/lib/outbox'
 import { ripulisciNome, validaFile } from '@/lib/domain/upload'
 import { getArchivio } from '@/lib/storage'
@@ -123,6 +125,7 @@ export async function uploadDocument(
   revalidatePath(`/cantieri/${requisito.projectId}`)
   revalidatePath('/cantieri')
 
+  avviaSmaltimentoOutbox()
   return { ok: true, data: { fileId: salvato.id, versione, nome } }
 }
 
@@ -143,6 +146,18 @@ export async function deleteDocumentFile(fileId: string): Promise<ActionResult> 
   const requisito = await db.query.documentRequirements.findFirst({
     where: eq(documentRequirements.id, file.requirementId),
   })
+
+  if (file.driveFileId) {
+    try {
+      await eliminaFileDrive(file.driveFileId)
+    } catch (errore) {
+      console.warn('[drive] eliminazione documento non riuscita', {
+        fileId,
+        driveFileId: file.driveFileId,
+        errore: errore instanceof Error ? errore.message : errore,
+      })
+    }
+  }
 
   await getArchivio().elimina(file.storageKey)
   await db.delete(documentFiles).where(eq(documentFiles.id, fileId))

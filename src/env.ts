@@ -55,6 +55,20 @@ const schema = z.object({
   GOOGLE_DRIVE_ID: z.string().optional().or(z.literal('')),
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional().or(z.literal('')),
   GOOGLE_SERVICE_ACCOUNT_KEY: z.string().optional().or(z.literal('')),
+  /**
+   * Utente Workspace da impersonare (delegazione a livello di dominio).
+   * Serve se la radice è una cartella di «Il mio Drive» e non un Drive
+   * condiviso: senza, Google risponde `storageQuotaExceeded`.
+   */
+  GOOGLE_DRIVE_DELEGATED_USER: z.string().optional().or(z.literal('')),
+  /**
+   * Alternativa alla service account per Drive personale (Gmail): OAuth
+   * dell’utente proprietario della cartella. Si ottiene con
+   * `npm run drive:autorizza`.
+   */
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional().or(z.literal('')),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional().or(z.literal('')),
+  GOOGLE_OAUTH_REFRESH_TOKEN: z.string().optional().or(z.literal('')),
 })
 
 export type Env = z.infer<typeof schema>

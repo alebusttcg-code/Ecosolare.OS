@@ -62,6 +62,7 @@ export function formattaPrezzoUnitario(valore: string | number): string {
     currency: 'EUR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 4,
+    useGrouping: true,
   }).format(numero)
 }
 

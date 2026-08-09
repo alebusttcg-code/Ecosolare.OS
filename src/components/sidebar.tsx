@@ -4,7 +4,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { RicercaGlobale, apriRicerca } from '@/components/ricerca-globale'
 import { useBloccaScroll } from '@/lib/use-blocca-scroll'
 
 export interface VoceMenu {
@@ -66,7 +65,7 @@ export function Sidebar({
     { codice: 'direzione' as const, titolo: null },
     { codice: 'economia' as const, titolo: 'Economia' },
     { codice: 'ciclo' as const, titolo: 'Ciclo di lavoro' },
-    { codice: 'lavoro' as const, titolo: 'Da fare' },
+    { codice: 'lavoro' as const, titolo: 'Controllo' },
     { codice: 'amministrazione' as const, titolo: 'Amministrazione' },
   ].map((g) => ({ ...g, voci: voci.filter((v) => v.gruppo === g.codice) }))
     .filter((g) => g.voci.length > 0)
@@ -95,31 +94,20 @@ export function Sidebar({
             style={{ filter: 'drop-shadow(0 2px 8px rgba(217,164,65,0.18))' }}
           />
         </Link>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={apriRicerca}
-            aria-label="Cerca"
-            className="bottone-fantasma rounded-lg border p-2.5 leading-none"
-            style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
-          >
-            <span aria-hidden className="block text-base leading-none">⌕</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setAperta(true)}
-            aria-label="Apri il menu"
-            aria-expanded={aperta}
-            className="bottone-fantasma rounded-lg border p-2.5"
-            style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
-          >
-            <span className="relative block h-3.5 w-5" aria-hidden>
-              <span className="absolute left-0 top-0 h-[1.5px] w-full rounded-full bg-current" />
-              <span className="absolute left-0 top-1/2 h-[1.5px] w-full -translate-y-1/2 rounded-full bg-current" />
-              <span className="absolute bottom-0 left-0 h-[1.5px] w-full rounded-full bg-current" />
-            </span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setAperta(true)}
+          aria-label="Apri il menu"
+          aria-expanded={aperta}
+          className="bottone-fantasma rounded-lg border p-2.5"
+          style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
+        >
+          <span className="relative block h-3.5 w-5" aria-hidden>
+            <span className="absolute left-0 top-0 h-[1.5px] w-full rounded-full bg-current" />
+            <span className="absolute left-0 top-1/2 h-[1.5px] w-full -translate-y-1/2 rounded-full bg-current" />
+            <span className="absolute bottom-0 left-0 h-[1.5px] w-full rounded-full bg-current" />
+          </span>
+        </button>
       </header>
 
       {/* Sfondo scurito dietro il cassetto, solo mobile. */}
@@ -196,8 +184,6 @@ export function Sidebar({
           <div className="mt-3">{azioneEsci}</div>
         </div>
       </aside>
-
-      <RicercaGlobale />
     </>
   )
 }
