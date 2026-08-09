@@ -79,12 +79,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // non identifica ancora la persona: nessun dato prima del cambio.
   if (utente.mustChangePassword) redirect('/cambia-password')
 
-  // Contatori nel menu: il menu diventa una lista di cose da fare passiva.
-  // Solo per chi può leggere la risorsa, in parallelo con il resto.
-  const [scadute, approvazioni] = await Promise.all([
-    can(utente, 'read', 'activity') ? contaAttivitaScadute(utente.id) : 0,
-    can(utente, 'read', 'quote_approval') ? contaApprovazioniInAttesa() : 0,
-  ])
+  // Contatori nel menu. In sequenza: su Vercel il pool DB è da 1 connessione
+  // e due query parallele nel layout bloccano spesso la navigazione.
+  const scadute = can(utente, 'read', 'activity')
+    ? await contaAttivitaScadute(utente.id)
+    : 0
+  const approvazioni = can(utente, 'read', 'quote_approval')
+    ? await contaApprovazioniInAttesa()
+    : 0
   const badge: Record<string, number> = {
     '/attivita': scadute,
     '/approvazioni': approvazioni,

@@ -127,62 +127,65 @@ export async function getContactDetail(utente: UtenteConId, id: string) {
     if (!raggiungibile) return null
   }
 
-  const [suoiSiti, sueOpportunita, sueAttivita, clienteDalRiga, sueCommesse] =
-    await Promise.all([
-      db.select().from(sites).where(and(eq(sites.contactId, id), isNull(sites.deletedAt))),
-      db
-        .select({
-          id: opportunities.id,
-          code: opportunities.code,
-          title: opportunities.title,
-          stage: opportunities.stage,
-          businessLine: opportunities.businessLine,
-          estimatedValue: opportunities.estimatedValue,
-          nextActionDueAt: opportunities.nextActionDueAt,
-          closedAt: opportunities.closedAt,
-        })
-        .from(opportunities)
-        .where(and(eq(opportunities.contactId, id), isNull(opportunities.deletedAt)))
-        .orderBy(desc(opportunities.createdAt)),
-      db
-        .select({
-          id: activities.id,
-          kind: sql<string>`${activities.kind}`,
-          subject: activities.subject,
-          dueAt: activities.dueAt,
-          completedAt: activities.completedAt,
-          outcome: activities.outcome,
-        })
-        .from(activities)
-        .where(eq(activities.contactId, id))
-        .orderBy(desc(activities.createdAt))
-        .limit(50),
-      db
-        .select({ clienteDal: min(contracts.signedAt) })
-        .from(contracts)
-        .innerJoin(opportunities, eq(opportunities.id, contracts.opportunityId))
-        .where(and(eq(opportunities.contactId, id), isNull(opportunities.deletedAt))),
-      db
-        .select({
-          id: projects.id,
-          code: projects.code,
-          title: projects.title,
-          stage: projects.stage,
-          stageLabel: projectStages.label,
-          readinessState: projects.readinessState,
-          readinessBlockers: projects.readinessBlockers,
-        })
-        .from(projects)
-        .innerJoin(projectStages, eq(projectStages.code, projects.stage))
-        .where(
-          and(
-            eq(projects.contactId, id),
-            isNull(projects.deletedAt),
-            ...(scope === 'assigned' ? [filtroCommessaAssegnata(utente.id)] : []),
-          ),
-        )
-        .orderBy(desc(projects.createdAt)),
-    ])
+  // Sequenziale: su Vercel il pool e' da 1 connessione; cinque query in
+  // Promise.all sulla stessa istanza postgres.js possono restare in coda
+  // senza avanzare e la soft-navigation Next non termina mai.
+  const suoiSiti = await db
+    .select()
+    .from(sites)
+    .where(and(eq(sites.contactId, id), isNull(sites.deletedAt)))
+  const sueOpportunita = await db
+    .select({
+      id: opportunities.id,
+      code: opportunities.code,
+      title: opportunities.title,
+      stage: opportunities.stage,
+      businessLine: opportunities.businessLine,
+      estimatedValue: opportunities.estimatedValue,
+      nextActionDueAt: opportunities.nextActionDueAt,
+      closedAt: opportunities.closedAt,
+    })
+    .from(opportunities)
+    .where(and(eq(opportunities.contactId, id), isNull(opportunities.deletedAt)))
+    .orderBy(desc(opportunities.createdAt))
+  const sueAttivita = await db
+    .select({
+      id: activities.id,
+      kind: sql<string>`${activities.kind}`,
+      subject: activities.subject,
+      dueAt: activities.dueAt,
+      completedAt: activities.completedAt,
+      outcome: activities.outcome,
+    })
+    .from(activities)
+    .where(eq(activities.contactId, id))
+    .orderBy(desc(activities.createdAt))
+    .limit(50)
+  const clienteDalRiga = await db
+    .select({ clienteDal: min(contracts.signedAt) })
+    .from(contracts)
+    .innerJoin(opportunities, eq(opportunities.id, contracts.opportunityId))
+    .where(and(eq(opportunities.contactId, id), isNull(opportunities.deletedAt)))
+  const sueCommesse = await db
+    .select({
+      id: projects.id,
+      code: projects.code,
+      title: projects.title,
+      stage: projects.stage,
+      stageLabel: projectStages.label,
+      readinessState: projects.readinessState,
+      readinessBlockers: projects.readinessBlockers,
+    })
+    .from(projects)
+    .innerJoin(projectStages, eq(projectStages.code, projects.stage))
+    .where(
+      and(
+        eq(projects.contactId, id),
+        isNull(projects.deletedAt),
+        ...(scope === 'assigned' ? [filtroCommessaAssegnata(utente.id)] : []),
+      ),
+    )
+    .orderBy(desc(projects.createdAt))
 
   const clienteDal = clienteDalRiga[0]?.clienteDal ?? null
 

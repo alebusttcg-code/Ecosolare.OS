@@ -9,6 +9,9 @@ import { NuovoImmobile } from './nuovo-immobile'
 
 export const metadata = { title: 'Clienti — EcoSolare OS' }
 
+/** Evita che una soft-navigation resti appesa su una shell cache stale. */
+export const dynamic = 'force-dynamic'
+
 export default async function SchedaClientePage({
   params,
 }: {
@@ -17,8 +20,11 @@ export default async function SchedaClientePage({
   const utente = await guard('read', 'contact')
 
   const { id } = await params
-  const [dettaglio, stages] = await Promise.all([getContactDetail(utente, id), getStages()])
+  // In sequenza: con pool da 1 su Vercel le Promise.all contese sulla stessa
+  // connessione a volte non rilasciano e la navigazione gira senza fine.
+  const dettaglio = await getContactDetail(utente, id)
   if (!dettaglio) notFound()
+  const stages = await getStages()
 
   const { contatto, siti, opportunita, attivita, clienteDal, commesse, eCliente } =
     dettaglio

@@ -48,6 +48,9 @@ function buildDb() {
     // che e' il modo peggiore di scoprire un problema.
     prepare: false,
     idle_timeout: 20,
+    // Meglio un errore chiaro che una soft-navigation Next che gira all'infinito
+    // quando il pooler Supabase non risponde (progetto in pausa, rete, ecc.).
+    connect_timeout: 10,
   })
   return drizzle(sql, { schema })
 }

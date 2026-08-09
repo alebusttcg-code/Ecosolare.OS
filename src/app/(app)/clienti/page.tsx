@@ -57,54 +57,49 @@ export default async function ClientiPage({
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr
-                className="border-b text-left text-xs"
-                style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
-              >
-                <th className="pb-2 font-medium">Nome</th>
-                <th className="pb-2 font-medium">Recapiti</th>
-                <th className="pb-2 font-medium">Commesse</th>
-                <th className="pb-2 text-right font-medium">Cliente dal</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div>
+            <div
+              className="mb-2 hidden grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] gap-4 text-xs sm:grid"
+              style={{ color: 'var(--testo-tenue)' }}
+            >
+              <span>Nome</span>
+              <span>Recapiti</span>
+              <span className="text-center">Commesse</span>
+              <span className="text-right">Cliente dal</span>
+            </div>
+            <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
               {righe.map((riga) => (
-                <tr
-                  key={riga.id}
-                  className="riga border-b last:border-0"
-                  style={{ borderColor: 'var(--bordo)' }}
-                >
-                  <td className="py-2.5">
-                    <Link
-                      href={`/clienti/${riga.id}`}
-                      className="font-medium text-eco-blue-300 hover:underline collega"
-                    >
-                      {[riga.firstName, riga.lastName].filter(Boolean).join(' ')}
-                    </Link>
-                  </td>
-                  <td className="py-2.5" style={{ color: 'var(--testo-tenue)' }}>
-                    {riga.phone ?? riga.email ?? '—'}
-                  </td>
-                  <td className="py-2.5">
-                    {riga.commesse > 0 ? (
-                      <Badge tone="positivo">{riga.commesse}</Badge>
-                    ) : (
-                      <span style={{ color: 'var(--testo-tenue)' }}>—</span>
-                    )}
-                  </td>
-                  <td
-                    className="py-2.5 text-right"
-                    style={{ color: 'var(--testo-tenue)' }}
+                <li key={riga.id} className="first:pt-0 last:pb-0">
+                  <Link
+                    href={`/clienti/${riga.id}`}
+                    prefetch={false}
+                    className="riga group grid grid-cols-1 gap-1 rounded-md py-3 outline-none focus-visible:ring-2 focus-visible:ring-[rgba(91,155,213,0.45)] sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4"
                   >
-                    {formattaData(riga.clienteDal)}
-                  </td>
-                </tr>
+                    <span className="truncate text-sm font-medium text-eco-blue-300 transition-colors group-hover:text-eco-gold-300">
+                      {[riga.firstName, riga.lastName].filter(Boolean).join(' ')}
+                    </span>
+                    <span className="truncate text-sm" style={{ color: 'var(--testo-tenue)' }}>
+                      {riga.phone ?? riga.email ?? '—'}
+                    </span>
+                    <span className="sm:text-center">
+                      {riga.commesse > 0 ? (
+                        <Badge tone="positivo">{riga.commesse}</Badge>
+                      ) : (
+                        <span className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
+                          —
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className="text-sm sm:text-right"
+                      style={{ color: 'var(--testo-tenue)' }}
+                    >
+                      {formattaData(riga.clienteDal)}
+                    </span>
+                  </Link>
+                </li>
               ))}
-            </tbody>
-          </table>
+            </ul>
           </div>
         )}
       </Card>
