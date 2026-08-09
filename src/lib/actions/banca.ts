@@ -131,8 +131,16 @@ export async function revocaOkAmministrativo(milestoneId: string): Promise<Actio
   return { ok: true, data: undefined }
 }
 
+export interface ContabileSalvata {
+  readonly id: string
+  readonly filename: string
+  readonly sizeBytes: number
+}
+
 /** Carica la contabile di pagamento inviata dal cliente. */
-export async function caricaContabile(formData: FormData): Promise<ActionResult> {
+export async function caricaContabile(
+  formData: FormData,
+): Promise<ActionResult<ContabileSalvata>> {
   const utente = await guard('update', 'invoice')
 
   const milestoneId = String(formData.get('milestoneId') ?? '')
@@ -162,18 +170,33 @@ export async function caricaContabile(formData: FormData): Promise<ActionResult>
     cartella: `contabili/${scadenza.projectId}`,
   })
 
-  await db.insert(paymentReceipts).values({
-    milestoneId,
-    storageKey: archiviato.chiave,
-    filename: ripulisciNome(file.name),
-    mimeType: esito.tipo,
-    sizeBytes: archiviato.dimensione,
-    checksum: archiviato.checksum,
-    uploadedBy: utente.id,
-  })
+  const nome = ripulisciNome(file.name)
+  const [riga] = await db
+    .insert(paymentReceipts)
+    .values({
+      milestoneId,
+      storageKey: archiviato.chiave,
+      filename: nome,
+      mimeType: esito.tipo,
+      sizeBytes: archiviato.dimensione,
+      checksum: archiviato.checksum,
+      uploadedBy: utente.id,
+    })
+    .returning({
+      id: paymentReceipts.id,
+      filename: paymentReceipts.filename,
+      sizeBytes: paymentReceipts.sizeBytes,
+    })
 
   revalidatePath(`/cantieri/${scadenza.projectId}`)
-  return { ok: true, data: undefined }
+  return {
+    ok: true,
+    data: {
+      id: riga!.id,
+      filename: riga!.filename,
+      sizeBytes: riga!.sizeBytes,
+    },
+  }
 }
 
 /* -------------------------------------------------------------------------- */
