@@ -21,7 +21,8 @@ function percorsoPubblico(pathname: string): boolean {
     pathname === '/accedi' ||
     pathname.startsWith('/accedi/') ||
     pathname.startsWith('/api/intake') ||
-    pathname.startsWith('/api/manutenzione')
+    pathname.startsWith('/api/manutenzione') ||
+    pathname.startsWith('/api/telegram/')
   )
 }
 

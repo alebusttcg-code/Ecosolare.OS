@@ -2,9 +2,11 @@ import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { env } from '@/env'
 import { smaltisciCodaDrive } from '@/lib/drive/smaltisci'
+import { riprovaFalliti } from '@/lib/outbox'
+import { smaltisciCodaTelegram } from '@/lib/telegram/smaltisci'
 
 /**
- * Smaltisce la coda degli effetti esterni (ADR-005).
+ * Smaltisce la coda degli effetti esterni (ADR-005): Drive + Telegram.
  *
  * Da chiamare a intervalli regolari — su Vercel con un cron, in locale a mano.
  * È sicuro chiamarla in parallelo: gli eventi si prendono con `skip locked`,
@@ -48,10 +50,11 @@ async function elabora(request: Request): Promise<NextResponse> {
     return NextResponse.json({ errore: 'Non autorizzato.' }, { status: 401 })
   }
 
-  // Il cron ripristina anche i falliti (es. «nessun gestore» prima che Drive
-  // fosse configurato) e riaccoda le copie ancora senza drive_file_id.
-  const esito = await smaltisciCodaDrive({ ripristinaFalliti: true })
-  return NextResponse.json(esito)
+  // Ripristino falliti una sola volta; poi Drive e Telegram in sequenza.
+  await riprovaFalliti()
+  const drive = await smaltisciCodaDrive({ ripristinaFalliti: false })
+  const telegram = await smaltisciCodaTelegram({ ripristinaFalliti: false })
+  return NextResponse.json({ drive, telegram })
 }
 
 /** Vercel Cron invoca GET: senza questo handler la coda non partiva mai. */

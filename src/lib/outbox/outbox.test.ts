@@ -130,21 +130,34 @@ describe('coda degli effetti esterni', () => {
     expect(riga!.lastError).toContain('permesso negato')
   })
 
-  it('segna fallito, non rimandato, un tipo senza gestore', async () => {
-    // Ritentarlo non lo farebbe comparire: sarebbe un evento eternamente in
-    // attesa di qualcosa che non arriva.
+  it('non prende eventi di tipi senza gestore (restano in attesa)', async () => {
+    // Drive non configurato non deve far fallire eventi Telegram e viceversa:
+    // si selezionano solo i tipi per cui c’è un gestore.
     await accoda(comeEsecutore(), { type: 'tipo.sconosciuto', payload: {} })
-    const esito = await elaboraOutbox({}, { db: come() })
+    const esito = await elaboraOutbox({ prova: async () => {} }, { db: come() })
 
-    expect(esito).toMatchObject({ falliti: 1 })
+    expect(esito).toMatchObject({ elaborati: 0, falliti: 0 })
     const [riga] = await stato()
-    expect(riga!.status).toBe('fallito')
-    expect(riga!.lastError).toContain('tipo.sconosciuto')
+    expect(riga!.status).toBe('in_attesa')
+  })
+
+  it('con mappa gestori vuota non elabora nulla', async () => {
+    await accoda(comeEsecutore(), { type: 'prova', payload: {} })
+    const esito = await elaboraOutbox({}, { db: come() })
+    expect(esito).toMatchObject({ elaborati: 0 })
+    const [riga] = await stato()
+    expect(riga!.status).toBe('in_attesa')
   })
 
   it('rimette in coda i falliti quando la causa è stata sistemata', async () => {
-    await accoda(comeEsecutore(), { type: 'tipo.sconosciuto', payload: {} })
-    await elaboraOutbox({}, { db: come() })
+    const sempreRotto: Gestore = async () => {
+      throw new Error('temporaneo')
+    }
+    await accoda(comeEsecutore(), { type: 'prova', payload: {} })
+    await db
+      .update(outboxEvents)
+      .set({ attempts: TENTATIVI_MASSIMI - 1, availableAt: new Date(Date.now() - 1000) })
+    await elaboraOutbox({ prova: sempreRotto }, { db: come() })
 
     expect(await riprovaFalliti(come())).toBe(1)
 
@@ -163,9 +176,8 @@ describe('coda degli effetti esterni', () => {
   })
 
   it('non lascia mai un evento bloccato in «in corso»', async () => {
-    // Uno che riesce, uno che fallisce, uno senza gestore: nessuno dei tre
-    // deve restare nello stato intermedio, che nessun'altra esecuzione
-    // riprenderebbe.
+    // Uno che riesce, uno che fallisce, uno ignoto (saltato): nessuno deve
+    // restare nello stato intermedio, che nessun'altra esecuzione riprenderebbe.
     await accoda(comeEsecutore(), { type: 'ok', payload: {}, dedupKey: 'a' })
     await accoda(comeEsecutore(), { type: 'ko', payload: {}, dedupKey: 'b' })
     await accoda(comeEsecutore(), { type: 'ignoto', payload: {}, dedupKey: 'c' })

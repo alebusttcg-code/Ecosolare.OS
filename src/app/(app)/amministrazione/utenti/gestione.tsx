@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { createUser, resetPassword, updateUser } from '@/lib/actions/admin'
+import { generaCodiceCollegamentoTelegram } from '@/lib/actions/telegram'
 import type { Role } from '@/lib/auth/policy'
 
 const RUOLI: readonly { value: Role; label: string; descrizione: string }[] = [
@@ -25,6 +26,7 @@ export interface UtenteInElenco {
   readonly canViewCosts: boolean
   readonly isFieldOnly: boolean
   readonly isActive: boolean
+  readonly telegramCollegato: boolean
 }
 
 export function GestioneUtenti({
@@ -287,6 +289,7 @@ function RigaUtente({
   const [aperto, setAperto] = useState(false)
   const [ruolo, setRuolo] = useState<Role>(utente.role)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [istruzioniTg, setIstruzioniTg] = useState<string | null>(null)
   const { inCorso, esegui } = useAzioneServer()
 
   return (
@@ -296,10 +299,13 @@ function RigaUtente({
     >
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">{utente.name ?? utente.email}</span>
             {!utente.isActive ? <Badge tone="critico">Disattivato</Badge> : null}
             {eSeStesso ? <Badge>Tu</Badge> : null}
+            {utente.telegramCollegato ? (
+              <Badge tone="positivo">Telegram</Badge>
+            ) : null}
           </div>
           <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
             {utente.email} · {RUOLI.find((r) => r.value === utente.role)?.label}
@@ -395,6 +401,39 @@ function RigaUtente({
             {inCorso ? 'Salvataggio…' : 'Salva'}
           </button>
         </form>
+      ) : null}
+
+      {aperto ? (
+        <div className="mt-4 space-y-2 border-t pt-4" style={{ borderColor: 'var(--bordo)' }}>
+          <button
+            type="button"
+            disabled={inCorso}
+            onClick={() =>
+              esegui(async () => {
+                setErrors({})
+                setIstruzioniTg(null)
+                const esito = await generaCodiceCollegamentoTelegram({ userId: utente.id })
+                if (!esito.ok) {
+                  setErrors(esito.errors)
+                  return
+                }
+                setIstruzioniTg(esito.data.istruzioni)
+              })
+            }
+            className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs disabled:opacity-60"
+            style={{ borderColor: 'var(--bordo)' }}
+          >
+            {inCorso ? '…' : 'Codice collegamento Telegram'}
+          </button>
+          {istruzioniTg ? (
+            <p className="text-xs">
+              <code className="text-eco-gold-300">{istruzioniTg}</code>
+              <span className="mt-1 block" style={{ color: 'var(--testo-fioco)' }}>
+                Valido 15 minuti — da inviare alla persona.
+              </span>
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {aperto ? <RigeneraPassword utente={utente} /> : null}

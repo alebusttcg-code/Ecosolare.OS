@@ -83,12 +83,25 @@ export const users = pgTable(
      */
     isActive: boolean('is_active').notNull().default(true),
 
+    /**
+     * Chat Telegram per reminder follow-up (D-015). Nulla = nessun invio.
+     * Si associa con `/start <codice>` sul bot, non a mano.
+     */
+    telegramChatId: text('telegram_chat_id'),
+    telegramLinkCode: text('telegram_link_code'),
+    telegramLinkExpiresAt: timestamp('telegram_link_expires_at', { withTimezone: true }),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     createdBy: uuid('created_by'),
     updatedBy: uuid('updated_by'),
   },
-  (table) => [index('users_role_idx').on(table.role)],
+  (table) => [
+    index('users_role_idx').on(table.role),
+    uniqueIndex('users_telegram_chat_id_idx')
+      .on(table.telegramChatId)
+      .where(sql`${table.telegramChatId} is not null`),
+  ],
 )
 
 /* -------------------------------------------------------------------------- */
@@ -669,6 +682,17 @@ export const activities = pgTable(
      */
     isNextAction: boolean('is_next_action').notNull().default(false),
 
+    /**
+     * Sequenza follow-up commerciale (D-014): null = attività normale.
+     * `pre_sopralluogo` | `post_sopralluogo` + step 1|2.
+     */
+    followUpPhase: text('follow_up_phase'),
+    followUpStep: integer('follow_up_step'),
+
+    /** Reminder Telegram inviato (D-015); message_id per matchare la reply. */
+    telegramRemindedAt: timestamp('telegram_reminded_at', { withTimezone: true }),
+    telegramReminderMessageId: text('telegram_reminder_message_id'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
@@ -682,6 +706,10 @@ export const activities = pgTable(
     uniqueIndex('activities_one_next_action_idx')
       .on(table.opportunityId)
       .where(sql`${table.isNextAction} and ${table.completedAt} is null`),
+    // Idempotenza dei passi di sequenza: un solo step per fase sul lead.
+    uniqueIndex('activities_follow_up_step_idx')
+      .on(table.opportunityId, table.followUpPhase, table.followUpStep)
+      .where(sql`${table.followUpPhase} is not null`),
   ],
 )
 

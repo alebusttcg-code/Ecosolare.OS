@@ -1,4 +1,4 @@
-import { and, eq, lte, sql } from 'drizzle-orm'
+import { and, eq, inArray, lte, sql } from 'drizzle-orm'
 import { getDb, type Database, type Esecutore } from '@/db'
 import { outboxEvents } from '@/db/schema'
 import { prossimoTentativo } from './ritentativi'
@@ -64,6 +64,11 @@ export async function elaboraOutbox(
   const limite = opzioni.limite ?? 20
   const adesso = new Date()
 
+  const tipiNoti = Object.keys(gestori)
+  if (tipiNoti.length === 0) {
+    return { elaborati: 0, completati: 0, rimandati: 0, falliti: 0 }
+  }
+
   const presi = await db.transaction(async (tx) => {
     const righe = await tx
       .select({ id: outboxEvents.id })
@@ -72,6 +77,9 @@ export async function elaboraOutbox(
         and(
           eq(outboxEvents.status, 'in_attesa'),
           lte(outboxEvents.availableAt, adesso),
+          // Solo tipi per cui abbiamo un gestore: così Drive non configurato
+          // non fa fallire eventi Telegram (e viceversa).
+          inArray(outboxEvents.type, tipiNoti),
         ),
       )
       .orderBy(outboxEvents.availableAt)
@@ -101,8 +109,7 @@ export async function elaboraOutbox(
     const gestore = gestori[evento.type]
 
     if (!gestore) {
-      // Un tipo senza gestore non è un guasto temporaneo: ritentarlo non lo
-      // farà comparire. Va segnato come fallito perché si veda.
+      // Non dovrebbe accadere: abbiamo filtrato per tipi noti. Difesa in profondità.
       await segnaFallito(db, evento.id, `Nessun gestore per il tipo "${evento.type}".`)
       falliti += 1
       continue

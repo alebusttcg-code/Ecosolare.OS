@@ -67,6 +67,18 @@ opzionalmente **Production**:
 | `GOOGLE_DRIVE_ID` | Id cartella/Drive condiviso | Opzionale in staging iniziale |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Email service account | |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | Chiave privata con `\n` | |
+| `TELEGRAM_BOT_TOKEN` | Token @BotFather | Opzionale; senza, no reminder FU |
+| `TELEGRAM_WEBHOOK_SECRET` | `openssl rand -hex 32` | Stesso secret in `setWebhook` |
+| `TELEGRAM_BOT_USERNAME` | es. `EcoSolareOSBot` | Senza `@` |
+| `APP_BASE_URL` | URL staging `https://….vercel.app` | Link nelle notifiche Telegram |
+
+Dopo il deploy, registra il webhook Telegram (una volta):
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -H 'Content-Type: application/json' \
+  -d "{\"url\":\"$APP_BASE_URL/api/telegram/webhook\",\"secret_token\":\"$TELEGRAM_WEBHOOK_SECRET\"}"
+```
 
 **Non impostare** `DB_POOL_MAX=1` su Vercel (vale solo per PostgreSQL locale).
 

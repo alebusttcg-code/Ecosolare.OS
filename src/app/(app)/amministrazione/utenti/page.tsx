@@ -19,6 +19,7 @@ export default async function UtentiPage() {
       canViewCosts: users.canViewCosts,
       isFieldOnly: users.isFieldOnly,
       isActive: users.isActive,
+      telegramCollegato: users.telegramChatId,
     })
     .from(users)
     .orderBy(asc(users.email))
@@ -31,7 +32,13 @@ export default async function UtentiPage() {
         sottotitolo={`${elenco.length} abilitati. Nessuno può accedere senza essere in questo elenco.`}
       />
 
-      <GestioneUtenti utenti={elenco} utenteCorrenteId={utente.id} />
+      <GestioneUtenti
+        utenti={elenco.map((u) => ({
+          ...u,
+          telegramCollegato: Boolean(u.telegramCollegato),
+        }))}
+        utenteCorrenteId={utente.id}
+      />
     </div>
   )
 }

@@ -29,6 +29,7 @@ import { TIPO_CARTELLA_CLIENTE } from '@/lib/drive/gestori'
 import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
 import { guard } from '@/lib/auth/session'
 import { importoAStringa, importoDaEuro } from '@/lib/domain/money'
+import { annullaFollowUpAperti } from '@/lib/follow-up'
 import { ricalcolaReadiness } from '@/lib/readiness'
 import { accoda } from '@/lib/outbox'
 import type { ActionResult } from './opportunities'
@@ -322,6 +323,8 @@ export async function signContractAndOpenProject(
       })
       .where(eq(opportunities.id, riga.opportunityId))
 
+    await annullaFollowUpAperti(tx, riga.opportunityId, utente.id)
+
     await tx.insert(opportunityStatusHistory).values({
       opportunityId: riga.opportunityId,
       toStage: 'vinto',
@@ -357,6 +360,7 @@ export async function signContractAndOpenProject(
 
   revalidatePath('/cantieri')
   revalidatePath(`/lead/${riga.opportunityId}`)
+  revalidatePath('/follow-up')
   avviaSmaltimentoOutbox()
   return { ok: true, data: risultato }
 }

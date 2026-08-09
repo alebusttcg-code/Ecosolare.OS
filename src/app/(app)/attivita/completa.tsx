@@ -63,6 +63,7 @@ export function CompletaAttivita({
           const esito = await completeActivity({
             activityId,
             outcome: String(formData.get('outcome') ?? '') || undefined,
+            notes: String(formData.get('notes') ?? '') || undefined,
             prossima: richiedeProssima
               ? {
                   kind: String(formData.get('kind') ?? 'chiamata') as 'chiamata',
@@ -87,6 +88,17 @@ export function CompletaAttivita({
           name="outcome"
           placeholder="Com’è andata?"
           className="w-full rounded-md border px-2 py-1.5 text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
+          style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+        />
+      </label>
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium">Note</span>
+        <textarea
+          name="notes"
+          rows={3}
+          placeholder="Cosa hai detto / cosa resta da fare…"
+          className="w-full resize-y rounded-md border px-2 py-1.5 text-sm transition-colors duration-200 outline-none focus:border-eco-blue-400"
           style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
         />
       </label>

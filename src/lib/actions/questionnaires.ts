@@ -15,6 +15,10 @@ import {
   type DefinizioneQuestionario,
   type Risposte,
 } from '@/lib/domain/questionnaire'
+import {
+  annullaFollowUpPre,
+  creaFollowUpPost,
+} from '@/lib/follow-up'
 import type { ActionResult } from './opportunities'
 
 /**
@@ -174,18 +178,25 @@ export async function createSurvey(
     templateId = template.id
   }
 
-  const [creato] = await db
-    .insert(surveys)
-    .values({
-      opportunityId: dati.opportunityId,
-      siteId: dati.siteId ?? null,
-      templateId,
-      performedBy: utente.id,
-      createdBy: utente.id,
-    })
-    .returning({ id: surveys.id })
+  const creato = await db.transaction(async (tx) => {
+    const [riga] = await tx
+      .insert(surveys)
+      .values({
+        opportunityId: dati.opportunityId,
+        siteId: dati.siteId ?? null,
+        templateId,
+        performedBy: utente.id,
+        createdBy: utente.id,
+      })
+      .returning({ id: surveys.id })
 
-  if (!creato) return { ok: false, errors: { _: 'Creazione non riuscita.' } }
+    if (!riga) throw new Error('Creazione sopralluogo non riuscita')
+
+    // Sopralluogo fissato: i follow-up pre non servono più.
+    await annullaFollowUpPre(tx, dati.opportunityId, utente.id)
+
+    return riga
+  })
 
   await recordEntityChange({
     actorId: utente.id,
@@ -196,6 +207,7 @@ export async function createSurvey(
   })
 
   revalidatePath(`/lead/${dati.opportunityId}`)
+  revalidatePath('/follow-up')
   return { ok: true, data: creato }
 }
 
@@ -282,43 +294,42 @@ export async function saveSurvey(
       })
       .where(eq(surveys.id, dati.surveyId))
 
-    // Alla chiusura si crea l'attivita' successiva: il sopralluogo completato
-    // deve avviare la preventivazione, non finire in un cassetto (§5.6).
+    // Alla chiusura: stop ai FU pre residui e sequenza post (+2/+4) per chiudere
+    // il contratto (sostituisce il vecchio task generico «Preparare il preventivo»).
     if (puoCompletare) {
       const opportunita = await tx.query.opportunities.findFirst({
         where: eq(opportunities.id, sopralluogo.opportunityId),
         columns: { id: true, ownerId: true, contactId: true },
       })
       if (opportunita) {
-        await tx
-          .update(activities)
-          .set({ isNextAction: false })
-          .where(
-            and(
-              eq(activities.opportunityId, opportunita.id),
-              eq(activities.isNextAction, true),
-            ),
-          )
-
-        const scadenza = new Date(adesso.getTime() + 2 * 86_400_000)
-        await tx.insert(activities).values({
-          kind: 'task',
-          subject: 'Preparare il preventivo',
-          notes:
-            criticita.length > 0
-              ? `Criticità rilevate in sopralluogo: ${criticita.map((c) => c.label).join(', ')}.`
-              : null,
+        await annullaFollowUpPre(tx, opportunita.id, utente.id)
+        await creaFollowUpPost(tx, {
           opportunityId: opportunita.id,
           contactId: opportunita.contactId,
-          assignedTo: opportunita.ownerId,
-          dueAt: scadenza,
-          isNextAction: true,
+          ownerId: opportunita.ownerId,
           createdBy: utente.id,
+          chiusuraSopralluogo: adesso,
         })
+
+        if (criticita.length > 0) {
+          await tx
+            .update(activities)
+            .set({
+              notes: `Criticità rilevate in sopralluogo: ${criticita.map((c) => c.label).join(', ')}.`,
+              updatedAt: adesso,
+            })
+            .where(
+              and(
+                eq(activities.opportunityId, opportunita.id),
+                eq(activities.followUpPhase, 'post_sopralluogo'),
+                eq(activities.followUpStep, 1),
+              ),
+            )
+        }
 
         await tx
           .update(opportunities)
-          .set({ nextActionDueAt: scadenza, updatedAt: adesso, updatedBy: utente.id })
+          .set({ updatedAt: adesso, updatedBy: utente.id })
           .where(eq(opportunities.id, opportunita.id))
       }
     }
@@ -336,6 +347,7 @@ export async function saveSurvey(
 
   revalidatePath(`/agenda/${dati.surveyId}`)
   revalidatePath(`/lead/${sopralluogo.opportunityId}`)
+  revalidatePath('/follow-up')
 
   return {
     ok: true,

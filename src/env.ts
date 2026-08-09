@@ -69,6 +69,19 @@ const schema = z.object({
   GOOGLE_OAUTH_CLIENT_ID: z.string().optional().or(z.literal('')),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional().or(z.literal('')),
   GOOGLE_OAUTH_REFRESH_TOKEN: z.string().optional().or(z.literal('')),
+
+  /* --- Telegram follow-up (D-015) --------------------------------------- */
+  /**
+   * Se assenti, i reminder Telegram restano disattivi e il resto dell’app
+   * funziona normalmente.
+   */
+  TELEGRAM_BOT_TOKEN: z.string().optional().or(z.literal('')),
+  /** Header X-Telegram-Bot-Api-Secret-Token sul webhook. */
+  TELEGRAM_WEBHOOK_SECRET: z.string().min(16).optional().or(z.literal('')),
+  /** Username del bot senza @ — per istruzioni «Apri @nome». */
+  TELEGRAM_BOT_USERNAME: z.string().optional().or(z.literal('')),
+  /** URL pubblico dell’app (link nelle notifiche). Es. https://staging.….vercel.app */
+  APP_BASE_URL: z.union([z.literal(''), z.string().url()]).optional(),
 })
 
 export type Env = z.infer<typeof schema>

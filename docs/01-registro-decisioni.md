@@ -335,3 +335,40 @@ si propone più in Amministrazione → Utenti: gli installatori non entrano nel 
 **Cosa sblocca:** chiudere il buco dopo la readiness («chi va, e quando») senza
 costruire un secondo prodotto sul telefono.
 
+---
+
+## D-014 — Sequenza follow-up lead: 2 pre + 2 post sopralluogo (+2/+4 giorni)
+
+**Data:** 9 agosto 2026 · **Decisore:** Federico Leporati · **Stato:** attiva
+
+Ogni lead ha un **commerciale di riferimento** (`opportunities.ownerId`) che
+presidia i follow-up. Sequenze automatiche (attività in CRM, non invii automatici):
+
+| Fase | Ancora | Passi | Obiettivo |
+|---|---|---|---|
+| Pre-sopralluogo | acquisizione lead | +2 gg, +4 gg | Fissare il sopralluogo |
+| Post-sopralluogo | chiusura sopralluogo | +2 gg, +4 gg | Chiudere il contratto |
+
+**Stop:** se il sopralluogo viene creato prima, i FU pre aperti si chiudono come
+saltati; alla firma del contratto si chiudono i FU post (e residui pre). Se il
+risultato arriva prima del passo successivo, quel passo non resta da fare.
+
+UI dedicata: sidebar **Follow-up**. Fuori scope in questa decisione: sequenza
+post-preventivo inviato del blueprint e canali automatici (email/WhatsApp).
+
+---
+
+## D-015 — Reminder Telegram follow-up + completa via reply
+
+**Data:** 9 agosto 2026 · **Decisore:** Federico Leporati · **Stato:** attiva
+
+Il giorno di scadenza di ogni follow-up (fuso `Europe/Rome`, non prima delle
+08:00) il commerciale riceve un messaggio Telegram. **Rispondendo a quel
+messaggio** smarca il FU nel CRM e le note del messaggio vengono salvate su
+`activities.notes`.
+
+Collegamento chat ↔ utente con codice one-time (`/start CODICE`), generabile da
+**Follow-up** o da Amministrazione → Utenti. Invio via outbox (ADR-005); inbound
+su webhook protetto da secret. Senza `TELEGRAM_BOT_TOKEN` l’automazione è
+disattiva e i FU restano gestibili solo in app.
+

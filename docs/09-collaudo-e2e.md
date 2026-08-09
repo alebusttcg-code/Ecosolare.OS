@@ -27,6 +27,12 @@ l'adozione. Ogni voce: eseguire, segnare data/esito, annotare anomalie.
 |---|---|---|---|---|
 | 1 | **Intake:** POST `/api/intake` o form → lead compare in Lead | ☐ | | |
 | 2 | Lead ha responsabile e prossima azione | ☐ | | |
+| 2b | Alla creazione lead: 2 follow-up pre (+2/+4 gg) in **Follow-up** | ☐ | | |
+| 2c | Creando un sopralluogo i FU pre aperti spariscono (saltati) | ☐ | | |
+| 2d | Chiudendo il sopralluogo: 2 FU post (+2/+4 gg) | ☐ | | |
+| 2e | Firma contratto: FU post aperti chiusi | ☐ | | |
+| 2f | Collega Telegram da Follow-up (`/start CODICE`) | ☐ | | |
+| 2g | Giorno scadenza + cron: arriva reminder; reply smarca FU e salva note | ☐ | | |
 | 3 | Apertura popup lead: tel/WhatsApp funzionano | ☐ | | |
 | 4 | «Scheda completa» chiude overlay e naviga (no scroll bloccato) | ☐ | | |
 | 5 | Prequalifica / questionario compilato | ☐ | | |

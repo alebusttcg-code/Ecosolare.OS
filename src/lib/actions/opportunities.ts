@@ -20,6 +20,7 @@ import { findDuplicates, type DedupSubject } from '@/lib/domain/dedup'
 import { normalizeEmail, normalizePhone } from '@/lib/domain/phone'
 import { planStageChange } from '@/lib/domain/pipeline'
 import { componeIndirizzo } from '@/lib/geo/tipi-via'
+import { creaFollowUpPre } from '@/lib/follow-up'
 import { getStages } from '@/lib/queries/pipeline'
 import { CHIAVI, getSetting } from '@/lib/settings'
 
@@ -329,6 +330,8 @@ export async function createOpportunity(input: OpportunityInput): Promise<Create
 
     if (!opp) throw new Error('Inserimento opportunita non riuscito')
 
+    const acquisizione = new Date()
+
     await tx.insert(activities).values({
       kind: 'chiamata',
       subject: dati.nextActionSubject?.trim() || 'Primo contatto',
@@ -338,6 +341,14 @@ export async function createOpportunity(input: OpportunityInput): Promise<Create
       dueAt: scadenza,
       isNextAction: true,
       createdBy: utente.id,
+    })
+
+    await creaFollowUpPre(tx, {
+      opportunityId: opp.id,
+      contactId: contatto.id,
+      ownerId,
+      createdBy: utente.id,
+      acquisizione,
     })
 
     await tx.insert(opportunityStatusHistory).values({
@@ -408,6 +419,8 @@ async function creaLeadSuContatto(params: {
 
     if (!opp) throw new Error('Inserimento opportunita non riuscito')
 
+    const acquisizione = new Date()
+
     await tx.insert(activities).values({
       kind: 'chiamata',
       subject: dati.nextActionSubject?.trim() || 'Primo contatto',
@@ -417,6 +430,14 @@ async function creaLeadSuContatto(params: {
       dueAt: scadenza,
       isNextAction: true,
       createdBy: utenteId,
+    })
+
+    await creaFollowUpPre(tx, {
+      opportunityId: opp.id,
+      contactId,
+      ownerId,
+      createdBy: utenteId,
+      acquisizione,
     })
 
     await tx.insert(opportunityStatusHistory).values({
