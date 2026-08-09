@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   setDocumentStatus,
   setMaterialStatus,
@@ -279,23 +279,25 @@ export function ControlloConferma({
 }) {
   const router = useRouter()
   const { inCorso, esegui } = useAzioneServer()
-  const [locale, setLocale] = useState(attivo)
+  /** null = segui il server; boolean = anteprima ottimistica del click. */
+  const [pending, setPending] = useState<boolean | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
+  const locale = pending ?? attivo
 
-  useEffect(() => {
-    setLocale(attivo)
-  }, [attivo])
+  if (pending !== null && pending === attivo) {
+    setPending(null)
+  }
 
   function conferma() {
     // Valore catturato subito: una lettura dopo il re-render controllato
     // salvava sempre false e sembrava che il click non facesse nulla.
     const valore = !locale
     setErrore(null)
-    setLocale(valore)
+    setPending(valore)
     esegui(async () => {
       const esito = await setProjectConfirmation({ projectId, campo, valore })
       if (!esito.ok) {
-        setLocale(!valore)
+        setPending(null)
         setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
         return
       }
