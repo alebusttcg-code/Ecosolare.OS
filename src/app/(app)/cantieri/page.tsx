@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Intestazione, Stat, Vuoto, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import type { StatoPianificabilita } from '@/lib/domain/readiness'
@@ -68,61 +67,67 @@ export default async function CommessePage() {
                 const stato = PIANIFICABILITA[r.readinessState]
 
                 return (
-                  <li key={r.id} className="riga rounded-md py-4 first:pt-0 last:pb-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <LinkNome href={`/clienti/${r.clienteId}`} className="text-sm font-medium">
-                          {r.cliente}
-                        </LinkNome>
-                        <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                          <Link
-                            href={`/cantieri/${r.id}`}
-                            className="collega text-eco-blue-300 hover:underline"
+                  <li key={r.id} className="first:pt-0 last:pb-0">
+                    <Link
+                      href={`/cantieri/${r.id}`}
+                      className="riga group block rounded-md py-4 outline-none focus-visible:ring-2 focus-visible:ring-[rgba(91,155,213,0.45)]"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-eco-blue-300 transition-colors group-hover:text-eco-gold-300">
+                            {r.cliente}
+                          </div>
+                          <div
+                            className="mt-0.5 text-xs"
+                            style={{ color: 'var(--testo-fioco)' }}
                           >
                             {r.title}
-                          </Link>
-                          {' · '}
-                          {r.code} · {r.stageLabel}
-                          {r.responsabile ? ` · ${r.responsabile}` : ''}
+                            {' · '}
+                            {r.code} · {r.stageLabel}
+                            {r.responsabile ? ` · ${r.responsabile}` : ''}
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-3">
+                          <span className="text-sm tabular-nums">
+                            {formattaEuro(r.revenueNet)}
+                          </span>
+                          <Badge tone={stato.tono}>{stato.testo}</Badge>
                         </div>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-3">
-                        <span className="text-sm tabular-nums">
-                          {formattaEuro(r.revenueNet)}
-                        </span>
-                        <Badge tone={stato.tono}>{stato.testo}</Badge>
-                      </div>
-                    </div>
+                      {/* Il motivo del blocco accanto alla commessa, non dentro una
+                          scheda da aprire: è la differenza fra sapere e dover cercare. */}
+                      {r.bloccanti.length > 0 ? (
+                        <ul className="mt-2 space-y-1">
+                          {r.bloccanti.slice(0, 3).map((b, i) => (
+                            <li
+                              key={`${b.tipo}-${i}`}
+                              className="flex items-center gap-2 text-xs"
+                              style={{ color: 'var(--testo-tenue)' }}
+                            >
+                              <span style={{ color: 'var(--color-eco-red-400)' }}>▸</span>
+                              {b.descrizione}
+                            </li>
+                          ))}
+                          {r.bloccanti.length > 3 ? (
+                            <li className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                              e altri {r.bloccanti.length - 3}
+                            </li>
+                          ) : null}
+                        </ul>
+                      ) : null}
 
-                    {/* Il motivo del blocco accanto alla commessa, non dentro una
-                        scheda da aprire: è la differenza fra sapere e dover cercare. */}
-                    {r.bloccanti.length > 0 ? (
-                      <ul className="mt-2 space-y-1">
-                        {r.bloccanti.slice(0, 3).map((b, i) => (
-                          <li
-                            key={`${b.tipo}-${i}`}
-                            className="flex items-center gap-2 text-xs"
-                            style={{ color: 'var(--testo-tenue)' }}
-                          >
-                            <span style={{ color: 'var(--color-eco-red-400)' }}>▸</span>
-                            {b.descrizione}
-                          </li>
-                        ))}
-                        {r.bloccanti.length > 3 ? (
-                          <li className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                            e altri {r.bloccanti.length - 3}
-                          </li>
-                        ) : null}
-                      </ul>
-                    ) : null}
-
-                    {r.giorniDiBlocco !== null && r.giorniDiBlocco > 0 ? (
-                      <p className="mt-2 text-xs" style={{ color: 'var(--color-eco-gold-300)' }}>
-                        Ferma da {r.giorniDiBlocco}{' '}
-                        {r.giorniDiBlocco === 1 ? 'giorno' : 'giorni'}
-                      </p>
-                    ) : null}
+                      {r.giorniDiBlocco !== null && r.giorniDiBlocco > 0 ? (
+                        <p
+                          className="mt-2 text-xs"
+                          style={{ color: 'var(--color-eco-gold-300)' }}
+                        >
+                          Ferma da {r.giorniDiBlocco}{' '}
+                          {r.giorniDiBlocco === 1 ? 'giorno' : 'giorni'}
+                        </p>
+                      ) : null}
+                    </Link>
                   </li>
                 )
               })}
