@@ -266,47 +266,89 @@ export function ControlloTask({
   )
 }
 
+function formattaGiorno(data: Date): string {
+  return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(data)
+}
+
+function aInputDate(data: Date | null): string {
+  if (!data) return ''
+  const y = data.getUTCFullYear()
+  const m = String(data.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(data.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export function ControlloConferma({
   projectId,
   campo,
   attivo,
   etichetta,
+  dataConcordata = null,
 }: {
   projectId: string
   campo: 'verifica_tecnica' | 'conferma_cliente'
   attivo: boolean
   etichetta: string
+  /** Data di installazione già salvata (solo per conferma cliente). */
+  dataConcordata?: Date | null
 }) {
   const router = useRouter()
   const { inCorso, esegui } = useAzioneServer()
   /** null = segui il server; boolean = anteprima ottimistica del click. */
   const [pending, setPending] = useState<boolean | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
+  const [scegliData, setScegliData] = useState(false)
+  const [dataScelta, setDataScelta] = useState(() => aInputDate(dataConcordata))
   const locale = pending ?? attivo
+  const richiedeData = campo === 'conferma_cliente'
 
   if (pending !== null && pending === attivo) {
     setPending(null)
   }
 
-  function conferma() {
-    // Valore catturato subito: una lettura dopo il re-render controllato
-    // salvava sempre false e sembrava che il click non facesse nulla.
-    const valore = !locale
+  function salva(valore: boolean, dataInstallazione?: string) {
     setErrore(null)
     setPending(valore)
     esegui(async () => {
-      const esito = await setProjectConfirmation({ projectId, campo, valore })
+      const esito = await setProjectConfirmation({
+        projectId,
+        campo,
+        valore,
+        ...(dataInstallazione ? { dataInstallazione } : {}),
+      })
       if (!esito.ok) {
         setPending(null)
         setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
         return
       }
+      setScegliData(false)
       router.refresh()
     })
   }
 
+  function conferma() {
+    if (richiedeData && !locale) {
+      setScegliData(true)
+      setErrore(null)
+      return
+    }
+    // Valore catturato subito: una lettura dopo il re-render controllato
+    // salvava sempre false e sembrava che il click non facesse nulla.
+    salva(!locale)
+  }
+
+  const sottotitolo = inCorso
+    ? 'Salvataggio…'
+    : locale
+      ? richiedeData && dataConcordata
+        ? `Installazione ${formattaGiorno(dataConcordata)} — clic per annullare`
+        : 'Confermato — clic per annullare'
+      : richiedeData
+        ? 'Clic per indicare la data'
+        : 'Clic per confermare'
+
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <button
         type="button"
         disabled={inCorso}
@@ -348,20 +390,64 @@ export function ControlloConferma({
             {etichetta}
           </span>
           <span
-            className="mt-0.5 block text-[11px] leading-none"
+            className="mt-0.5 block text-[11px] leading-snug"
             style={{
               color: locale ? 'var(--color-eco-green-400)' : 'var(--color-eco-gold-300)',
               opacity: locale ? 0.75 : 0.85,
             }}
           >
-            {inCorso
-              ? 'Salvataggio…'
-              : locale
-                ? 'Confermato — clic per annullare'
-                : 'Clic per confermare'}
+            {sottotitolo}
           </span>
         </span>
       </button>
+
+      {scegliData && !locale ? (
+        <div
+          className="flex flex-wrap items-end gap-2 rounded-lg border px-3 py-2.5"
+          style={{
+            borderColor: 'rgba(217,164,65,0.4)',
+            background: 'rgba(5,10,20,0.45)',
+          }}
+        >
+          <label className="min-w-[10rem] flex-1 text-xs">
+            <span className="mb-1 block" style={{ color: 'var(--testo-tenue)' }}>
+              Data di installazione
+            </span>
+            <input
+              type="date"
+              value={dataScelta}
+              onChange={(e) => setDataScelta(e.target.value)}
+              className="w-full rounded-md border px-2 py-1.5 text-sm outline-none focus:border-eco-gold-400"
+              style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={inCorso || !dataScelta}
+            onClick={() => salva(true, dataScelta)}
+            className="bottone-oro rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+            style={{
+              background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
+              color: '#050a14',
+            }}
+          >
+            Conferma data
+          </button>
+          <button
+            type="button"
+            disabled={inCorso}
+            onClick={() => {
+              setScegliData(false)
+              setErrore(null)
+            }}
+            className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
+            style={{ borderColor: 'var(--bordo)' }}
+          >
+            Annulla
+          </button>
+        </div>
+      ) : null}
+
       {errore ? <p className="text-xs text-eco-red-400">{errore}</p> : null}
     </div>
   )

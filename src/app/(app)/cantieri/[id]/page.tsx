@@ -74,6 +74,7 @@ export default async function CommessaPage({
           {c.title} · {c.code} · contratto {dati.contractCode} del{' '}
           {formattaData(dati.signedAt)}
           {dati.sitoLabel ? ` · ${dati.sitoIndirizzo}, ${dati.sitoComune}` : ''}
+          {c.plannedStartAt ? ` · installazione ${formattaData(c.plannedStartAt)}` : ''}
         </p>
         <div className="mt-4 filetto barra-cresce" />
       </div>
@@ -166,6 +167,7 @@ export default async function CommessaPage({
             campo="conferma_cliente"
             attivo={c.clientConfirmedAt !== null}
             etichetta="Cliente ha confermato la data"
+            dataConcordata={c.plannedStartAt}
           />
         </div>
       </section>

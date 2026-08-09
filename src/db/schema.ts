@@ -1104,8 +1104,10 @@ export const projects = pgTable(
     driveFolderId: text('drive_folder_id'),
 
     technicalCheckDoneAt: timestamp('technical_check_done_at', { withTimezone: true }),
+    /** Momento in cui è stata registrata la conferma del cliente (audit). */
     clientConfirmedAt: timestamp('client_confirmed_at', { withTimezone: true }),
 
+    /** Data di installazione concordata col cliente (giorno del cantiere). */
     plannedStartAt: timestamp('planned_start_at', { withTimezone: true }),
     completedAt: timestamp('completed_at', { withTimezone: true }),
     notes: text('notes'),

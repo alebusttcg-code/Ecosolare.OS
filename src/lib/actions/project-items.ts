@@ -248,11 +248,26 @@ export async function toggleProjectTask(taskId: string): Promise<ActionResult> {
   return { ok: true, data: undefined }
 }
 
-const confermaSchema = z.object({
-  projectId: z.uuid(),
-  campo: z.enum(['verifica_tecnica', 'conferma_cliente']),
-  valore: z.boolean(),
-})
+const confermaSchema = z
+  .object({
+    projectId: z.uuid(),
+    campo: z.enum(['verifica_tecnica', 'conferma_cliente']),
+    valore: z.boolean(),
+    /** Giorno di installazione (YYYY-MM-DD), obbligatorio se si conferma la data. */
+    dataInstallazione: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Indica la data di installazione.')
+      .optional(),
+  })
+  .superRefine((dati, ctx) => {
+    if (dati.campo === 'conferma_cliente' && dati.valore && !dati.dataInstallazione) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['dataInstallazione'],
+        message: 'Indica la data di installazione concordata col cliente.',
+      })
+    }
+  })
 
 /** Segna come completate la verifica tecnica o la conferma del cliente. */
 export async function setProjectConfirmation(
@@ -265,12 +280,21 @@ export async function setProjectConfirmation(
   const dati = parsed.data
 
   const adesso = dati.valore ? new Date() : null
+  let dataInstallazione: Date | null = null
+  if (dati.campo === 'conferma_cliente' && dati.valore && dati.dataInstallazione) {
+    // Mezzogiorno UTC: evita che il fuso scorri il giorno indietro in Italia.
+    dataInstallazione = new Date(`${dati.dataInstallazione}T12:00:00.000Z`)
+  }
+
   await getDb()
     .update(projects)
     .set({
       ...(dati.campo === 'verifica_tecnica'
         ? { technicalCheckDoneAt: adesso }
-        : { clientConfirmedAt: adesso }),
+        : {
+            clientConfirmedAt: adesso,
+            plannedStartAt: dati.valore ? dataInstallazione : null,
+          }),
       updatedAt: new Date(),
       updatedBy: utente.id,
     })
