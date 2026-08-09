@@ -61,6 +61,7 @@ const VOCI: readonly (VoceMenu & {
   { href: '/preventivi', label: 'Preventivi e firme', icona: '€', gruppo: 'ciclo', resource: 'quote' },
   { href: '/clienti', label: 'Clienti', icona: '◐', gruppo: 'ciclo', resource: 'contact' },
   { href: '/cantieri', label: 'Cantieri e commesse', icona: '◫', gruppo: 'ciclo', resource: 'project' },
+  { href: '/cantieri/agenda', label: 'Agenda cantieri', icona: '◷', gruppo: 'ciclo', resource: 'schedule' },
   { href: '/lavori-completati', label: 'Lavori completati', icona: '▣', gruppo: 'ciclo', resource: 'project' },
 
   { href: '/attivita', label: 'Le mie attività', icona: '✓', gruppo: 'lavoro', resource: 'activity' },

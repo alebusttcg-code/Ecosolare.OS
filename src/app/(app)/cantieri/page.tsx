@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Badge, Card, Intestazione, Stat, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
 import type { StatoPianificabilita } from '@/lib/domain/readiness'
+import { etichettaStatoWorkOrder } from '@/lib/domain/schedule'
 import { listProjects } from '@/lib/queries/projects'
 import { mappaPianificazioniAttive } from '@/lib/queries/schedule'
 
@@ -31,6 +32,15 @@ export default async function CommessePage() {
       <Intestazione
         titolo="Cantieri e commesse"
         sottotitolo={`${righe.length} aperte · i lavori chiusi sono in «Lavori completati»`}
+        azione={
+          <Link
+            href="/cantieri/agenda"
+            className="bottone-fantasma rounded-lg border px-4 py-2 text-sm font-medium"
+            style={{ borderColor: 'var(--bordo)' }}
+          >
+            Agenda cantieri
+          </Link>
+        }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -92,7 +102,12 @@ export default async function CommessePage() {
                           {piano ? (
                             <div
                               className="mt-1 text-xs"
-                              style={{ color: 'var(--color-eco-green-400)' }}
+                              style={{
+                                color:
+                                  piano.status === 'in_corso'
+                                    ? 'var(--color-eco-gold-300)'
+                                    : 'var(--color-eco-green-400)',
+                              }}
                             >
                               {formattaData(piano.scheduledOn)} · {piano.operaiLabel}
                             </div>
@@ -104,7 +119,11 @@ export default async function CommessePage() {
                             {formattaEuro(r.revenueNet)}
                           </span>
                           {piano ? (
-                            <Badge tone="positivo">Pianificato</Badge>
+                            <Badge
+                              tone={piano.status === 'in_corso' ? 'attenzione' : 'positivo'}
+                            >
+                              {etichettaStatoWorkOrder(piano.status)}
+                            </Badge>
                           ) : (
                             <Badge tone={stato.tono}>{stato.testo}</Badge>
                           )}

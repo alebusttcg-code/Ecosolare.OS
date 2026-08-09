@@ -51,6 +51,8 @@ l'adozione. Ogni voce: eseguire, segnare data/esito, annotare anomalie.
 | 16b | Impostazioni → **Personale**: crea almeno un dipendente attivo | ☐ | | |
 | 16c | Su commessa **Pianificabile**: pianifica data + operai → stage «Cantiere pianificato» | ☐ | | |
 | 16d | Elenco Cantieri mostra data e operai; ripianifica / annulla funzionano | ☐ | | |
+| 16e | Avvia installazione → stage «In corso»; completa → «Installazione completata» | ☐ | | |
+| 16f | **Agenda cantieri**: elenco per giorno con operai assegnati | ☐ | | |
 
 ---
 

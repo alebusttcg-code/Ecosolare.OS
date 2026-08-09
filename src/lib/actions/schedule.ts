@@ -16,7 +16,11 @@ import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
 import {
   dataGiornoDaIso,
+  puoAvviareInstallazione,
+  puoCompletareInstallazione,
   puoCrearePianificazione,
+  STAGE_INSTALLAZIONE_COMPLETATA,
+  STAGE_INSTALLAZIONE_IN_CORSO,
   stageDopoAnnullamento,
   stageDopoPianificazione,
 } from '@/lib/domain/schedule'
@@ -352,6 +356,7 @@ export async function pianificaCantiere(
 
   revalidatePath(`/cantieri/${parsed.data.projectId}`)
   revalidatePath('/cantieri')
+  revalidatePath('/cantieri/agenda')
   return { ok: true, data: { workOrderId } }
 }
 
@@ -440,6 +445,7 @@ export async function ripianificaCantiere(
 
   revalidatePath(`/cantieri/${parsed.data.projectId}`)
   revalidatePath('/cantieri')
+  revalidatePath('/cantieri/agenda')
   return { ok: true, data: undefined }
 }
 
@@ -526,5 +532,192 @@ export async function annullaPianificazione(input: {
 
   revalidatePath(`/cantieri/${parsed.data.projectId}`)
   revalidatePath('/cantieri')
+  revalidatePath('/cantieri/agenda')
+  return { ok: true, data: undefined }
+}
+
+/**
+ * Segna l’inizio lavori: WO pianificato → in_corso, stage installazione_in_corso.
+ */
+export async function avviaInstallazione(input: {
+  projectId: string
+}): Promise<ActionResult> {
+  const utente = await guard('update', 'schedule')
+  const parsed = z.object({ projectId: z.uuid() }).safeParse(input)
+  if (!parsed.success) return { ok: false, errors: errori(parsed.error.issues) }
+
+  const db = getDb()
+  const [commessa] = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, parsed.data.projectId))
+    .limit(1)
+
+  if (!commessa || commessa.deletedAt) {
+    return { ok: false, errors: { _: 'Commessa non trovata.' } }
+  }
+
+  const [wo] = await db
+    .select()
+    .from(workOrders)
+    .where(
+      and(
+        eq(workOrders.projectId, parsed.data.projectId),
+        eq(workOrders.status, 'pianificato'),
+      ),
+    )
+    .limit(1)
+
+  if (!wo || !puoAvviareInstallazione(wo.status)) {
+    return {
+      ok: false,
+      errors: { _: 'Serve una pianificazione attiva per avviare l’installazione.' },
+    }
+  }
+
+  const ora = new Date()
+  const stageDest = STAGE_INSTALLAZIONE_IN_CORSO
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(workOrders)
+      .set({
+        status: 'in_corso',
+        updatedAt: ora,
+        updatedBy: utente.id,
+      })
+      .where(eq(workOrders.id, wo.id))
+
+    const patch: {
+      updatedAt: Date
+      updatedBy: string
+      stage?: string
+      stageSince?: Date
+    } = {
+      updatedAt: ora,
+      updatedBy: utente.id,
+    }
+
+    if (commessa.stage !== stageDest) {
+      patch.stage = stageDest
+      patch.stageSince = ora
+      await tx.insert(projectStatusHistory).values({
+        projectId: parsed.data.projectId,
+        fromStage: commessa.stage,
+        toStage: stageDest,
+        daysInPreviousStage: giorniNelloStage(commessa.stageSince, ora),
+        note: 'Installazione avviata',
+        changedBy: utente.id,
+        changedAt: ora,
+      })
+    }
+
+    await tx.update(projects).set(patch).where(eq(projects.id, parsed.data.projectId))
+  })
+
+  await recordEntityChange({
+    actorId: utente.id,
+    actorLabel: utente.email,
+    action: 'update',
+    entityType: 'work_order',
+    entityId: wo.id,
+  })
+
+  revalidatePath(`/cantieri/${parsed.data.projectId}`)
+  revalidatePath('/cantieri')
+  revalidatePath('/cantieri/agenda')
+  return { ok: true, data: undefined }
+}
+
+/**
+ * Chiude i lavori operativi: WO in_corso → completato, stage installazione_completata.
+ */
+export async function completaInstallazione(input: {
+  projectId: string
+}): Promise<ActionResult> {
+  const utente = await guard('update', 'schedule')
+  const parsed = z.object({ projectId: z.uuid() }).safeParse(input)
+  if (!parsed.success) return { ok: false, errors: errori(parsed.error.issues) }
+
+  const db = getDb()
+  const [commessa] = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, parsed.data.projectId))
+    .limit(1)
+
+  if (!commessa || commessa.deletedAt) {
+    return { ok: false, errors: { _: 'Commessa non trovata.' } }
+  }
+
+  const [wo] = await db
+    .select()
+    .from(workOrders)
+    .where(
+      and(
+        eq(workOrders.projectId, parsed.data.projectId),
+        eq(workOrders.status, 'in_corso'),
+      ),
+    )
+    .limit(1)
+
+  if (!wo || !puoCompletareInstallazione(wo.status)) {
+    return {
+      ok: false,
+      errors: { _: 'L’installazione non risulta in corso.' },
+    }
+  }
+
+  const ora = new Date()
+  const stageDest = STAGE_INSTALLAZIONE_COMPLETATA
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(workOrders)
+      .set({
+        status: 'completato',
+        updatedAt: ora,
+        updatedBy: utente.id,
+      })
+      .where(eq(workOrders.id, wo.id))
+
+    const patch: {
+      updatedAt: Date
+      updatedBy: string
+      stage?: string
+      stageSince?: Date
+    } = {
+      updatedAt: ora,
+      updatedBy: utente.id,
+    }
+
+    if (commessa.stage !== stageDest) {
+      patch.stage = stageDest
+      patch.stageSince = ora
+      await tx.insert(projectStatusHistory).values({
+        projectId: parsed.data.projectId,
+        fromStage: commessa.stage,
+        toStage: stageDest,
+        daysInPreviousStage: giorniNelloStage(commessa.stageSince, ora),
+        note: 'Installazione completata',
+        changedBy: utente.id,
+        changedAt: ora,
+      })
+    }
+
+    await tx.update(projects).set(patch).where(eq(projects.id, parsed.data.projectId))
+  })
+
+  await recordEntityChange({
+    actorId: utente.id,
+    actorLabel: utente.email,
+    action: 'update',
+    entityType: 'work_order',
+    entityId: wo.id,
+  })
+
+  revalidatePath(`/cantieri/${parsed.data.projectId}`)
+  revalidatePath('/cantieri')
+  revalidatePath('/cantieri/agenda')
   return { ok: true, data: undefined }
 }

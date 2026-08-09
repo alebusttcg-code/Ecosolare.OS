@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   dataGiornoDaIso,
   isoDaDataGiorno,
+  puoAvviareInstallazione,
+  puoCompletareInstallazione,
   puoCrearePianificazione,
   stageDopoAnnullamento,
   stageDopoPianificazione,
@@ -59,5 +61,15 @@ describe('stageDopoAnnullamento', () => {
     expect(stageDopoAnnullamento('cantiere_pianificato')).toBe('pianificabile')
     expect(stageDopoAnnullamento('installazione_in_corso')).toBeNull()
     expect(stageDopoAnnullamento('pianificabile')).toBeNull()
+  })
+})
+
+describe('ciclo installazione', () => {
+  it('avvia solo da pianificato e completa solo da in_corso', () => {
+    expect(puoAvviareInstallazione('pianificato')).toBe(true)
+    expect(puoAvviareInstallazione('in_corso')).toBe(false)
+    expect(puoCompletareInstallazione('in_corso')).toBe(true)
+    expect(puoCompletareInstallazione('pianificato')).toBe(false)
+    expect(puoCompletareInstallazione('completato')).toBe(false)
   })
 })

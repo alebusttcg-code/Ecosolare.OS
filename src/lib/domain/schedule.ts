@@ -6,8 +6,17 @@
 
 export const STAGE_CANTIERE_PIANIFICATO = 'cantiere_pianificato'
 export const STAGE_PIANIFICABILE = 'pianificabile'
+export const STAGE_INSTALLAZIONE_IN_CORSO = 'installazione_in_corso'
+export const STAGE_INSTALLAZIONE_COMPLETATA = 'installazione_completata'
 
-export type StatoWorkOrder = 'pianificato' | 'annullato'
+/** Work order ancora “vivi” sul progetto (uno solo per vincolo DB). */
+export const STATI_WO_ATTIVI = ['pianificato', 'in_corso'] as const
+
+export type StatoWorkOrder = 'pianificato' | 'in_corso' | 'completato' | 'annullato'
+
+export function woAttivo(status: string): boolean {
+  return (STATI_WO_ATTIVI as readonly string[]).includes(status)
+}
 
 /** Data YYYY-MM-DD → istante a mezzogiorno UTC (evita scivolamenti di fuso). */
 export function dataGiornoDaIso(iso: string): Date | null {
@@ -57,6 +66,31 @@ export function stageDopoAnnullamento(stageAttuale: string): string | null {
   return stageAttuale === STAGE_CANTIERE_PIANIFICATO ? STAGE_PIANIFICABILE : null
 }
 
+/** Avvio lavori: WO pianificato → in_corso e stage installazione_in_corso. */
+export function puoAvviareInstallazione(woStatus: string): boolean {
+  return woStatus === 'pianificato'
+}
+
+/** Chiusura lavori operativi: WO in_corso → completato. */
+export function puoCompletareInstallazione(woStatus: string): boolean {
+  return woStatus === 'in_corso'
+}
+
 export function nomeOperaio(firstName: string, lastName: string): string {
   return [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
+}
+
+export function etichettaStatoWorkOrder(status: string): string {
+  switch (status) {
+    case 'pianificato':
+      return 'Pianificato'
+    case 'in_corso':
+      return 'In corso'
+    case 'completato':
+      return 'Completato'
+    case 'annullato':
+      return 'Annullato'
+    default:
+      return status
+  }
 }

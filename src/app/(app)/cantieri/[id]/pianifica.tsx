@@ -7,9 +7,16 @@ import { useAvvisi } from '@/components/avvisi'
 import { Badge, formattaData } from '@/components/ui'
 import {
   annullaPianificazione,
+  avviaInstallazione,
+  completaInstallazione,
   pianificaCantiere,
   ripianificaCantiere,
 } from '@/lib/actions/schedule'
+import {
+  etichettaStatoWorkOrder,
+  puoAvviareInstallazione,
+  puoCompletareInstallazione,
+} from '@/lib/domain/schedule'
 import type { OperaioInElenco, WorkOrderAttivo } from '@/lib/queries/schedule'
 import { useAzioneServer } from '@/lib/use-azione-server'
 
@@ -86,6 +93,13 @@ export function PannelloPianificazione({
   )
 }
 
+function tonoBadge(status: string): 'positivo' | 'attenzione' | 'blu' | 'neutro' {
+  if (status === 'in_corso') return 'attenzione'
+  if (status === 'completato') return 'blu'
+  if (status === 'pianificato') return 'positivo'
+  return 'neutro'
+}
+
 function RiepilogoPianificazione({
   projectId,
   workOrder,
@@ -106,10 +120,14 @@ function RiepilogoPianificazione({
   const { inCorso, esegui } = useAzioneServer()
 
   const accordoDiverso =
-    plannedStartAt !== null &&
-    isoUTC(plannedStartAt) !== workOrder.scheduledOnIso
+    plannedStartAt !== null && isoUTC(plannedStartAt) !== workOrder.scheduledOnIso
 
-  if (modifica && puoScrivere) {
+  const puoRipianificare = workOrder.status === 'pianificato'
+  const puoAnnullare = workOrder.status === 'pianificato'
+  const puoAvviare = puoAvviareInstallazione(workOrder.status)
+  const puoCompletare = puoCompletareInstallazione(workOrder.status)
+
+  if (modifica && puoScrivere && puoRipianificare) {
     return (
       <div className="space-y-3">
         <FormPianifica
@@ -141,7 +159,9 @@ function RiepilogoPianificazione({
             </p>
           ) : null}
         </div>
-        <Badge tone="positivo">Pianificato</Badge>
+        <Badge tone={tonoBadge(workOrder.status)}>
+          {etichettaStatoWorkOrder(workOrder.status)}
+        </Badge>
       </div>
 
       <div>
@@ -169,37 +189,100 @@ function RiepilogoPianificazione({
         </p>
       ) : null}
 
-      {puoScrivere ? (
+      {puoScrivere && workOrder.status !== 'completato' ? (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setModifica(true)}
-            className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
-            style={{ borderColor: 'var(--bordo)' }}
-          >
-            Ripianifica
-          </button>
-          <button
-            type="button"
-            disabled={inCorso}
-            onClick={() => {
-              setErrore(null)
-              esegui(async () => {
-                const esito = await annullaPianificazione({ projectId })
-                if (!esito.ok) {
-                  setErrore(esito.errors._ ?? 'Annullamento non riuscito.')
-                  return
-                }
-                avvisa('Pianificazione annullata.')
-                router.refresh()
-              })
-            }}
-            className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs disabled:opacity-60"
-            style={{ borderColor: 'var(--bordo)' }}
-          >
-            {inCorso ? 'Annullamento…' : 'Annulla pianificazione'}
-          </button>
+          {puoAvviare ? (
+            <button
+              type="button"
+              disabled={inCorso}
+              onClick={() => {
+                setErrore(null)
+                esegui(async () => {
+                  const esito = await avviaInstallazione({ projectId })
+                  if (!esito.ok) {
+                    setErrore(esito.errors._ ?? 'Avvio non riuscito.')
+                    return
+                  }
+                  avvisa('Installazione avviata.')
+                  router.refresh()
+                })
+              }}
+              className="bottone-oro rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60"
+              style={{
+                background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
+                color: '#050a14',
+              }}
+            >
+              {inCorso ? 'Salvataggio…' : 'Avvia installazione'}
+            </button>
+          ) : null}
+
+          {puoCompletare ? (
+            <button
+              type="button"
+              disabled={inCorso}
+              onClick={() => {
+                setErrore(null)
+                esegui(async () => {
+                  const esito = await completaInstallazione({ projectId })
+                  if (!esito.ok) {
+                    setErrore(esito.errors._ ?? 'Chiusura non riuscita.')
+                    return
+                  }
+                  avvisa('Installazione completata.')
+                  router.refresh()
+                })
+              }}
+              className="bottone-oro rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60"
+              style={{
+                background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
+                color: '#050a14',
+              }}
+            >
+              {inCorso ? 'Salvataggio…' : 'Segna come completata'}
+            </button>
+          ) : null}
+
+          {puoRipianificare ? (
+            <button
+              type="button"
+              onClick={() => setModifica(true)}
+              className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
+              style={{ borderColor: 'var(--bordo)' }}
+            >
+              Ripianifica
+            </button>
+          ) : null}
+
+          {puoAnnullare ? (
+            <button
+              type="button"
+              disabled={inCorso}
+              onClick={() => {
+                setErrore(null)
+                esegui(async () => {
+                  const esito = await annullaPianificazione({ projectId })
+                  if (!esito.ok) {
+                    setErrore(esito.errors._ ?? 'Annullamento non riuscito.')
+                    return
+                  }
+                  avvisa('Pianificazione annullata.')
+                  router.refresh()
+                })
+              }}
+              className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs disabled:opacity-60"
+              style={{ borderColor: 'var(--bordo)' }}
+            >
+              {inCorso ? 'Annullamento…' : 'Annulla pianificazione'}
+            </button>
+          ) : null}
         </div>
+      ) : null}
+
+      {workOrder.status === 'completato' ? (
+        <p className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
+          Lavori operativi chiusi. Collaudo e pratiche finali restano sulla scheda.
+        </p>
       ) : null}
     </div>
   )
@@ -294,9 +377,7 @@ function FormPianifica({
                 <label
                   className="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors"
                   style={{
-                    borderColor: checked
-                      ? 'rgba(217,164,65,0.45)'
-                      : 'var(--bordo)',
+                    borderColor: checked ? 'rgba(217,164,65,0.45)' : 'var(--bordo)',
                     background: checked
                       ? 'rgba(217,164,65,0.08)'
                       : 'rgba(5,10,20,0.35)',
@@ -324,7 +405,10 @@ function FormPianifica({
                       </span>
                     ) : null}
                     {!o.isActive ? (
-                      <span className="block text-xs" style={{ color: 'var(--color-eco-red-400)' }}>
+                      <span
+                        className="block text-xs"
+                        style={{ color: 'var(--color-eco-red-400)' }}
+                      >
                         disattivato
                       </span>
                     ) : null}
@@ -366,7 +450,9 @@ function FormPianifica({
       </label>
 
       {errors._ ? (
-        <p className="text-xs" style={{ color: 'var(--color-eco-red-400)' }}>{errors._}</p>
+        <p className="text-xs" style={{ color: 'var(--color-eco-red-400)' }}>
+          {errors._}
+        </p>
       ) : null}
 
       <div className="flex flex-wrap gap-2">

@@ -1624,8 +1624,8 @@ export const workers = pgTable(
 /**
  * Work order: giorno operativo + squadra su una commessa.
  *
- * Al più un work order `pianificato` per progetto (vincolo parziale in
- * migrazione). `annullato` resta in storico.
+ * Al più un work order attivo (`pianificato` | `in_corso`) per progetto
+ * (vincolo parziale in migrazione). `completato` / `annullato` restano in storico.
  */
 export const workOrders = pgTable(
   'work_orders',
