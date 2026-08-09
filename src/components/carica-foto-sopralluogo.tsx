@@ -7,7 +7,10 @@ import { useAzioneServer } from '@/lib/use-azione-server'
 import { ScegliFile } from '@/components/scegli-file'
 import { deleteSurveyPhoto, uploadSurveyPhoto } from '@/lib/actions/survey-files'
 import { normalizzaAllegato } from '@/lib/domain/normalizza-allegato'
-import { DIMENSIONE_MASSIMA, formattaDimensione } from '@/lib/domain/upload'
+import {
+  DIMENSIONE_MASSIMA_UPLOAD,
+  formattaDimensione,
+} from '@/lib/domain/upload'
 
 export interface FotoSopralluogo {
   readonly id: string
@@ -45,13 +48,6 @@ export function CaricaFotoSopralluogo({
   function carica(file: File) {
     setErrore(null)
 
-    if (file.size > DIMENSIONE_MASSIMA) {
-      setErrore(
-        `Il file pesa ${formattaDimensione(file.size)}: il limite è ${formattaDimensione(DIMENSIONE_MASSIMA)}.`,
-      )
-      return
-    }
-
     esegui(async () => {
       let allegato: File
       try {
@@ -65,17 +61,36 @@ export function CaricaFotoSopralluogo({
         return
       }
 
+      if (allegato.size > DIMENSIONE_MASSIMA_UPLOAD) {
+        setErrore(
+          `Il file pesa ${formattaDimensione(allegato.size)}: il limite di caricamento è ${formattaDimensione(DIMENSIONE_MASSIMA_UPLOAD)}.`,
+        )
+        return
+      }
+
       const dati = new FormData()
       dati.set('surveyId', surveyId)
       dati.set('fieldCode', fieldCode)
       dati.set('file', allegato)
 
-      const esito = await uploadSurveyPhoto(dati)
-      if (esito.ok) {
-        onCaricata?.(esito.data.fileId)
-        avvisa('Fotografia caricata.')
-        router.refresh()
-      } else setErrore(Object.values(esito.errors)[0] ?? 'Caricamento non riuscito.')
+      try {
+        const esito = await uploadSurveyPhoto(dati)
+        if (esito.ok) {
+          onCaricata?.(esito.data.fileId)
+          avvisa('Fotografia caricata.')
+          router.refresh()
+        } else {
+          setErrore(Object.values(esito.errors)[0] ?? 'Caricamento non riuscito.')
+        }
+      } catch (errore) {
+        const messaggio =
+          errore instanceof Error ? errore.message : 'Caricamento non riuscito.'
+        setErrore(
+          /body exceeded|413|too large/i.test(messaggio)
+            ? `Il file è troppo grande per il caricamento (limite ${formattaDimensione(DIMENSIONE_MASSIMA_UPLOAD)}).`
+            : messaggio,
+        )
+      }
     })
   }
 

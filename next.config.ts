@@ -12,6 +12,14 @@ import type { NextConfig } from 'next'
  * delle rotte allineate alle etichette di menu.
  */
 const nextConfig: NextConfig = {
+  // Foto di cantiere e scansioni: il default Next è 1 MB e su Vercel i POST
+  // sopra quella soglia falliscono con 413 senza arrivare alla validazione.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '4.5mb',
+    },
+    proxyClientMaxBodySize: '4.5mb',
+  },
   async redirects() {
     return [
       { source: '/opportunita', destination: '/lead', permanent: true },

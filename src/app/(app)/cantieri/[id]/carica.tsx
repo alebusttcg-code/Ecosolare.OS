@@ -7,7 +7,10 @@ import { useAzioneServer } from '@/lib/use-azione-server'
 import { ScegliFile } from '@/components/scegli-file'
 import { deleteDocumentFile, uploadDocument } from '@/lib/actions/documents'
 import { normalizzaAllegato } from '@/lib/domain/normalizza-allegato'
-import { DIMENSIONE_MASSIMA, formattaDimensione } from '@/lib/domain/upload'
+import {
+  DIMENSIONE_MASSIMA_UPLOAD,
+  formattaDimensione,
+} from '@/lib/domain/upload'
 
 export interface FileCaricato {
   readonly id: string
@@ -39,17 +42,10 @@ export function CaricaDocumento({
   function carica(file: File) {
     setErrore(null)
 
-    if (file.size > DIMENSIONE_MASSIMA) {
-      setErrore(
-        `Il file pesa ${formattaDimensione(file.size)}: il limite è ${formattaDimensione(DIMENSIONE_MASSIMA)}.`,
-      )
-      return
-    }
-
     esegui(async () => {
       let allegato: File
       try {
-        // Formati ammessi (anche HEIC) restano invariati; altre immagini → JPEG.
+        // Stesso flusso per tutte le voci: compressione se serve, poi upload.
         allegato = await normalizzaAllegato(file)
       } catch (errore) {
         setErrore(
@@ -60,9 +56,9 @@ export function CaricaDocumento({
         return
       }
 
-      if (allegato.size > DIMENSIONE_MASSIMA) {
+      if (allegato.size > DIMENSIONE_MASSIMA_UPLOAD) {
         setErrore(
-          `Il file pesa ${formattaDimensione(allegato.size)}: il limite è ${formattaDimensione(DIMENSIONE_MASSIMA)}.`,
+          `Il file pesa ${formattaDimensione(allegato.size)}: il limite di caricamento è ${formattaDimensione(DIMENSIONE_MASSIMA_UPLOAD)}.`,
         )
         return
       }
@@ -71,11 +67,23 @@ export function CaricaDocumento({
       dati.set('requirementId', requirementId)
       dati.set('file', allegato)
 
-      const esito = await uploadDocument(dati)
-      if (esito.ok) {
-        avvisa('Documento caricato.')
-        router.refresh()
-      } else setErrore(Object.values(esito.errors)[0] ?? 'Caricamento non riuscito.')
+      try {
+        const esito = await uploadDocument(dati)
+        if (esito.ok) {
+          avvisa('Documento caricato.')
+          router.refresh()
+        } else {
+          setErrore(Object.values(esito.errors)[0] ?? 'Caricamento non riuscito.')
+        }
+      } catch (errore) {
+        const messaggio =
+          errore instanceof Error ? errore.message : 'Caricamento non riuscito.'
+        setErrore(
+          /body exceeded|413|too large/i.test(messaggio)
+            ? `Il file è troppo grande per il caricamento (limite ${formattaDimensione(DIMENSIONE_MASSIMA_UPLOAD)}). Usa «Scatta foto» oppure un file più leggero.`
+            : messaggio,
+        )
+      }
     })
   }
 

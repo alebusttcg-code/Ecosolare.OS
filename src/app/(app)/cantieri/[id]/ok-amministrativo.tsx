@@ -60,11 +60,19 @@ export function OkAmministrativo({
       const dati = new FormData()
       dati.set('milestoneId', milestoneId)
       dati.set('file', allegato)
-      const esito = await caricaContabile(dati)
-      if (esito.ok) {
-        avvisa('Contabile caricata.')
-        router.refresh()
-      } else setErrore(Object.values(esito.errors)[0] ?? 'Caricamento non riuscito.')
+      try {
+        const esito = await caricaContabile(dati)
+        if (esito.ok) {
+          avvisa('Contabile caricata.')
+          router.refresh()
+        } else {
+          setErrore(Object.values(esito.errors)[0] ?? 'Caricamento non riuscito.')
+        }
+      } catch (errore) {
+        setErrore(
+          errore instanceof Error ? errore.message : 'Caricamento non riuscito.',
+        )
+      }
     })
   }
 

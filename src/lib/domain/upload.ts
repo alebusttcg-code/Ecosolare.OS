@@ -48,8 +48,14 @@ export const ESTENSIONI: Record<TipoFileAmmesso, string> = {
   'application/pdf': 'pdf',
 }
 
-/** 15 MB: una fotografia di cantiere sta ampiamente dentro, una scansione anche. */
+/** 15 MB: limite applicativo sul contenuto (validazione server). */
 export const DIMENSIONE_MASSIMA = 15 * 1024 * 1024
+
+/**
+ * Limite del corpo HTTP delle Server Action, allineato al tetto Vercel (~4.5 MB).
+ * Le foto dalla galleria vanno compresse sotto questa soglia prima dell'upload.
+ */
+export const DIMENSIONE_MASSIMA_UPLOAD = 4 * 1024 * 1024
 
 /** Firme dei formati ammessi, in byte. */
 const FIRME: readonly { tipo: TipoFileAmmesso; byte: readonly number[] }[] = [
