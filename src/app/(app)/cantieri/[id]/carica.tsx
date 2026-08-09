@@ -49,7 +49,7 @@ export function CaricaDocumento({
     esegui(async () => {
       let allegato: File
       try {
-        // HEIC/WebP dalla galleria → JPEG; PDF e JPEG/PNG restano invariati.
+        // Formati ammessi (anche HEIC) restano invariati; altre immagini → JPEG.
         allegato = await normalizzaAllegato(file)
       } catch (errore) {
         setErrore(

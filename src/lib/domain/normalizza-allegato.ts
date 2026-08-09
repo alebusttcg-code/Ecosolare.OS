@@ -1,16 +1,28 @@
 /**
  * Normalizza un allegato scelto dal disco prima dell'upload.
  *
- * Dalla fotocamera («Scatta foto») arriva già un JPEG. Dal selettore file,
- * soprattutto su iPhone, arrivano spesso HEIC/HEIF o WebP che il server
- * rifiuta (solo JPEG, PNG, PDF per firma magica). Qui, se il browser sa
- * decodificare l'immagine, la riscriviamo in JPEG.
+ * JPEG, PNG, WebP, HEIC/HEIF e PDF passano così come sono (il server li
+ * riconosce dai byte). Altre immagini (GIF, TIFF, …) vengono convertite in
+ * JPEG se il browser le sa decodificare.
  */
 
 const TIPI_PASSANTI = new Set([
   'image/jpeg',
   'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
   'application/pdf',
+])
+
+const ESTENSIONI_PASSANTI = new Set([
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'heic',
+  'heif',
+  'pdf',
 ])
 
 function estensione(nome: string): string {
@@ -18,22 +30,12 @@ function estensione(nome: string): string {
   return i >= 0 ? nome.slice(i + 1).toLowerCase() : ''
 }
 
-function ePdf(file: File): boolean {
-  return file.type === 'application/pdf' || estensione(file.name) === 'pdf'
-}
-
-function eJpegOPng(file: File): boolean {
-  if (file.type === 'image/jpeg' || file.type === 'image/png') return true
-  const ext = estensione(file.name)
-  return ext === 'jpg' || ext === 'jpeg' || ext === 'png'
-}
-
 async function caricaImmagine(file: File): Promise<CanvasImageSource> {
   if (typeof createImageBitmap === 'function') {
     try {
       return await createImageBitmap(file)
     } catch {
-      // Safari a volte fallisce su HEIC con createImageBitmap: ripiega su Image.
+      // Ripiega su Image.
     }
   }
 
@@ -43,11 +45,7 @@ async function caricaImmagine(file: File): Promise<CanvasImageSource> {
       const el = new Image()
       el.onload = () => resolve(el)
       el.onerror = () =>
-        reject(
-          new Error(
-            'Questa foto non è leggibile dal browser (spesso è HEIC). Usa «Scatta foto» oppure esporta in JPEG o PNG.',
-          ),
-        )
+        reject(new Error('Questa foto non è leggibile dal browser. Prova JPEG, PNG o HEIC.'))
       el.src = url
     })
     return img
@@ -101,15 +99,19 @@ async function convertiInJpeg(file: File): Promise<File> {
 }
 
 /**
- * Restituisce un file pronto per `uploadDocument`: PDF/JPEG/PNG invariati;
+ * Restituisce un file pronto per l'upload: formati ammessi invariati;
  * altre immagini convertite in JPEG quando il browser le decodifica.
  */
 export async function normalizzaAllegato(file: File): Promise<File> {
-  if (ePdf(file)) return file
-  if (TIPI_PASSANTI.has(file.type) || eJpegOPng(file)) return file
+  if (TIPI_PASSANTI.has(file.type) || ESTENSIONI_PASSANTI.has(estensione(file.name))) {
+    return file
+  }
 
-  // HEIC, WebP, GIF, bitmap vari: tentativo di conversione.
-  if (file.type.startsWith('image/') || ['heic', 'heif', 'webp', 'gif', 'tif', 'tiff', 'bmp'].includes(estensione(file.name))) {
+  // GIF, TIFF, BMP, …: tentativo di conversione.
+  if (
+    file.type.startsWith('image/') ||
+    ['gif', 'tif', 'tiff', 'bmp'].includes(estensione(file.name))
+  ) {
     return convertiInJpeg(file)
   }
 

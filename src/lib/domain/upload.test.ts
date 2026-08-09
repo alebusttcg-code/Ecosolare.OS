@@ -19,6 +19,9 @@ const webp = new Uint8Array([
 const heic = new Uint8Array([
   0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63,
 ])
+const heifMif1 = new Uint8Array([
+  0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x69, 0x66, 0x31,
+])
 const script = new TextEncoder().encode('<?php system($_GET["c"]); ?>')
 
 describe('riconosciTipo', () => {
@@ -27,13 +30,14 @@ describe('riconosciTipo', () => {
     expect(riconosciTipo(png)).toBe('image/png')
     expect(riconosciTipo(pdf)).toBe('application/pdf')
     expect(riconosciTipo(webp)).toBe('image/webp')
+    expect(riconosciTipo(heic)).toBe('image/heic')
+    expect(riconosciTipo(heifMif1)).toBe('image/heif')
+    expect(sembraHeic(heic)).toBe(true)
   })
 
   it('rifiuta i formati non ammessi', () => {
     expect(riconosciTipo(gif)).toBeNull()
     expect(riconosciTipo(script)).toBeNull()
-    expect(riconosciTipo(heic)).toBeNull()
-    expect(sembraHeic(heic)).toBe(true)
   })
 
   it('rifiuta un file troppo corto per contenere una firma', () => {
@@ -68,15 +72,16 @@ describe('validaFile', () => {
     expect(esito.motivo).toContain('Formato non riconosciuto')
   })
 
-  it('spiega il caso HEIC tipico delle foto iPhone', () => {
+  it('accetta HEIC tipico delle foto iPhone', () => {
     const esito = validaFile({
       byte: heic,
       dimensione: heic.length,
       tipoDichiarato: 'image/heic',
     })
-    expect(esito.ok).toBe(false)
-    if (esito.ok) return
-    expect(esito.motivo).toMatch(/HEIC/i)
+    expect(esito.ok).toBe(true)
+    if (!esito.ok) return
+    expect(esito.tipo).toBe('image/heic')
+    expect(esito.estensione).toBe('heic')
   })
 
   it('accetta un file il cui tipo dichiarato è sbagliato ma il contenuto è valido', () => {
@@ -125,16 +130,18 @@ describe('validaFile', () => {
 })
 
 describe('validaFoto', () => {
-  it('accetta JPEG e PNG', () => {
+  it('accetta JPEG, PNG, WebP e HEIC', () => {
     expect(validaFoto({ byte: jpeg, dimensione: jpeg.length }).ok).toBe(true)
     expect(validaFoto({ byte: png, dimensione: png.length }).ok).toBe(true)
+    expect(validaFoto({ byte: webp, dimensione: webp.length }).ok).toBe(true)
+    expect(validaFoto({ byte: heic, dimensione: heic.length }).ok).toBe(true)
   })
 
   it('rifiuta i PDF', () => {
     const esito = validaFoto({ byte: pdf, dimensione: pdf.length })
     expect(esito.ok).toBe(false)
     if (esito.ok) return
-    expect(esito.motivo).toMatch(/JPEG.*PNG/)
+    expect(esito.motivo).toMatch(/JPEG/)
   })
 })
 
