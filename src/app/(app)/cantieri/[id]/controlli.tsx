@@ -278,13 +278,40 @@ export function ControlloConferma({
   etichetta: string
 }) {
   const router = useRouter()
-  const { esegui } = useAzioneServer()
+  const { inCorso, esegui } = useAzioneServer()
 
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+    <label
+      className={`group flex min-w-[14rem] cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-2.5 text-sm transition-[border-color,background-color,transform] duration-200 focus-within:border-eco-gold-400 ${
+        inCorso ? 'pointer-events-none opacity-70' : 'hover:-translate-y-px'
+      }`}
+      style={{
+        borderColor: attivo ? 'rgba(163,197,99,0.55)' : 'rgba(217,164,65,0.4)',
+        background: attivo
+          ? 'rgba(163,197,99,0.1)'
+          : 'linear-gradient(165deg, rgba(217,164,65,0.1) 0%, rgba(5,10,20,0.45) 70%)',
+      }}
+    >
+      <span
+        className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-200 group-hover:border-eco-gold-400"
+        style={{
+          borderColor: attivo ? 'var(--color-eco-green-400)' : 'var(--color-eco-gold-400)',
+          background: attivo ? 'rgba(163,197,99,0.25)' : 'rgba(217,164,65,0.08)',
+          boxShadow: attivo ? 'none' : 'inset 0 0 0 1px rgba(217,164,65,0.15)',
+        }}
+        aria-hidden
+      >
+        {attivo ? (
+          <span className="text-xs font-semibold leading-none" style={{ color: 'var(--color-eco-green-400)' }}>
+            ✓
+          </span>
+        ) : null}
+      </span>
       <input
         type="checkbox"
+        className="sr-only"
         checked={attivo}
+        disabled={inCorso}
         onChange={(e) =>
           esegui(async () => {
             await setProjectConfirmation({ projectId, campo, valore: e.target.checked })
@@ -292,8 +319,22 @@ export function ControlloConferma({
           })
         }
       />
-      <span style={{ color: attivo ? 'var(--color-eco-green-400)' : 'var(--testo)' }}>
-        {etichetta}
+      <span className="min-w-0">
+        <span
+          className="block font-medium leading-snug"
+          style={{ color: attivo ? 'var(--color-eco-green-400)' : 'var(--testo)' }}
+        >
+          {etichetta}
+        </span>
+        <span
+          className="mt-0.5 block text-[11px] leading-none transition-opacity group-hover:opacity-100"
+          style={{
+            color: attivo ? 'var(--color-eco-green-400)' : 'var(--color-eco-gold-300)',
+            opacity: attivo ? 0.75 : 0.85,
+          }}
+        >
+          {attivo ? 'Confermato — clic per annullare' : 'Clic per confermare'}
+        </span>
       </span>
     </label>
   )
