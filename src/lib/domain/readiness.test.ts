@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ancoraDiBlocco,
   calcolaReadiness,
   riassumiBlocchi,
   REGOLE_PREDEFINITE,
@@ -238,6 +239,37 @@ describe('condizioni singole', () => {
       accontoBlocca: true,
     })
     expect(esito.stato).toBe('non_pianificabile')
+  })
+})
+
+describe('ancore verso la scheda cantiere', () => {
+  it('punta alla riga documento quando c’è il codice', () => {
+    const esito = calcolaReadiness(
+      commessaPronta({
+        documenti: [doc({ stato: 'richiesto', codice: 'titolo_proprieta', label: 'Titolo' })],
+      }),
+      ADESSO,
+    )
+    expect(esito.bloccanti[0]?.ancora).toBe('documento-titolo_proprieta')
+  })
+
+  it('punta alle sezioni per verifica, materiali e acconto', () => {
+    const esito = calcolaReadiness(
+      commessaPronta({
+        verificaTecnicaCompletata: false,
+        materiali: [mat({ stato: 'da_ordinare', id: 'mat-1' })],
+        accontoIncassato: false,
+      }),
+      ADESSO,
+    )
+    expect(esito.bloccanti.find((b) => b.tipo === 'verifica_tecnica')?.ancora).toBe('conferme')
+    expect(esito.bloccanti.find((b) => b.tipo === 'materiale')?.ancora).toBe('materiale-mat-1')
+    expect(esito.avvisi.find((b) => b.tipo === 'acconto')?.ancora).toBe('piano-pagamenti')
+  })
+
+  it('ricostruisce l’ancora dai blocchi già salvati senza il campo', () => {
+    expect(ancoraDiBlocco({ tipo: 'documento' })).toBe('documenti')
+    expect(ancoraDiBlocco({ tipo: 'acconto' })).toBe('piano-pagamenti')
   })
 })
 

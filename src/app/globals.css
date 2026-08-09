@@ -97,6 +97,27 @@ body > * {
    Dettagli di sistema: barre di scorrimento, selezione, focus
    --------------------------------------------------------------------------- */
 
+html {
+  scroll-behavior: smooth;
+}
+
+/* Destinazione di un’ancora dalla pianificabilità: breve alone oro. */
+:target.ancora-destinazione {
+  border-radius: 0.5rem;
+  animation: alone-ancora 1.6s ease-out;
+}
+
+@keyframes alone-ancora {
+  0% {
+    box-shadow: inset 0 0 0 1px rgba(232, 199, 101, 0.55), 0 0 0 4px rgba(217, 164, 65, 0.18);
+    background-color: rgba(217, 164, 65, 0.1);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 transparent, 0 0 0 0 transparent;
+    background-color: transparent;
+  }
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #1e3350 transparent;

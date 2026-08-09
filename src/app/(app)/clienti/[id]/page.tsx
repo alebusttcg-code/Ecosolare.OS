@@ -293,7 +293,17 @@ export default async function SchedaClientePage({
                           {voci.slice(0, 4).map((b, i) => (
                             <li key={i} className="flex gap-2">
                               <span style={{ color: 'var(--color-eco-gold-300)' }}>▸</span>
-                              <span>{b.descrizione}</span>
+                              <a
+                                href={
+                                  'ancora' in b && typeof b.ancora === 'string'
+                                    ? `/cantieri/${c.id}#${b.ancora}`
+                                    : href
+                                }
+                                className="hover:underline"
+                                style={{ color: 'inherit' }}
+                              >
+                                {b.descrizione}
+                              </a>
                             </li>
                           ))}
                           {voci.length > 4 ? (

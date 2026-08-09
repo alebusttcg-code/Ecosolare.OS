@@ -28,6 +28,29 @@ export interface Blocco {
   readonly responsabile: string | null
   /** Da quando è in questo stato, per il KPI «giorni di blocco». */
   readonly da: Date | null
+  /**
+   * Fragment sulla scheda cantiere (senza `#`): cliccando la voce si scorre
+   * alla sezione o alla riga che sblocca l'impedimento.
+   */
+  readonly ancora: string
+}
+
+/** Fallback per blocchi già persistiti senza `ancora`. */
+export function ancoraDiBlocco(b: Pick<Blocco, 'tipo'> & { readonly ancora?: string }): string {
+  if (b.ancora) return b.ancora
+  switch (b.tipo) {
+    case 'documento':
+      return 'documenti'
+    case 'materiale':
+      return 'materiali'
+    case 'pratica':
+      return 'pratiche'
+    case 'verifica_tecnica':
+    case 'conferma_cliente':
+      return 'conferme'
+    case 'acconto':
+      return 'piano-pagamenti'
+  }
 }
 
 export type StatoPianificabilita =
@@ -62,6 +85,8 @@ export interface DocumentoRichiesto {
   readonly stato: StatoDocumento
   readonly responsabile: string | null
   readonly da: Date | null
+  /** Codice template (es. `titolo_proprieta`) per l'ancora alla riga. */
+  readonly codice?: string
 }
 
 export type StatoMateriale =
@@ -78,6 +103,8 @@ export interface MaterialeCommessa {
   readonly stato: StatoMateriale
   readonly responsabile: string | null
   readonly da: Date | null
+  /** Id riga materiale, per l'ancora. */
+  readonly id?: string
 }
 
 export type StatoPratica =
@@ -94,6 +121,8 @@ export interface PraticaCommessa {
   readonly stato: StatoPratica
   readonly responsabile: string | null
   readonly da: Date | null
+  /** Id pratica, per l'ancora. */
+  readonly id?: string
 }
 
 export interface DatiCommessa {
@@ -188,6 +217,7 @@ export function calcolaReadiness(
         descrizione,
         responsabile: doc.responsabile,
         da: doc.da,
+        ancora: doc.codice ? `documento-${doc.codice}` : 'documenti',
       },
       doc.obbligatorio && regole.documentiObbligatoriBloccano,
     )
@@ -213,6 +243,7 @@ export function calcolaReadiness(
         descrizione,
         responsabile: mat.responsabile,
         da: mat.da,
+        ancora: mat.id ? `materiale-${mat.id}` : 'materiali',
       },
       mat.critico && regole.materialiCriticiBloccano,
     )
@@ -232,6 +263,7 @@ export function calcolaReadiness(
             : `Pratica non ancora inviata: ${pratica.label}`,
         responsabile: pratica.responsabile,
         da: pratica.da,
+        ancora: pratica.id ? `pratica-${pratica.id}` : 'pratiche',
       },
       pratica.bloccante && regole.praticheBloccantiBloccano,
     )
@@ -246,6 +278,7 @@ export function calcolaReadiness(
         descrizione: 'Verifica tecnica non completata',
         responsabile: null,
         da: null,
+        ancora: 'conferme',
       },
       regole.verificaTecnicaBlocca,
     )
@@ -259,6 +292,7 @@ export function calcolaReadiness(
         descrizione: 'Il cliente non ha ancora confermato la data',
         responsabile: null,
         da: null,
+        ancora: 'conferme',
       },
       regole.confermaClienteBlocca,
     )
@@ -272,6 +306,7 @@ export function calcolaReadiness(
         descrizione: 'Manca l’OK amministrativo sull’acconto',
         responsabile: null,
         da: null,
+        ancora: 'piano-pagamenti',
       },
       regole.accontoBlocca,
     )

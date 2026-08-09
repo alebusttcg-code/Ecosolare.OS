@@ -3,7 +3,11 @@ import { notFound } from 'next/navigation'
 import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
-import type { StatoPianificabilita } from '@/lib/domain/readiness'
+import {
+  ancoraDiBlocco,
+  type Blocco,
+  type StatoPianificabilita,
+} from '@/lib/domain/readiness'
 import { getProjectDetail } from '@/lib/queries/projects'
 import { CaricaDocumento } from './carica'
 import { OkAmministrativo } from './ok-amministrativo'
@@ -113,15 +117,14 @@ export default async function CommessaPage({
                 </p>
                 <ul className="space-y-1.5">
                   {dati.bloccanti.map((b, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span style={{ color: 'var(--color-eco-red-400)' }}>▸</span>
-                      <span className="flex-1">{b.descrizione}</span>
-                      {b.da ? (
-                        <span className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                          da {formattaData(new Date(b.da))}
-                        </span>
-                      ) : null}
-                    </li>
+                    <VocePianificabilita
+                      key={i}
+                      blocco={b}
+                      tono="critico"
+                      documenti={dati.documenti}
+                      materiali={dati.materiali}
+                      pratiche={dati.pratiche}
+                    />
                   ))}
                 </ul>
               </div>
@@ -134,10 +137,14 @@ export default async function CommessaPage({
                 </p>
                 <ul className="space-y-1.5">
                   {dati.avvisi.map((b, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span style={{ color: 'var(--color-eco-gold-300)' }}>▸</span>
-                      <span>{b.descrizione}</span>
-                    </li>
+                    <VocePianificabilita
+                      key={i}
+                      blocco={b}
+                      tono="attenzione"
+                      documenti={dati.documenti}
+                      materiali={dati.materiali}
+                      pratiche={dati.pratiche}
+                    />
                   ))}
                 </ul>
               </div>
@@ -146,7 +153,8 @@ export default async function CommessaPage({
         )}
 
         <div
-          className="mt-5 flex flex-wrap gap-6 border-t pt-4"
+          id="conferme"
+          className="ancora-destinazione mt-5 flex scroll-mt-24 flex-wrap gap-6 border-t pt-4"
           style={{ borderColor: 'var(--bordo-tenue)' }}
         >
           <ControlloConferma
@@ -176,7 +184,11 @@ export default async function CommessaPage({
             ) : (
               <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                 {dati.documenti.map((d) => (
-                  <li key={d.id} className="riga rounded-md py-3 first:pt-0 last:pb-0">
+                  <li
+                    key={d.id}
+                    id={`documento-${d.code}`}
+                    className="ancora-destinazione riga scroll-mt-24 rounded-md py-3 first:pt-0 last:pb-0"
+                  >
                     <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm">
@@ -198,7 +210,7 @@ export default async function CommessaPage({
             )}
           </Card>
 
-          <Card title="Materiali" indice={2}>
+          <Card id="materiali" title="Materiali" indice={2}>
             {dati.materiali.length === 0 ? (
               <Vuoto messaggio="Nessun materiale in distinta." />
             ) : (
@@ -206,7 +218,8 @@ export default async function CommessaPage({
                 {dati.materiali.map((m) => (
                   <li
                     key={m.id}
-                    className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
+                    id={`materiale-${m.id}`}
+                    className="ancora-destinazione riga flex scroll-mt-24 items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
                   >
                     <div className="min-w-0">
                       <div className="text-sm">{m.description}</div>
@@ -228,7 +241,7 @@ export default async function CommessaPage({
             )}
           </Card>
 
-          <Card title="Pratiche" indice={3}>
+          <Card id="pratiche" title="Pratiche" indice={3}>
             {dati.pratiche.length === 0 ? (
               <Vuoto messaggio="Nessuna pratica associata." />
             ) : (
@@ -236,7 +249,8 @@ export default async function CommessaPage({
                 {dati.pratiche.map((p) => (
                   <li
                     key={p.id}
-                    className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
+                    id={`pratica-${p.id}`}
+                    className="ancora-destinazione riga flex scroll-mt-24 items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
                   >
                     <div>
                       <div className="flex items-center gap-2 text-sm">
@@ -288,13 +302,20 @@ export default async function CommessaPage({
             )}
           </Card>
 
-          <Card title="Piano pagamenti" indice={2}>
+          <Card id="piano-pagamenti" title="Piano pagamenti" indice={2}>
             {dati.pagamenti.length === 0 ? (
               <Vuoto messaggio="Nessuna scadenza." />
             ) : (
               <ul className="space-y-3">
                 {dati.pagamenti.map((p) => (
-                  <li key={p.id}>
+                  <li
+                    key={p.id}
+                    className={
+                      p.blocksStart
+                        ? 'ancora-destinazione scroll-mt-24 rounded-md'
+                        : undefined
+                    }
+                  >
                     <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-sm">{p.label}</div>
@@ -347,4 +368,75 @@ export default async function CommessaPage({
       </div>
     </div>
   )
+}
+
+function VocePianificabilita({
+  blocco,
+  tono,
+  documenti,
+  materiali,
+  pratiche,
+}: {
+  blocco: Blocco
+  tono: 'critico' | 'attenzione'
+  documenti: readonly { readonly code: string; readonly label: string }[]
+  materiali: readonly { readonly id: string; readonly description: string }[]
+  pratiche: readonly { readonly id: string; readonly label: string }[]
+}) {
+  const ancora = risolviAncora(blocco, documenti, materiali, pratiche)
+  const colore =
+    tono === 'critico' ? 'var(--color-eco-red-400)' : 'var(--color-eco-gold-300)'
+
+  return (
+    <li className="flex items-start gap-2 text-sm">
+      <span aria-hidden style={{ color: colore }}>
+        ▸
+      </span>
+      <a
+        href={`#${ancora}`}
+        className="flex-1 rounded-sm transition-colors hover:underline focus-visible:underline"
+        style={{ color: 'inherit' }}
+        title="Vai alla sezione"
+      >
+        {blocco.descrizione}
+      </a>
+      {blocco.da ? (
+        <span className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
+          da {formattaData(new Date(blocco.da))}
+        </span>
+      ) : null}
+    </li>
+  )
+}
+
+/** Preferisce l’ancora salvata; altrimenti ricostruisce dalla riga corrente. */
+function risolviAncora(
+  blocco: Blocco,
+  documenti: readonly { readonly code: string; readonly label: string }[],
+  materiali: readonly { readonly id: string; readonly description: string }[],
+  pratiche: readonly { readonly id: string; readonly label: string }[],
+): string {
+  const salvata = blocco.ancora
+  if (
+    salvata === 'conferme' ||
+    salvata === 'piano-pagamenti' ||
+    (salvata && /^(documento|materiale|pratica)-/.test(salvata))
+  ) {
+    return salvata
+  }
+
+  if (blocco.tipo === 'documento') {
+    const doc = documenti.find((d) => blocco.descrizione.includes(d.label))
+    if (doc) return `documento-${doc.code}`
+  }
+  if (blocco.tipo === 'materiale') {
+    const mat = materiali.find((m) => blocco.descrizione.includes(m.description))
+    if (mat) return `materiale-${mat.id}`
+  }
+  if (blocco.tipo === 'pratica') {
+    const pratica = pratiche.find((p) => blocco.descrizione.includes(p.label))
+    if (pratica) return `pratica-${pratica.id}`
+  }
+
+  return ancoraDiBlocco(blocco)
 }

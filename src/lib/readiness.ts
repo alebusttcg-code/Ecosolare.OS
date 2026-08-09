@@ -53,6 +53,7 @@ export async function ricalcolaReadiness(projectId: string): Promise<void> {
       stato: d.status,
       responsabile: d.responsibleId,
       da: d.statusSince,
+      codice: d.code,
     })),
     materiali: materiali.map((m) => ({
       descrizione: m.description,
@@ -60,6 +61,7 @@ export async function ricalcolaReadiness(projectId: string): Promise<void> {
       stato: m.status,
       responsabile: m.responsibleId,
       da: m.statusSince,
+      id: m.id,
     })),
     pratiche: pratiche.map((p) => ({
       label: p.label,
@@ -67,6 +69,7 @@ export async function ricalcolaReadiness(projectId: string): Promise<void> {
       stato: p.status,
       responsabile: p.responsibleId,
       da: p.statusSince,
+      id: p.id,
     })),
     verificaTecnicaCompletata: commessa.technicalCheckDoneAt !== null,
     clienteHaConfermato: commessa.clientConfirmedAt !== null,
