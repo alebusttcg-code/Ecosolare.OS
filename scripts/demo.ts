@@ -27,6 +27,7 @@ import {
   surveys,
   users,
 } from '../src/db/schema'
+import { CATALOGO_FV } from '../src/db/templates/catalogo-fv'
 import { calcolaImpronta } from '../src/lib/auth/password'
 
 const url = process.env.DATABASE_URL
@@ -141,14 +142,18 @@ async function main(): Promise<void> {
   ])
 
   /* Catalogo ---------------------------------------------------------------- */
-  await db.insert(products).values([
-    { code: 'MOD-450', name: 'Modulo fotovoltaico 450 W', type: 'materiale', unit: 'pz', defaultCostPrice: '92.0000', defaultSalePrice: '148.0000', vatRate: '10.00', businessLine: 'fotovoltaico' },
-    { code: 'INV-6K', name: 'Inverter ibrido 6 kW', type: 'materiale', unit: 'pz', defaultCostPrice: '1050.0000', defaultSalePrice: '1690.0000', vatRate: '10.00', businessLine: 'fotovoltaico' },
-    { code: 'BAT-10', name: 'Batteria di accumulo 10 kWh', type: 'materiale', unit: 'pz', defaultCostPrice: '2400.0000', defaultSalePrice: '3450.0000', vatRate: '10.00', businessLine: 'fotovoltaico' },
-    { code: 'STR-FAL', name: 'Struttura di fissaggio per tetto a falda', type: 'materiale', unit: 'pz', defaultCostPrice: '28.0000', defaultSalePrice: '46.0000', vatRate: '10.00' },
-    { code: 'MAN-EL', name: 'Manodopera elettrica specializzata', type: 'manodopera', unit: 'h', defaultCostPrice: '26.0000', defaultSalePrice: '42.0000', vatRate: '22.00' },
-    { code: 'PRAT-GSE', name: 'Pratiche di connessione e GSE', type: 'servizio', unit: 'a corpo', defaultCostPrice: '180.0000', defaultSalePrice: '450.0000', vatRate: '22.00' },
-  ])
+  await db.insert(products).values(
+    CATALOGO_FV.map((p) => ({
+      code: p.code,
+      name: p.name,
+      type: p.type,
+      unit: p.unit,
+      defaultCostPrice: p.defaultCostPrice,
+      defaultSalePrice: p.defaultSalePrice,
+      vatRate: p.vatRate,
+      businessLine: 'fotovoltaico' as const,
+    })),
+  )
 
   const catalogo = await db.select().from(products)
   const perCodice = (code: string) => catalogo.find((p) => p.code === code)!
@@ -259,7 +264,7 @@ async function main(): Promise<void> {
     { quoteVersionId: versione1!.id, sortOrder: 2, productId: perCodice('BAT-10').id, description: 'Batteria di accumulo 10 kWh', unit: 'pz', quantity: '1.000', unitCost: '2400.0000', unitPrice: '3450.0000', vatRate: '10.00', lineNet: '3450.00', lineCost: '2400.00' },
     { quoteVersionId: versione1!.id, sortOrder: 3, productId: perCodice('STR-FAL').id, description: 'Struttura di fissaggio per tetto a falda', unit: 'pz', quantity: '14.000', unitCost: '28.0000', unitPrice: '46.0000', vatRate: '10.00', lineNet: '644.00', lineCost: '392.00' },
     { quoteVersionId: versione1!.id, sortOrder: 4, productId: perCodice('PRAT-GSE').id, description: 'Pratiche di connessione e GSE', unit: 'a corpo', quantity: '1.000', unitCost: '180.0000', unitPrice: '450.0000', vatRate: '22.00', lineNet: '450.00', lineCost: '180.00' },
-    { quoteVersionId: versione1!.id, sortOrder: 5, productId: perCodice('MAN-EL').id, description: 'Manodopera elettrica specializzata', unit: 'h', quantity: '24.000', unitCost: '26.0000', unitPrice: '42.0000', vatRate: '22.00', lineNet: '1008.00', lineCost: '624.00' },
+    { quoteVersionId: versione1!.id, sortOrder: 5, productId: perCodice('MAN-STD').id, description: 'Manodopera', unit: 'h', quantity: '24.000', unitCost: '26.0000', unitPrice: '42.0000', vatRate: '22.00', lineNet: '1008.00', lineCost: '624.00' },
   ])
 
   // Uno in bozza sul capannone, che mostra il pannello di marginalita'.
@@ -289,7 +294,7 @@ async function main(): Promise<void> {
     { quoteVersionId: versione2!.id, sortOrder: 0, productId: perCodice('MOD-450').id, description: 'Modulo fotovoltaico 450 W', unit: 'pz', quantity: '45.000', unitCost: '92.0000', unitPrice: '132.0000', vatRate: '10.00', lineNet: '5940.00', lineCost: '4140.00' },
     { quoteVersionId: versione2!.id, sortOrder: 1, productId: perCodice('INV-6K').id, description: 'Inverter trifase 20 kW', unit: 'pz', quantity: '1.000', unitCost: '2900.0000', unitPrice: '3600.0000', vatRate: '10.00', lineNet: '3600.00', lineCost: '2900.00' },
     { quoteVersionId: versione2!.id, sortOrder: 2, productId: perCodice('STR-FAL').id, description: 'Struttura per copertura industriale', unit: 'pz', quantity: '45.000', unitCost: '31.0000', unitPrice: '44.0000', vatRate: '10.00', lineNet: '1980.00', lineCost: '1395.00' },
-    { quoteVersionId: versione2!.id, sortOrder: 3, productId: perCodice('MAN-EL').id, description: 'Manodopera elettrica specializzata', unit: 'h', quantity: '60.000', unitCost: '26.0000', unitPrice: '38.0000', vatRate: '22.00', lineNet: '2280.00', lineCost: '1560.00' },
+    { quoteVersionId: versione2!.id, sortOrder: 3, productId: perCodice('MAN-STD').id, description: 'Manodopera', unit: 'h', quantity: '60.000', unitCost: '26.0000', unitPrice: '38.0000', vatRate: '22.00', lineNet: '2280.00', lineCost: '1560.00' },
   ])
 
   console.log(`

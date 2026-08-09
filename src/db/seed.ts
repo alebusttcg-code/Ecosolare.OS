@@ -6,10 +6,12 @@ import {
   documentTemplates,
   leadSources,
   pipelineStages,
+  products,
   projectStages,
   surveyTemplates,
   taskTemplates,
 } from './schema'
+import { CATALOGO_FV } from './templates/catalogo-fv'
 import {
   DOCUMENTI_FV,
   STATI_COMMESSA,
@@ -284,6 +286,23 @@ async function main(): Promise<void> {
       )
       .onConflictDoNothing()
     console.log(`Checklist documentale: ${DOCUMENTI_FV.length} voci verificate.`)
+
+    await db
+      .insert(products)
+      .values(
+        CATALOGO_FV.map((p) => ({
+          code: p.code,
+          name: p.name,
+          type: p.type,
+          unit: p.unit,
+          defaultCostPrice: p.defaultCostPrice,
+          defaultSalePrice: p.defaultSalePrice,
+          vatRate: p.vatRate,
+          businessLine: 'fotovoltaico' as const,
+        })),
+      )
+      .onConflictDoNothing()
+    console.log(`Catalogo prodotti: ${CATALOGO_FV.length} voci verificate.`)
 
     console.log('Seed completato.')
   } finally {

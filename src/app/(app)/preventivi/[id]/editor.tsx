@@ -19,10 +19,20 @@ export interface VoceCatalogo {
   readonly code: string
   readonly name: string
   readonly unit: string
+  readonly type: 'materiale' | 'servizio' | 'manodopera' | 'kit'
   readonly prezzo: number
   readonly costo?: number
   readonly iva: number
 }
+
+const ETICHETTE_TIPO: Record<VoceCatalogo['type'], string> = {
+  materiale: 'Materiali',
+  kit: 'Kit',
+  manodopera: 'Manodopera',
+  servizio: 'Servizi',
+}
+
+const ORDINE_TIPO: VoceCatalogo['type'][] = ['materiale', 'kit', 'manodopera', 'servizio']
 
 interface RigaEditor extends RigaVisibile {
   readonly chiave: string
@@ -343,12 +353,35 @@ export function EditorPreventivo({
             style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
           >
             <option value="">+ Aggiungi dal catalogo…</option>
-            {catalogo.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code} — {c.name}
-              </option>
-            ))}
+            {ORDINE_TIPO.map((tipo) => {
+              const voci = catalogo.filter((c) => c.type === tipo)
+              if (voci.length === 0) return null
+              return (
+                <optgroup key={tipo} label={ETICHETTE_TIPO[tipo]}>
+                  {voci.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.unit})
+                    </option>
+                  ))}
+                </optgroup>
+              )
+            })}
           </select>
+          {catalogo.some((c) => c.type === 'manodopera') ? (
+            <button
+              type="button"
+              onClick={() => {
+                const voce =
+                  catalogo.find((c) => c.type === 'manodopera' && c.code === 'MAN-STD') ??
+                  catalogo.find((c) => c.type === 'manodopera')
+                if (voce) aggiungiDaCatalogo(voce)
+              }}
+              className="bottone-fantasma rounded-lg border px-3 py-1.5 text-sm"
+              style={{ borderColor: 'rgba(217,164,65,0.45)', color: 'var(--color-eco-gold-300)' }}
+            >
+              + Manodopera
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={aggiungiLibera}

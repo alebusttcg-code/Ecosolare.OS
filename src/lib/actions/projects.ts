@@ -222,7 +222,11 @@ export async function signContractAndOpenProject(
     const materiali = righePreventivo.filter((r) => {
       // Manodopera e servizi non entrano in distinta: non si ordinano.
       const tipo = r.productId ? tipoDi.get(r.productId) : undefined
-      return tipo === undefined || tipo === 'materiale' || tipo === 'kit'
+      if (tipo === 'manodopera' || tipo === 'servizio') return false
+      if (tipo === 'materiale' || tipo === 'kit') return true
+      // Riga libera a ore: tipicamente manodopera digitata a mano.
+      if (!r.productId && r.unit.trim().toLowerCase() === 'h') return false
+      return true
     })
 
     if (materiali.length > 0) {
