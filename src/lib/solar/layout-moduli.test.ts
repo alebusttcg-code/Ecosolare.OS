@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { layoutModuliInFalda } from './layout-moduli'
+import { layoutModuliInFalda, moduloDaCentro } from './layout-moduli'
 import { FORMATI_MODULO_FV } from './moduli-fv'
 
 describe('layoutModuliInFalda', () => {
@@ -35,5 +35,18 @@ describe('layoutModuliInFalda', () => {
       azimuthDegrees: 180,
     })
     expect(layout.collocati).toBe(0)
+  })
+
+  it('moduloDaCentro ricostruisce 4 angoli attorno al centro', () => {
+    const origine = { latitude: 45.000075, longitude: 9.0001 }
+    const m = moduloDaCentro({
+      centro: origine,
+      formato: FORMATI_MODULO_FV[0]!,
+      azimuthDegrees: 180,
+      landscape: true,
+      origineProiezione: origine,
+    })
+    expect(m.angoli).toHaveLength(4)
+    expect(m.centro.latitude).toBeCloseTo(origine.latitude, 6)
   })
 })

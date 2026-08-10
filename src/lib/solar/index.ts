@@ -22,6 +22,9 @@ export {
   geoAPixel,
   layoutModuliInFalda,
   metriPerPixelStaticMap,
+  moduloDaCentro,
+  pixelAGeo,
+  puntoInRettangoloSchermo,
 } from './layout-moduli'
 export {
   FORMATI_MODULO_FV,

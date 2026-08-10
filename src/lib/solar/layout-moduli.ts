@@ -185,6 +185,39 @@ export function layoutModuliInFalda(opzioni: {
   }
 }
 
+/** Ricostruisce il rettangolo modulo attorno a un centro (WGS84). */
+export function moduloDaCentro(opzioni: {
+  centro: Coordinate
+  formato: FormatoModuloFv
+  azimuthDegrees: number
+  landscape?: boolean
+  /** Origine della proiezione locale (centroid falda). */
+  origineProiezione: Coordinate
+}): RettangoloModulo {
+  const { centro, formato, azimuthDegrees, landscape = true, origineProiezione } =
+    opzioni
+  const w = landscape ? formato.lunghezzaM : formato.larghezzaM
+  const h = landscape ? formato.larghezzaM : formato.lunghezzaM
+  const θ = ((azimuthDegrees + 90) * Math.PI) / 180
+  const cosA = Math.cos(θ)
+  const sinA = Math.sin(θ)
+  const { e: cx, n: cy } = aMetriLocali(centro, origineProiezione)
+  const hw = w / 2
+  const hh = h / 2
+  const corners = [
+    { x: -hw, y: -hh },
+    { x: hw, y: -hh },
+    { x: hw, y: hh },
+    { x: -hw, y: hh },
+  ].map((c) => {
+    const e = cx + c.x * cosA - c.y * sinA
+    const n = cy + c.x * sinA + c.y * cosA
+    return daMetriLocali(e, n, origineProiezione)
+  }) as [Coordinate, Coordinate, Coordinate, Coordinate]
+
+  return { angoli: corners, centro }
+}
+
 /** Metri/pixel per Static Maps (immagine già a `scale`). */
 export function metriPerPixelStaticMap(
   latitude: number,
@@ -212,4 +245,38 @@ export function geoAPixel(
     x: canvasW / 2 + e / mpp,
     y: canvasH / 2 - n / mpp,
   }
+}
+
+export function pixelAGeo(
+  x: number,
+  y: number,
+  centro: Coordinate,
+  zoom: number,
+  scale: number,
+  canvasW: number,
+  canvasH: number,
+): Coordinate {
+  const mpp = metriPerPixelStaticMap(centro.latitude, zoom, scale)
+  const e = (x - canvasW / 2) * mpp
+  const n = (canvasH / 2 - y) * mpp
+  return daMetriLocali(e, n, centro)
+}
+
+export function puntoInRettangoloSchermo(
+  x: number,
+  y: number,
+  angoliSchermo: readonly { x: number; y: number }[],
+): boolean {
+  if (angoliSchermo.length < 3) return false
+  let inside = false
+  for (let i = 0, j = angoliSchermo.length - 1; i < angoliSchermo.length; j = i++) {
+    const xi = angoliSchermo[i]!.x
+    const yi = angoliSchermo[i]!.y
+    const xj = angoliSchermo[j]!.x
+    const yj = angoliSchermo[j]!.y
+    const intersect =
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-15) + xi
+    if (intersect) inside = !inside
+  }
+  return inside
 }
