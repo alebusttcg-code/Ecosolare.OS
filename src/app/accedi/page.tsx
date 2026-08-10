@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { redirect } from 'next/navigation'
+import { homeDopoAccesso } from '@/lib/auth/home'
 import { getCurrentUser } from '@/lib/auth/session'
 import { ModuloAccesso } from './modulo'
 
@@ -8,7 +9,8 @@ export const metadata = { title: 'Accedi — EcoSolare OS' }
 const FLUSSO = ['Lead', 'Sopralluogo', 'Preventivo', 'Cantiere', 'Lavoro completato']
 
 export default async function AccediPage() {
-  if (await getCurrentUser()) redirect('/')
+  const utente = await getCurrentUser()
+  if (utente) redirect(homeDopoAccesso(utente))
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6">

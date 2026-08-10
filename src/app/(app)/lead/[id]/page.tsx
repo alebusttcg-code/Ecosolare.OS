@@ -37,6 +37,16 @@ import { Prequalifica } from './prequalifica'
 
 export const metadata = { title: 'Lead — EcoSolare OS' }
 
+const ETICHETTA_STATO_PREVENTIVO: Record<string, string> = {
+  bozza: 'bozza',
+  in_approvazione: 'in approvazione',
+  approvato: 'approvato',
+  inviato: 'consegnato',
+  accettato: 'accettato',
+  rifiutato: 'rifiutato',
+  scaduto: 'scaduto',
+}
+
 export default async function DettaglioLeadPage({
   params,
   searchParams,
@@ -379,7 +389,9 @@ export default async function DettaglioLeadPage({
                       <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
                         {p.code}
                         {p.versionNo ? ` · v${p.versionNo}` : ''}
-                        {p.status ? ` · ${p.status}` : ''}
+                        {p.status
+                          ? ` · ${ETICHETTA_STATO_PREVENTIVO[p.status] ?? p.status}`
+                          : ''}
                       </div>
                       {p.versionId &&
                       (p.status === 'inviato' || p.status === 'accettato') &&

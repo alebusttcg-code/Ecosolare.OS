@@ -16,7 +16,7 @@ const ETICHETTA_STATO: Record<StatoVersione, string> = {
   bozza: 'Bozza',
   in_approvazione: 'In approvazione',
   approvato: 'Approvato',
-  inviato: 'Inviato',
+  inviato: 'Consegnato',
   accettato: 'Accettato',
   rifiutato: 'Rifiutato',
   scaduto: 'Scaduto',
@@ -151,7 +151,7 @@ export default async function PreventivoPage({
             <Card title="Cronologia">
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <dt style={{ color: 'var(--testo-tenue)' }}>Inviato</dt>
+                  <dt style={{ color: 'var(--testo-tenue)' }}>Consegnato</dt>
                   <dd>{formattaData(dati.versione.sentAt)}</dd>
                 </div>
                 {dati.versione.decidedAt ? (

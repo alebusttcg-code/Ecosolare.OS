@@ -22,17 +22,23 @@ export function SelettorePeriodoEconomia({
   preset,
   customDa,
   customA,
+  /** Parametri query da mantenere (es. coorte commerciale sulla Dashboard). */
+  conserva,
 }: {
   periodo: PeriodoEconomia
   preset: readonly PeriodoEconomia[]
   customDa?: string
   customA?: string
+  conserva?: Record<string, string | undefined>
 }) {
   const router = useRouter()
   const [aperto, setAperto] = useState(false)
   const [da, setDa] = useState(customDa ?? dataLocaleIso(periodo.da))
   const [a, setA] = useState(customA ?? dataLocaleIso(periodo.a))
   const [errore, setErrore] = useState<string | null>(null)
+
+  const url = (codice: string, daIso?: string, aIso?: string) =>
+    urlPeriodoEconomia(codice, daIso, aIso, conserva)
 
   const applicaCustom = () => {
     if (!da || !a) {
@@ -45,7 +51,7 @@ export function SelettorePeriodoEconomia({
     }
     setErrore(null)
     setAperto(false)
-    router.push(urlPeriodoEconomia('custom', da, a))
+    router.push(url('custom', da, a))
   }
 
   return (
@@ -54,7 +60,7 @@ export function SelettorePeriodoEconomia({
         {preset.map((p) => (
           <Link
             key={p.codice}
-            href={urlPeriodoEconomia(p.codice)}
+            href={url(p.codice)}
             className="rounded-lg border px-3 py-1.5 text-xs transition-colors"
             style={stileVoce(periodo.codice === p.codice)}
           >

@@ -22,7 +22,8 @@ blocchi».
 
 ### Dove vedi i KPI
 
-Apri **Metriche commerciali** nel menu (`/metriche`).
+Apri la **Dashboard** (solo amministratore) e scorri alla sezione
+**Performance commerciale**.
 
 Calcola automaticamente, per i lead **entrati** nel periodo scelto:
 
@@ -63,7 +64,7 @@ contatto (`chiamata`, `email`, `whatsapp`, ecc.): da lì parte lo speed-to-lead.
 
 Stesso giorno ogni mese (es. primo lunedì):
 
-1. Apri `/metriche`
+1. Apri la Dashboard → sezione Performance commerciale
 2. Seleziona «Ultimi 30 giorni» o «Mese corrente»
 3. Annota 3 numeri in un posto tuo (Note, email a te stesso):
    - speed-to-lead (ore)
@@ -91,20 +92,20 @@ Baseline 30 gg completata:     ___________
 
 ---
 
-## Prova locale (test manuali + /metriche)
+## Prova locale (test manuali + Dashboard)
 
 ### Percorso consigliato
 
 1. **Lead → Nuovo lead** — compila e salva
 2. **Attività** → completa «Primo contatto» (+ prossima azione) → registra lo **speed-to-lead**
 3. Dalla scheda lead: **+ Nuovo preventivo** se vuoi vedere la sezione preventivi sul lead
-4. **Metriche** → periodo **Ultimi 30 giorni**
+4. **Dashboard** → Performance commerciale → periodo **Ultimi 30 giorni**
 
 Con un solo lead i numeri sono pochi: normale. L'imbuto cresce man mano che registri sopralluogo, invio preventivo, firma.
 
 > **Preventivi e firme** elenca tutti i preventivi dell'azienda. La **scheda lead** mostra solo quelli di *quel* lead. Se apri un lead senza preventivo, la sezione resta vuota anche se in elenco generale ne vedi altri.
 
-### Cosa guardare in /metriche
+### Cosa guardare in Performance commerciale
 
 | Sezione | Significato |
 |---------|-------------|
@@ -145,6 +146,6 @@ Non è richiesto per andare avanti.
 - **Prime settimane:** pochi dati, metriche instabili — normale.
 - **Conversione:** serve tempo (ciclo commerciale ~30–60 gg); non giudicare la
   coorte «ultimi 30 giorni» prima che i lead maturino (`calcolaMaturita` in
-  `/metriche` avvisa quando la coorte è ancora giovane).
+  la Dashboard avvisa quando la coorte è ancora giovane).
 - **Il vero beneficio subito:** sapere **adesso** quanti lead sono aperti, chi
   risponde, cosa blocca i cantieri — anche senza confronto col passato.

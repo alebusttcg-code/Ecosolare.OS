@@ -80,9 +80,29 @@ export function risolviPeriodoEconomia(
   return preset.find((p) => p.codice === params.periodo) ?? preset[0]!
 }
 
-export function urlPeriodoEconomia(codice: string, da?: string, a?: string): string {
+/**
+ * URL della Dashboard con il periodo economico selezionato.
+ * `extra` conserva altri filtri (es. coorte commerciale).
+ */
+export function urlPeriodoEconomia(
+  codice: string,
+  da?: string,
+  a?: string,
+  extra?: Record<string, string | undefined>,
+): string {
+  const q = new URLSearchParams()
   if (codice === 'custom' && da && a) {
-    return `/economia?periodo=custom&da=${encodeURIComponent(da)}&a=${encodeURIComponent(a)}`
+    q.set('periodo', 'custom')
+    q.set('da', da)
+    q.set('a', a)
+  } else {
+    q.set('periodo', codice)
   }
-  return `/economia?periodo=${encodeURIComponent(codice)}`
+  if (extra) {
+    for (const [chiave, valore] of Object.entries(extra)) {
+      if (valore) q.set(chiave, valore)
+    }
+  }
+  const qs = q.toString()
+  return qs ? `/?${qs}` : '/'
 }

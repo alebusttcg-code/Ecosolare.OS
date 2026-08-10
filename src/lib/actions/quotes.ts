@@ -748,7 +748,7 @@ export async function deleteQuote(
 
   revalidatePath('/preventivi')
   revalidatePath(`/lead/${preventivo.opportunityId}`)
-  revalidatePath('/economia')
+  revalidatePath('/')
   return { ok: true, data: { opportunityId: preventivo.opportunityId } }
 }
 

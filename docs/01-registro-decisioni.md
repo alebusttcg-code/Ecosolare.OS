@@ -301,7 +301,9 @@ sistema** (intake + CRM). Il termine di paragone non è «prima del software vs
 dopo», ma **periodo su periodo** (es. primi 30 giorni vs mese 3 vs mese 6).
 
 **Conseguenze:**
-- La pagina **Metriche commerciali** (`/metriche`) è la fonte ufficiale dei KPI.
+- La sezione **Performance commerciale** della **Dashboard** (`/`, solo
+  amministratore) è la fonte ufficiale dei KPI. Le vecchie rotte `/metriche` e
+  `/economia` reindirizzano lì.
 - Ogni nuovo contatto deve passare dal sistema; altrimenti i numeri restano buchi.
 - Il confronto ROI «prima/dopo» non sarà dimostrabile con dati quantitativi del
   passato: si dimostra **miglioramento nel tempo** e **ricostruibilità** (sapere

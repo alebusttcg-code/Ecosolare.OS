@@ -29,7 +29,7 @@ ancora sul working tree, non chiusi in un commit.
 
 | Fase | Contenuto | Stato |
 |---|---|---|
-| **0 — Audit** | Interviste, mappatura AS-IS, baseline KPI | 🟡 **Baseline prospettica** (D-012): KPI da `/metriche`, non foglio storico. Interviste ancora da fare |
+| **0 — Audit** | Interviste, mappatura AS-IS, baseline KPI | 🟡 **Baseline prospettica** (D-012): KPI dalla Dashboard (Performance commerciale), non foglio storico. Interviste ancora da fare |
 | **1 — Fondamenta** | Auth, ruoli, anagrafiche, intake, pipeline, attività | ✅ **Completa** (auth email+password in lavorazione: D-003a-bis) |
 | **2 — Vendita** | Prequalifica, sopralluoghi, preventivi, follow-up, documenti, firma | 🟡 **~70%** |
 | **3 — Commessa** | Apertura da contratto, materiali, readiness, documenti | 🟡 **~55%** — motore e schermate base; non ancora collaudata in uso |
@@ -74,7 +74,7 @@ se WhatsApp passa dalla Cloud API (B14).
 | 2 | I duplicati vengono segnalati | ✅ |
 | 3 | Ogni lead ha un responsabile | ✅ |
 | 4 | Ogni opportunità ha una prossima azione | ✅ imposto in tre punti indipendenti |
-| 5 | Il tempo di risposta è misurabile | 🟡 si misura in `/metriche`; baseline = primi 30 gg di uso (D-012) |
+| 5 | Il tempo di risposta è misurabile | 🟡 si misura in Dashboard → Performance; baseline = primi 30 gg di uso (D-012) |
 | 6 | I sopralluoghi hanno checklist complete | ✅ chiusura bloccante verificata |
 | 7 | I preventivi sono versionati | ✅ |
 | 8 | Il margine previsto è visibile | ✅ |

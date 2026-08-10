@@ -8,6 +8,7 @@ import { chiudiSessione, chiudiSessioniDi, creaSessione } from '@/auth'
 import { getDb } from '@/db'
 import { users } from '@/db/schema'
 import { recordAudit } from '@/lib/audit'
+import { homeDopoAccesso } from '@/lib/auth/home'
 import { getCurrentUser, requireUser } from '@/lib/auth/session'
 import {
   calcolaImpronta,
@@ -60,7 +61,7 @@ async function contesto(): Promise<{ ipAddress?: string; userAgent?: string }> {
  */
 export async function accedi(
   input: z.input<typeof accessoSchema>,
-): Promise<ActionResult<{ deveCambiarePassword: boolean }>> {
+): Promise<ActionResult<{ deveCambiarePassword: boolean; destinazione: string }>> {
   const parsed = accessoSchema.safeParse(input)
   if (!parsed.success) return { ok: false, errors: { _: CREDENZIALI_ERRATE } }
   const { email, password } = parsed.data
@@ -76,6 +77,9 @@ export async function accedi(
       mustChangePassword: true,
       failedLoginAttempts: true,
       lockedUntil: true,
+      role: true,
+      canViewCosts: true,
+      isFieldOnly: true,
     },
   })
 
@@ -135,7 +139,18 @@ export async function accedi(
     userAgent: dettagli.userAgent ?? null,
   })
 
-  return { ok: true, data: { deveCambiarePassword: utente.mustChangePassword } }
+  return {
+    ok: true,
+    data: {
+      deveCambiarePassword: utente.mustChangePassword,
+      destinazione: homeDopoAccesso({
+        role: utente.role,
+        canViewCosts: utente.canViewCosts,
+        isFieldOnly: utente.isFieldOnly,
+        isActive: utente.isActive,
+      }),
+    },
+  }
 }
 
 async function registraTentativo(

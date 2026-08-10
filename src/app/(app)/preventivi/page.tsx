@@ -15,7 +15,7 @@ const ETICHETTA: Record<StatoVersione, { testo: string; tono: 'neutro' | 'blu' |
   bozza: { testo: 'Bozza', tono: 'neutro' },
   in_approvazione: { testo: 'In approvazione', tono: 'attenzione' },
   approvato: { testo: 'Approvato', tono: 'blu' },
-  inviato: { testo: 'Inviato', tono: 'blu' },
+  inviato: { testo: 'Consegnato', tono: 'blu' },
   accettato: { testo: 'Accettato', tono: 'positivo' },
   rifiutato: { testo: 'Rifiutato', tono: 'critico' },
   scaduto: { testo: 'Scaduto', tono: 'critico' },
@@ -125,7 +125,7 @@ export default async function PreventiviPage() {
                         </Link>
                         <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
                           {r.code} · v{r.versionNo}
-                          {r.sentAt ? ` · inviato ${formattaData(r.sentAt)}` : ''}
+                          {r.sentAt ? ` · consegnato ${formattaData(r.sentAt)}` : ''}
                         </div>
                       </td>
                       <td className="py-3 text-right tabular-nums">

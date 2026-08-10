@@ -39,10 +39,10 @@ export function AzioniPreventivo({
         return
       }
       const testo = esito.data.inviato
-        ? 'Preventivo contrassegnato come inviato. Da questo momento la versione non è più modificabile.'
+        ? 'Preventivo segnato come consegnato. Da questo momento la versione non è più modificabile.'
         : 'Richiesta di approvazione inviata alla direzione: il margine è sotto la soglia minima.'
       setMessaggio(testo)
-      avvisa(esito.data.inviato ? 'Preventivo inviato.' : 'Richiesta di approvazione inviata.')
+      avvisa(esito.data.inviato ? 'Preventivo consegnato.' : 'Richiesta di approvazione inviata.')
       router.refresh()
     })
   }
@@ -83,7 +83,7 @@ export function AzioniPreventivo({
           disabled={inCorso}
           className="bottone-oro w-full rounded-lg bg-gradient-to-br from-eco-gold-300 to-eco-gold-400 px-4 py-2 text-sm font-semibold text-eco-abisso disabled:opacity-50"
         >
-          {stato === 'approvato' ? 'Inviato al contatto (approvato)' : 'Inviato al contatto'}
+          {stato === 'approvato' ? 'Preventivo consegnato (approvato)' : 'Preventivo consegnato'}
         </button>
       ) : null}
 

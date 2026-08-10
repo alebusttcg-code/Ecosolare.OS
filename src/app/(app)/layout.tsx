@@ -45,14 +45,12 @@ const VOCI: readonly (VoceMenu & {
   /** Visibile solo a questo ruolo (es. panoramica economica direzione). */
   soloRuolo?: Role
 })[] = [
-  { href: '/', label: 'Dashboard', icona: '◈', gruppo: 'direzione', resource: 'dashboard' },
-  { href: '/metriche', label: 'Metriche commerciali', icona: '▦', gruppo: 'direzione', resource: 'dashboard' },
   {
-    href: '/economia',
-    label: 'Economia',
-    icona: '€',
-    gruppo: 'economia',
-    resource: 'project_economics',
+    href: '/',
+    label: 'Dashboard',
+    icona: '◈',
+    gruppo: 'direzione',
+    resource: 'dashboard',
     soloRuolo: 'amministratore',
   },
 

@@ -2,7 +2,7 @@
 
 > **Non adottato** — vedi [D-012](01-registro-decisioni.md) e
 > [03-baseline-kpi.md](03-baseline-kpi.md): i KPI si misurano da adesso con
-> `/metriche`, non ricostruendo il passato a mano.
+> Dashboard → Performance commerciale, non ricostruendo il passato a mano.
 >
 > Questo file resta solo se in futuro volessi compilare un campione storico.
 

@@ -37,7 +37,11 @@ export function ModuloAccesso() {
           // `refresh` prima di navigare: senza, la cache del router servirebbe
           // ancora la versione della pagina vista da non collegati.
           router.refresh()
-          router.replace(esito.data.deveCambiarePassword ? '/cambia-password' : '/')
+          router.replace(
+            esito.data.deveCambiarePassword
+              ? '/cambia-password'
+              : esito.data.destinazione,
+          )
         })
       }}
       className="mt-6 space-y-4"
