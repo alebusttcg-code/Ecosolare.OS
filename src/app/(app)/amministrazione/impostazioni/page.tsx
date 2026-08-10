@@ -26,18 +26,10 @@ export default async function ImpostazioniPage() {
       <Intestazione
         eyebrow="Amministrazione"
         titolo="Impostazioni"
-        sottotitolo="Soglie, personale, SLA e regole modificabili senza rilascio."
+        sottotitolo="Squadra cantiere, soglie e regole — senza rilascio."
       />
 
-      <Card
-        id="personale"
-        title="Personale"
-        indice={0}
-      >
-        <p className="mb-4 text-xs" style={{ color: 'var(--testo-tenue)' }}>
-          Dipendenti senza accesso al gestionale — tra cui gli operai da assegnare
-          ai cantieri. Chi ha login resta in Utenti.
-        </p>
+      <Card id="personale" title="Squadra cantiere" accento="oro" indice={0}>
         <GestionePersonale
           personale={personale}
           puoScrivere={puoScriverePersonale}
@@ -45,6 +37,12 @@ export default async function ImpostazioniPage() {
       </Card>
 
       <div className="space-y-3">
+        <div className="px-0.5">
+          <h2 className="text-sm font-semibold tracking-tight">Regole di sistema</h2>
+          <p className="mt-1 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+            Soglie e parametri in JSON — distinti dalla squadra sopra.
+          </p>
+        </div>
         {voci.length === 0 ? (
           <Card>
             <Vuoto messaggio="Nessuna configurazione. Eseguire npm run db:seed." />
