@@ -13,6 +13,7 @@ declare namespace google.maps {
     constructor(opts?: Record<string, unknown>)
     setMap(map: Map | null): void
   }
+  const SymbolPath: { CIRCLE: number }
   class Rectangle {
     constructor(opts?: Record<string, unknown>)
     setMap(map: Map | null): void

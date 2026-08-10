@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { chiaveMapsPerMappa } from '@/lib/actions/sviluppo'
-import type { AnalisiTetto, FaldaTetto } from '@/lib/solar'
+import { latiRettangolo, type AnalisiTetto, type FaldaTetto, type RettangoloGeo } from '@/lib/solar'
 
 const MAX_FALDE_IN_MAPPA = 30
+/** Con molte falde, le quote su ogni lato solo sulle più ampie (evita clutter). */
+const MAX_FALDE_CON_QUOTE = 6
 
 declare global {
   interface Window {
@@ -50,6 +52,38 @@ function faldeDaMostrare(falde: readonly FaldaTetto[]): FaldaTetto[] {
   return [...falde]
     .sort((a, b) => b.areaMeters2 - a.areaMeters2)
     .slice(0, MAX_FALDE_IN_MAPPA)
+}
+
+function aggiungiQuoteLati(
+  maps: typeof google.maps,
+  mappa: google.maps.Map,
+  box: RettangoloGeo,
+  colore: string,
+  destinazione: google.maps.Marker[],
+) {
+  for (const lato of latiRettangolo(box)) {
+    if (lato.metri < 0.3) continue
+    destinazione.push(
+      new maps.Marker({
+        map: mappa,
+        position: { lat: lato.meta.latitude, lng: lato.meta.longitude },
+        clickable: false,
+        icon: {
+          path: maps.SymbolPath?.CIRCLE ?? 0,
+          scale: 0,
+          labelOrigin: { x: 0, y: 0 },
+        },
+        label: {
+          text: lato.etichetta,
+          color: colore,
+          fontSize: '11px',
+          fontWeight: '700',
+        },
+        title: lato.etichetta,
+        zIndex: 5,
+      }),
+    )
+  }
 }
 
 export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
@@ -111,6 +145,7 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
             fillOpacity: 0.12,
           })
           rettangoli.push(edificio)
+          aggiungiQuoteLati(maps, mappa, analisi.boundingBox, '#e8c765', markers)
           bounds.extend({
             lat: analisi.boundingBox.sw.latitude,
             lng: analisi.boundingBox.sw.longitude,
@@ -122,6 +157,10 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
         }
 
         const selezionate = faldeDaMostrare(analisi.falde)
+        const conQuote = new Set(
+          selezionate.slice(0, MAX_FALDE_CON_QUOTE).map((f) => f.indice),
+        )
+
         for (const falda of selezionate) {
           if (falda.boundingBox) {
             const r = new maps.Rectangle({
@@ -139,6 +178,9 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
               fillOpacity: 0.22,
             })
             rettangoli.push(r)
+            if (conQuote.has(falda.indice)) {
+              aggiungiQuoteLati(maps, mappa, falda.boundingBox, '#cfe3f7', markers)
+            }
             bounds.extend({
               lat: falda.boundingBox.sw.latitude,
               lng: falda.boundingBox.sw.longitude,
@@ -208,7 +250,7 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
         <div>
           <h3 className="text-sm font-medium">Mappa del tetto</h3>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-            Vista satellitare · rettangoli = falde Solar
+            Vista satellitare · quote in metri su ogni lato del riquadro
             {troncate
               ? ` · mostrate le ${selezionate.length} falde più ampie su ${analisi.falde.length}`
               : null}
@@ -228,7 +270,6 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
         className="relative overflow-hidden rounded-xl border"
         style={{ borderColor: 'var(--bordo)', minHeight: 360 }}
       >
-        {/* Contenitore Maps JS */}
         <div
           ref={contenitore}
           className="h-[360px] w-full sm:h-[420px]"
@@ -253,6 +294,12 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
           />
         ) : null}
       </div>
+
+      <p className="text-xs leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
+        Le misure sono i lati del riquadro Solar (bounding box) di edificio e falde,
+        non un rilievo CAD del perimetro reale. Oro = edificio; blu = falde (quote
+        sulle {MAX_FALDE_CON_QUOTE} più ampie).
+      </p>
 
       {errore && modo === 'statica' ? (
         <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
