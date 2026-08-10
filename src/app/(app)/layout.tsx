@@ -65,7 +65,7 @@ const VOCI: readonly (VoceMenu & {
   { href: '/cantieri/agenda', label: 'Agenda cantieri', icona: '◷', gruppo: 'ciclo', resource: 'schedule' },
   { href: '/lavori-completati', label: 'Lavori completati', icona: '▣', gruppo: 'ciclo', resource: 'project' },
 
-  { href: '/attivita', label: 'Le mie attività', icona: '✓', gruppo: 'lavoro', resource: 'activity' },
+  { href: '/attivita', label: 'Le mie scadenze', icona: '✓', gruppo: 'lavoro', resource: 'activity' },
   { href: '/controllo-bancario', label: 'Controllo bancario', icona: '⚖', gruppo: 'lavoro', resource: 'invoice', azione: 'update' },
   { href: '/approvazioni', label: 'Approvazioni', icona: '⚑', gruppo: 'lavoro', resource: 'quote_approval' },
 

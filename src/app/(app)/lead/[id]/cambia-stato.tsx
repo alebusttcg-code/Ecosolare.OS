@@ -12,26 +12,39 @@ function fraGiorni(giorni: number): string {
 }
 
 /**
- * Cambio di stato.
+ * Cambio di stato manuale.
  *
- * Gli errori mostrati qui non sono validazioni di modulo: sono gli invarianti
- * di dominio calcolati dal backend (prossima azione obbligatoria, motivo di
- * perdita obbligatorio). Il modulo si limita a chiedere cio' che manca.
+ * «Contratto firmato» (isWon) non è selezionabile: si raggiunge solo con
+ * Registra la firma sul preventivo, che apre anche la commessa.
  */
 export function CambiaStato({
   opportunityId,
   statoCorrente,
   stages,
+  giaVinto,
 }: {
   opportunityId: string
   statoCorrente: string
   stages: readonly StageDefinition[]
+  giaVinto?: boolean
 }) {
   const router = useRouter()
   const avvisa = useAvvisi()
   const [destinazione, setDestinazione] = useState(statoCorrente)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const { inCorso, esegui } = useAzioneServer()
+
+  if (giaVinto) {
+    return (
+      <p className="text-xs leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
+        Contratto firmato: lo stato non si cambia a mano. La commessa è in Cantieri.
+      </p>
+    )
+  }
+
+  const selezionabili = stages.filter(
+    (s) => (s.isActive && !s.isWon) || s.code === statoCorrente,
+  )
 
   const stato = stages.find((s) => s.code === destinazione)
   const serveMotivo = stato?.isLost ?? false
@@ -66,14 +79,16 @@ export function CambiaStato({
         className="w-full rounded border px-3 py-2 text-sm"
         style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
       >
-        {stages
-          .filter((s) => s.isActive || s.code === statoCorrente)
-          .map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.label}
-            </option>
-          ))}
+        {selezionabili.map((s) => (
+          <option key={s.code} value={s.code}>
+            {s.label}
+          </option>
+        ))}
       </select>
+
+      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
+        Per «Contratto firmato» usa Registra la firma sul preventivo.
+      </p>
 
       {serveProssimaAzione ? (
         <label className="block">

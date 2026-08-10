@@ -487,6 +487,18 @@ export async function changeStage(
   if (!corrente) return { ok: false, errors: { _: 'Opportunità non trovata.' } }
 
   const stages = await getStages()
+  const destinazione = stages.find((s) => s.code === dati.toStage)
+  // «Contratto firmato» solo via Registra firma (apre anche la commessa).
+  if (destinazione?.isWon) {
+    return {
+      ok: false,
+      errors: {
+        toStage:
+          'Lo stato «Contratto firmato» si raggiunge solo registrando la firma sul preventivo.',
+      },
+    }
+  }
+
   const esito = planStageChange(
     {
       current: {

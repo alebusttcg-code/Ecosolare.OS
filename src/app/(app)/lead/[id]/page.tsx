@@ -10,6 +10,8 @@ import {
   contacts,
   opportunities,
   opportunityStatusHistory,
+  contracts,
+  projects,
   sites,
   surveyTemplates,
   surveys,
@@ -27,6 +29,7 @@ import { getQuotesForOpportunity } from '@/lib/queries/quotes'
 import { correggiDefinizioneQuestionario } from '@/lib/domain/etichette-ui'
 import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnaire'
 import { unoAllaVolta } from '@/lib/uno-alla-volta'
+import { AzioniPreventivoLead } from '../azioni-preventivo-lead'
 import { CambiaStato } from './cambia-stato'
 import { NuovoPreventivo } from './nuovo-preventivo'
 import { NuovoSopralluogo } from './nuovo-sopralluogo'
@@ -36,11 +39,17 @@ export const metadata = { title: 'Lead — EcoSolare OS' }
 
 export default async function DettaglioLeadPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ vista?: string }>
 }) {
   await guard('read', 'opportunity')
   const { id } = await params
+  const { vista: vistaRaw } = await searchParams
+  const vista =
+    vistaRaw === 'clienti' || vistaRaw === 'tutti' ? vistaRaw : 'aperti'
+  const hrefElenco = vista === 'aperti' ? '/lead' : `/lead?vista=${vista}`
   const db = getDb()
 
   const [riga] = await db
@@ -69,46 +78,62 @@ export default async function DettaglioLeadPage({
 
   if (!riga) notFound()
 
-  const [stages, storico, attivitaAperte, preventivi, sopralluoghi, followUp, templatePrequalifica] =
-    await unoAllaVolta([
-      () => getStages(),
-      () =>
-        db
-          .select()
-          .from(opportunityStatusHistory)
-          .where(eq(opportunityStatusHistory.opportunityId, id))
-          .orderBy(desc(opportunityStatusHistory.changedAt)),
-      () =>
-        db
-          .select()
-          .from(activities)
-          .where(and(eq(activities.opportunityId, id), eq(activities.isNextAction, true)))
-          .limit(1),
-      () => getQuotesForOpportunity(id),
-      () =>
-        db
-          .select({
-            id: surveys.id,
-            status: surveys.status,
-            completedAt: surveys.completedAt,
-            hasCriticalIssues: surveys.hasCriticalIssues,
-            estimatedPowerKw: surveys.estimatedPowerKw,
-            templateName: surveyTemplates.name,
-          })
-          .from(surveys)
-          .innerJoin(surveyTemplates, eq(surveyTemplates.id, surveys.templateId))
-          .where(eq(surveys.opportunityId, id))
-          .orderBy(desc(surveys.createdAt)),
-      () => listFollowUpLead(id),
-      () =>
-        db.query.surveyTemplates.findFirst({
-          where: and(
-            eq(surveyTemplates.kind, 'prequalifica'),
-            eq(surveyTemplates.isActive, true),
-          ),
-          orderBy: desc(surveyTemplates.version),
-        }),
-    ])
+  const [
+    stages,
+    storico,
+    attivitaAperte,
+    preventivi,
+    sopralluoghi,
+    followUp,
+    templatePrequalifica,
+    commessa,
+  ] = await unoAllaVolta([
+    () => getStages(),
+    () =>
+      db
+        .select()
+        .from(opportunityStatusHistory)
+        .where(eq(opportunityStatusHistory.opportunityId, id))
+        .orderBy(desc(opportunityStatusHistory.changedAt)),
+    () =>
+      db
+        .select()
+        .from(activities)
+        .where(and(eq(activities.opportunityId, id), eq(activities.isNextAction, true)))
+        .limit(1),
+    () => getQuotesForOpportunity(id),
+    () =>
+      db
+        .select({
+          id: surveys.id,
+          status: surveys.status,
+          completedAt: surveys.completedAt,
+          hasCriticalIssues: surveys.hasCriticalIssues,
+          estimatedPowerKw: surveys.estimatedPowerKw,
+          templateName: surveyTemplates.name,
+        })
+        .from(surveys)
+        .innerJoin(surveyTemplates, eq(surveyTemplates.id, surveys.templateId))
+        .where(eq(surveys.opportunityId, id))
+        .orderBy(desc(surveys.createdAt)),
+    () => listFollowUpLead(id),
+    () =>
+      db.query.surveyTemplates.findFirst({
+        where: and(
+          eq(surveyTemplates.kind, 'prequalifica'),
+          eq(surveyTemplates.isActive, true),
+        ),
+        orderBy: desc(surveyTemplates.version),
+      }),
+    () =>
+      db
+        .select({ id: projects.id, code: projects.code })
+        .from(projects)
+        .innerJoin(contracts, eq(contracts.id, projects.contractId))
+        .where(and(eq(contracts.opportunityId, id), isNull(projects.deletedAt)))
+        .limit(1)
+        .then((rows) => rows[0]),
+  ])
 
   const opp = riga.opp
   const definizionePrequalifica = templatePrequalifica
@@ -134,10 +159,12 @@ export default async function DettaglioLeadPage({
     code ? (stages.find((s) => s.code === code)?.label ?? code) : '—'
   const prossima = attivitaAperte[0]
 
+  const responsabile = riga.proprietario ?? riga.proprietarioEmail ?? '—'
+
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/lead" className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
+        <Link href={hrefElenco} className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
           ← Lead
         </Link>
         <div className="mt-1 flex items-start justify-between gap-4">
@@ -149,14 +176,41 @@ export default async function DettaglioLeadPage({
                 </LinkNome>
               </h1>
               <Badge tone={stato?.isLost ? 'critico' : stato?.isWon ? 'positivo' : 'neutro'}>
-                {stato?.label ?? opp.stage}
+                {stato?.isWon ? 'Cliente' : (stato?.label ?? opp.stage)}
               </Badge>
+              {stato?.isOpen ? (
+                <span className="text-xs tabular-nums" style={{ color: 'var(--testo-fioco)' }}>
+                  {opp.probability}%
+                </span>
+              ) : null}
             </div>
             <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
               {opp.title} · {opp.code} · {opp.businessLine}
+              {' · '}
+              <span style={{ color: 'var(--testo-fioco)' }}>Resp. {responsabile}</span>
             </p>
+            {stato?.isOpen && !opp.firstResponseAt ? (
+              <p className="mt-1 text-xs text-eco-gold-300">Prima risposta al contatto non ancora tracciata</p>
+            ) : null}
+            {opp.lostReason ? (
+              <p className="mt-1 text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                Motivo perdita: {opp.lostReason}
+              </p>
+            ) : null}
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {commessa ? (
+              <Link
+                href={`/cantieri/${commessa.id}`}
+                className="bottone-oro rounded-lg px-3 py-1.5 text-sm font-semibold"
+                style={{
+                  background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
+                  color: '#050a14',
+                }}
+              >
+                Commessa
+              </Link>
+            ) : null}
             {riga.clienteTelefono ? (
               <BottoneChiama
                 telefono={riga.clienteTelefono}
@@ -189,7 +243,7 @@ export default async function DettaglioLeadPage({
                   </div>
                 </div>
                 <Link href="/attivita" className="text-xs text-eco-blue-300 hover:underline collega">
-                  Vai alle mie attività
+                  Vai alle mie scadenze
                 </Link>
               </div>
             ) : stato?.isOpen ? (
@@ -309,9 +363,9 @@ export default async function DettaglioLeadPage({
                 {preventivi.map((p) => (
                   <li
                     key={p.id}
-                    className="riga flex items-center justify-between gap-4 rounded-md py-3 first:pt-0 last:pb-0"
+                    className="riga flex flex-col gap-1 rounded-md py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
                   >
-                    <div>
+                    <div className="min-w-0 flex-1">
                       {p.versionId ? (
                         <Link
                           href={`/preventivi/${p.versionId}`}
@@ -327,8 +381,13 @@ export default async function DettaglioLeadPage({
                         {p.versionNo ? ` · v${p.versionNo}` : ''}
                         {p.status ? ` · ${p.status}` : ''}
                       </div>
+                      {p.versionId &&
+                      (p.status === 'inviato' || p.status === 'accettato') &&
+                      !stato?.isWon ? (
+                        <AzioniPreventivoLead versionId={p.versionId} status={p.status} />
+                      ) : null}
                     </div>
-                    <div className="text-right text-sm">
+                    <div className="shrink-0 text-right text-sm">
                       <div className="tabular-nums">{p.grossTotal ?? '—'} €</div>
                     </div>
                   </li>
@@ -374,46 +433,8 @@ export default async function DettaglioLeadPage({
               opportunityId={opp.id}
               statoCorrente={opp.stage}
               stages={stages}
+              giaVinto={Boolean(stato?.isWon)}
             />
-          </Card>
-
-          <Card title="Dati">
-            <dl className="space-y-3 text-sm">
-              <div>
-                <dt className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                  Probabilità
-                </dt>
-                <dd>{opp.probability}%</dd>
-              </div>
-              <div>
-                <dt className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                  Responsabile
-                </dt>
-                <dd>{riga.proprietario ?? riga.proprietarioEmail ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                  Prima risposta al contatto
-                </dt>
-                <dd>
-                  {opp.firstResponseAt ? (
-                    formattaData(opp.firstResponseAt)
-                  ) : (
-                    <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                      non ancora tracciata
-                    </span>
-                  )}
-                </dd>
-              </div>
-              {opp.lostReason ? (
-                <div>
-                  <dt className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                    Motivo della perdita
-                  </dt>
-                  <dd>{opp.lostReason}</dd>
-                </div>
-              ) : null}
-            </dl>
           </Card>
         </div>
       </div>

@@ -3,12 +3,17 @@ import { getDb } from '@/db'
 import { contacts, opportunities, pipelineStages, sites, users } from '@/db/schema'
 import { scomponiIndirizzo, type IndirizzoIniziale } from '@/lib/geo/tipi-via'
 
+export type VistaLead = 'aperti' | 'clienti' | 'tutti'
+
 export interface LeadInElenco {
   readonly id: string
   readonly code: string
   readonly title: string
   readonly businessLine: string
   readonly stageLabel: string
+  readonly isOpen: boolean
+  readonly isWon: boolean
+  readonly isLost: boolean
   readonly nextActionDueAt: Date | null
   /** Calcolata qui e non nel componente: il render non deve leggere l'orologio. */
   readonly inRitardo: boolean
@@ -26,12 +31,20 @@ export interface LeadInElenco {
 }
 
 /**
- * Lead aperti per l'elenco operativo: anagrafica in prima vista, il resto
- * per il popup di dettaglio. La modifica carica i propri dati dalla pagina
- * dedicata: qui viaggia solo ciò che l'elenco mostra davvero.
+ * Elenco lead. Default: solo aperti. `clienti` = contratto firmato (vinti);
+ * `tutti` include anche i persi.
  */
-export async function listOpportunities(): Promise<LeadInElenco[]> {
+export async function listOpportunities(
+  vista: VistaLead = 'aperti',
+): Promise<LeadInElenco[]> {
   const adesso = Date.now()
+
+  const filtriVista =
+    vista === 'aperti'
+      ? [eq(pipelineStages.isOpen, true)]
+      : vista === 'clienti'
+        ? [eq(pipelineStages.isWon, true)]
+        : []
 
   const righe = await getDb()
     .select({
@@ -40,6 +53,9 @@ export async function listOpportunities(): Promise<LeadInElenco[]> {
       title: opportunities.title,
       businessLine: opportunities.businessLine,
       stageLabel: pipelineStages.label,
+      isOpen: pipelineStages.isOpen,
+      isWon: pipelineStages.isWon,
+      isLost: pipelineStages.isLost,
       nextActionDueAt: opportunities.nextActionDueAt,
       createdAt: opportunities.createdAt,
       notes: opportunities.notes,
@@ -64,7 +80,7 @@ export async function listOpportunities(): Promise<LeadInElenco[]> {
       and(
         isNull(opportunities.deletedAt),
         isNull(contacts.deletedAt),
-        eq(pipelineStages.isOpen, true),
+        ...filtriVista,
       ),
     )
     .orderBy(desc(opportunities.createdAt))
@@ -77,8 +93,12 @@ export async function listOpportunities(): Promise<LeadInElenco[]> {
       title: r.title,
       businessLine: r.businessLine,
       stageLabel: r.stageLabel,
+      isOpen: r.isOpen,
+      isWon: r.isWon,
+      isLost: r.isLost,
       nextActionDueAt: r.nextActionDueAt,
-      inRitardo: r.nextActionDueAt !== null && r.nextActionDueAt.getTime() < adesso,
+      inRitardo:
+        r.isOpen && r.nextActionDueAt !== null && r.nextActionDueAt.getTime() < adesso,
       createdAt: r.createdAt,
       notes: r.notes ?? '',
       proprietario: r.proprietario ?? r.proprietarioEmail,

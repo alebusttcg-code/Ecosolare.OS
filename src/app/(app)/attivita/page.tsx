@@ -5,7 +5,7 @@ import { guard } from '@/lib/auth/session'
 import { getAttivitaAperte } from '@/lib/queries/dashboard'
 import { CompletaAttivita } from './completa'
 
-export const metadata = { title: 'Le mie attività — EcoSolare OS' }
+export const metadata = { title: 'Le mie scadenze — EcoSolare OS' }
 
 const ETICHETTA_TIPO: Record<string, string> = {
   chiamata: 'Chiamata',
@@ -24,8 +24,8 @@ export default async function AttivitaPage() {
   return (
     <div className="space-y-6">
       <Intestazione
-        titolo="Le mie attività"
-        sottotitolo={`${righe.length} aperte, dalla più urgente`}
+        titolo="Le mie scadenze"
+        sottotitolo={`${righe.length} aperte · to-do personali (i follow-up commerciali stanno in Follow-up)`}
       />
 
       <Card>

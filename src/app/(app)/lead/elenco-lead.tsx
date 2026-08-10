@@ -7,7 +7,7 @@ import { BottoneChiama, BottoneWhatsApp } from '@/components/bottoni-contatto'
 import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
 import { componeIndirizzo } from '@/lib/geo/tipi-via'
-import type { LeadInElenco } from '@/lib/queries/opportunities'
+import type { LeadInElenco, VistaLead } from '@/lib/queries/opportunities'
 
 function normalizza(s: string) {
   return s.trim().toLowerCase()
@@ -47,9 +47,11 @@ function rigaIndirizzo(lead: LeadInElenco): string | null {
 
 export function ElencoLead({
   lead,
+  vista = 'aperti',
   puoModificare,
 }: {
   lead: readonly LeadInElenco[]
+  vista?: VistaLead
   puoModificare: boolean
 }) {
   const [ricerca, setRicerca] = useState('')
@@ -82,7 +84,15 @@ export function ElencoLead({
 
       <Card>
         {lead.length === 0 ? (
-          <Vuoto messaggio="Nessun lead aperto. Creane uno con «Nuovo lead»." />
+          <Vuoto
+            messaggio={
+              vista === 'clienti'
+                ? 'Nessun cliente con contratto firmato in elenco.'
+                : vista === 'tutti'
+                  ? 'Nessun lead. Creane uno con «Nuovo lead».'
+                  : 'Nessun lead aperto. Creane uno con «Nuovo lead».'
+            }
+          />
         ) : filtrati.length === 0 ? (
           <Vuoto messaggio={`Nessun lead corrisponde a «${ricerca.trim()}».`} />
         ) : (
@@ -95,6 +105,7 @@ export function ElencoLead({
                 >
                   <th className="pb-2 pr-3 font-medium">Nome</th>
                   <th className="pb-2 pr-3 font-medium">Cognome</th>
+                  <th className="pb-2 pr-3 font-medium">Stato</th>
                   <th className="pb-2 pr-3 font-medium">Telefono</th>
                   <th className="pb-2 text-right font-medium">Creato</th>
                 </tr>
@@ -120,13 +131,26 @@ export function ElencoLead({
                       className="py-2.5 pr-3 font-medium"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <LinkNome href={`/lead/${l.id}`}>{l.firstName || '—'}</LinkNome>
+                      <LinkNome href={`/lead/${l.id}?vista=${vista}`}>
+                        {l.firstName || '—'}
+                      </LinkNome>
                     </td>
                     <td
                       className="py-2.5 pr-3 font-medium"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <LinkNome href={`/lead/${l.id}`}>{l.lastName}</LinkNome>
+                      <LinkNome href={`/lead/${l.id}?vista=${vista}`}>{l.lastName}</LinkNome>
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      {l.isWon ? (
+                        <Badge tone="positivo">Cliente</Badge>
+                      ) : l.isLost ? (
+                        <Badge tone="critico">{l.stageLabel}</Badge>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                          {l.stageLabel}
+                        </span>
+                      )}
                     </td>
                     <td
                       className="py-2.5 pr-3 tabular-nums"
@@ -180,11 +204,15 @@ function DettaglioLead({
   return (
     <div className="space-y-3.5">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge>{lead.stageLabel}</Badge>
+        {lead.isWon ? (
+          <Badge tone="positivo">Cliente</Badge>
+        ) : (
+          <Badge tone={lead.isLost ? 'critico' : 'neutro'}>{lead.stageLabel}</Badge>
+        )}
         <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
           {lead.code} · {lead.businessLine}
         </span>
-        {lead.nextActionDueAt === null ? (
+        {lead.isOpen && lead.nextActionDueAt === null ? (
           <Badge tone="critico">Senza prossima azione</Badge>
         ) : lead.inRitardo ? (
           <Badge tone="attenzione">Azione scaduta</Badge>
