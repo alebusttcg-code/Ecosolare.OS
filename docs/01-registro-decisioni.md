@@ -374,3 +374,21 @@ Collegamento chat ↔ utente con codice one-time (`/start CODICE`), generabile d
 su webhook protetto da secret. Senza `TELEGRAM_BOT_TOKEN` l’automazione è
 disattiva e i FU restano gestibili solo in app.
 
+---
+
+## D-016 — Sezione Sviluppo: laboratorio Google Solar (step 1)
+
+**Data:** 10 agosto 2026 · **Decisore:** Federico Leporati · **Stato:** attiva
+
+Si introduce la sezione **Sviluppo** (`/sviluppo`) per il dimensionamento
+impianto. **Step 1:** laboratorio isolato (nessun legame a lead/sito) che
+geocodifica un indirizzo e chiama Google Solar `buildingInsights` per mostrare
+falde (inclinazione, esposizione, area).
+
+**Accesso:** ruoli `amministratore` e `commerciale` (resource `sviluppo` in
+policy). Chiave `GOOGLE_MAPS_API_KEY` solo server-side; senza chiave la UI
+spiega che Solar non è configurato.
+
+**Fuori scope step 1:** salvataggio su CRM, Places Autocomplete, motore calcoli
+EcoSolare (foglio), mappa interattiva.
+

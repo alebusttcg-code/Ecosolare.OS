@@ -70,6 +70,13 @@ const schema = z.object({
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional().or(z.literal('')),
   GOOGLE_OAUTH_REFRESH_TOKEN: z.string().optional().or(z.literal('')),
 
+  /* --- Google Maps / Solar (D-016, sezione Sviluppo) -------------------- */
+  /**
+   * Chiave API server-side (Geocoding + Solar). Se assente, /sviluppo spiega
+   * che Solar non è configurato. Mai in NEXT_PUBLIC_*.
+   */
+  GOOGLE_MAPS_API_KEY: z.string().optional().or(z.literal('')),
+
   /* --- Telegram follow-up (D-015) --------------------------------------- */
   /**
    * Se assenti, i reminder Telegram restano disattivi e il resto dell’app

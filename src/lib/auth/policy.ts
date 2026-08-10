@@ -46,6 +46,8 @@ export type Resource =
   | 'ticket'
   // Trasversali
   | 'dashboard'
+  /** Laboratorio Solar / dimensionamento impianto (sezione Sviluppo). */
+  | 'sviluppo'
   | 'settings'
   | 'user'
   | 'audit_log'
@@ -101,6 +103,7 @@ const MATRIX: Record<Role, Record<Resource, Level>> = {
     invoice: 'full',
     ticket: 'full',
     dashboard: 'full',
+    sviluppo: 'full',
     settings: 'full',
     user: 'full',
     audit_log: 'read', // nemmeno l'amministratore modifica l'audit log
@@ -130,6 +133,7 @@ const MATRIX: Record<Role, Record<Resource, Level>> = {
     invoice: 'full',
     ticket: 'read',
     dashboard: 'read',
+    sviluppo: 'none',
     settings: 'none',
     user: 'none',
     audit_log: 'none',
@@ -159,6 +163,7 @@ const MATRIX: Record<Role, Record<Resource, Level>> = {
     invoice: 'read', // solo stato di incasso, mai importi di costo
     ticket: 'write',
     dashboard: 'read',
+    sviluppo: 'write',
     settings: 'none',
     user: 'none',
     audit_log: 'none',
@@ -188,6 +193,7 @@ const MATRIX: Record<Role, Record<Resource, Level>> = {
     invoice: 'none',
     ticket: 'write',
     dashboard: 'read',
+    sviluppo: 'none',
     settings: 'none',
     user: 'none',
     audit_log: 'none',

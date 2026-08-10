@@ -113,6 +113,18 @@ describe("regola: l'anagrafica e' leggibile da tutti i ruoli", () => {
   })
 })
 
+describe('sezione Sviluppo (Solar)', () => {
+  it('è usabile da amministratore e commerciale', () => {
+    expect(can(admin, 'update', 'sviluppo')).toBe(true)
+    expect(can(commerciale, 'update', 'sviluppo')).toBe(true)
+  })
+
+  it('è negata a contabilità e cantiere', () => {
+    expect(can(contabilita, 'read', 'sviluppo')).toBe(false)
+    expect(can(cantiere, 'read', 'sviluppo')).toBe(false)
+  })
+})
+
 describe('separazione fra commerciale e cantiere', () => {
   it("impedisce al cantiere di scrivere preventivi e opportunita'", () => {
     expect(can(cantiere, 'update', 'quote')).toBe(false)
@@ -212,7 +224,7 @@ describe('completezza della matrice', () => {
     }
   })
 
-  it('copre le 26 risorse della sezione 11.2 del blueprint', () => {
-    expect(ALL_RESOURCES).toHaveLength(26)
+  it('copre le 27 risorse (26 del blueprint §11.2 + sviluppo D-016)', () => {
+    expect(ALL_RESOURCES).toHaveLength(27)
   })
 })

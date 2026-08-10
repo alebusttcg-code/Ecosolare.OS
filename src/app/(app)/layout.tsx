@@ -55,6 +55,7 @@ const VOCI: readonly (VoceMenu & {
   },
 
   { href: '/lead', label: 'Lead', icona: '◭', gruppo: 'ciclo', resource: 'opportunity' },
+  { href: '/sviluppo', label: 'Sviluppo', icona: '◎', gruppo: 'ciclo', resource: 'sviluppo' },
   { href: '/follow-up', label: 'Follow-up', icona: '↻', gruppo: 'ciclo', resource: 'activity' },
   { href: '/agenda', label: 'Agenda e sopralluoghi', icona: '⌂', gruppo: 'ciclo', resource: 'survey' },
   { href: '/preventivi', label: 'Preventivi e firme', icona: '€', gruppo: 'ciclo', resource: 'quote' },

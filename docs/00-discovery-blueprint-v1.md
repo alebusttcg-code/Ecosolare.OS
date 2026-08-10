@@ -565,6 +565,7 @@ Legenda: **T** = completo · **S** = scrittura sul proprio ambito · **L** = sol
 | Fatture, pagamenti, incassi *(F5)* | T | T | L (solo stato) | — |
 | Ticket e assistenza *(F6)* | T | L | S | S |
 | Dashboard direzionale completa | T | L (economica) | L (commerciale) | L (operativa) |
+| Sviluppo (laboratorio Solar / dimensionamento) *(D-016)* | T | — | S | — |
 | **Configurazioni**: listini, soglie, template, stati, automazioni | T | — | — | — |
 | **Gestione utenti e capacità** | T | — | — | — |
 | **Audit log** | T | — | — | — |

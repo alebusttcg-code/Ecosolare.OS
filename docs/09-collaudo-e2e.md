@@ -101,6 +101,18 @@ documentate se non applicabili.
 
 ---
 
+## Sviluppo — Solar API (D-016)
+
+| # | Azione | Esito | Data | Note |
+|---|---|---|---|---|
+| S0 | GCP: abilitare **Geocoding API** e **Solar API**; creare API key server-side; impostare `GOOGLE_MAPS_API_KEY` su Vercel / `.env.local` | ☐ | | |
+| S1 | Come admin o commerciale: menu **Sviluppo** → inserire indirizzo IT noto → **Analizza tetto** | ☐ | | |
+| S2 | Compare indirizzo geocodificato, qualità immagini e tabella falde (inclinazione, esposizione, area) | ☐ | | |
+| S3 | Indirizzo inesistente o zona senza copertura: messaggio chiaro (non crash) | ☐ | | |
+| S4 | Utente contabilità/cantiere: voce Sviluppo assente | ☐ | | |
+
+---
+
 ## Anomalie note (da backlog)
 
 Usare questa sezione durante il collaudo; spostare in issue/ticket quando si fissa.
