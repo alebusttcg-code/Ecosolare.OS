@@ -108,6 +108,8 @@ documentate se non applicabili.
 | S0 | GCP: abilitare **Geocoding API**, **Solar API**, **Maps JavaScript API**, **Maps Static API**; API key in `GOOGLE_MAPS_API_KEY` (Vercel / `.env.local`) | ☐ | | |
 | S1 | Come admin o commerciale: menu **Sviluppo** → inserire indirizzo IT noto → **Analizza tetto** | ☐ | | |
 | S2 | Compare mappa satellitare del tetto, indirizzo geocodificato, qualità immagini e tabella falde | ☐ | | |
+| S2b | Selezionare una falda (marker o riga tabella) → poligono oro editabile → trascina un vertice → quote in metri e pannello falda si aggiornano | ☐ | | |
+| S2c | **Ripristina bbox Solar** riporta il poligono allo stato iniziale; **Deseleziona** toglie l’editing | ☐ | | |
 | S3 | Indirizzo inesistente o zona senza copertura: messaggio chiaro (non crash) | ☐ | | |
 | S4 | Utente contabilità/cantiere: voce Sviluppo assente | ☐ | | |
 

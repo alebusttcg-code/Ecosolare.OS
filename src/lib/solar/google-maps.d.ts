@@ -9,14 +9,38 @@ declare namespace google.maps {
     extend(latLng: { lat: number; lng: number }): void
     isEmpty(): boolean
   }
+  class LatLng {
+    lat(): number
+    lng(): number
+  }
   class Marker {
     constructor(opts?: Record<string, unknown>)
     setMap(map: Map | null): void
+    addListener(eventName: string, handler: (...args: unknown[]) => void): MapsEventListener
   }
-  const SymbolPath: { CIRCLE: number }
   class Rectangle {
     constructor(opts?: Record<string, unknown>)
     setMap(map: Map | null): void
+  }
+  class Polygon {
+    constructor(opts?: Record<string, unknown>)
+    setMap(map: Map | null): void
+    setOptions(opts: Record<string, unknown>): void
+    setPath(path: Array<{ lat: number; lng: number }>): void
+    getPath(): MVCArray<LatLng>
+    addListener(eventName: string, handler: (...args: unknown[]) => void): MapsEventListener
+  }
+  class MVCArray<T> {
+    getLength(): number
+    getAt(i: number): T
+    addListener(eventName: string, handler: (...args: unknown[]) => void): MapsEventListener
+  }
+  interface MapsEventListener {
+    remove(): void
+  }
+  const SymbolPath: { CIRCLE: number }
+  const event: {
+    clearInstanceListeners(instance: object): void
   }
 }
 

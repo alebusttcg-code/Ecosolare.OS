@@ -389,6 +389,11 @@ falde (inclinazione, esposizione, area).
 policy). Chiave `GOOGLE_MAPS_API_KEY` solo server-side; senza chiave la UI
 spiega che Solar non è configurato.
 
+**Editor falda (lab):** dopo l’analisi, ogni falda Solar si può selezionare e
+regolare come poligono editabile sulla mappa satellitare; i metri sui lati e
+l’area editata sono calcolo locale sul perimetro disegnato. Pitch/azimuth
+restano stime Solar. Nessuna persistenza (solo sessione UI).
+
 **Fuori scope step 1:** salvataggio su CRM, Places Autocomplete, motore calcoli
-EcoSolare (foglio), mappa interattiva.
+EcoSolare (foglio), poligoni automatici da DSM/Data Layers.
 

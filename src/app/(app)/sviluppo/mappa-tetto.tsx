@@ -2,11 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { chiaveMapsPerMappa } from '@/lib/actions/sviluppo'
-import { latiRettangolo, type AnalisiTetto, type FaldaTetto, type RettangoloGeo } from '@/lib/solar'
+import {
+  latiPoligono,
+  poligoniQuasiUguali,
+  type AnalisiTetto,
+  type Coordinate,
+  type FaldaTetto,
+} from '@/lib/solar'
 
 const MAX_FALDE_IN_MAPPA = 30
-/** Con molte falde, le quote su ogni lato solo sulle più ampie (evita clutter). */
-const MAX_FALDE_CON_QUOTE = 6
 
 declare global {
   interface Window {
@@ -54,42 +58,74 @@ function faldeDaMostrare(falde: readonly FaldaTetto[]): FaldaTetto[] {
     .slice(0, MAX_FALDE_IN_MAPPA)
 }
 
-function aggiungiQuoteLati(
-  maps: typeof google.maps,
-  mappa: google.maps.Map,
-  box: RettangoloGeo,
-  colore: string,
-  destinazione: google.maps.Marker[],
-) {
-  for (const lato of latiRettangolo(box)) {
-    if (lato.metri < 0.3) continue
-    destinazione.push(
-      new maps.Marker({
-        map: mappa,
-        position: { lat: lato.meta.latitude, lng: lato.meta.longitude },
-        clickable: false,
-        icon: {
-          path: maps.SymbolPath?.CIRCLE ?? 0,
-          scale: 0,
-          labelOrigin: { x: 0, y: 0 },
-        },
-        label: {
-          text: lato.etichetta,
-          color: colore,
-          fontSize: '11px',
-          fontWeight: '700',
-        },
-        title: lato.etichetta,
-        zIndex: 5,
-      }),
-    )
+function aPath(vertici: readonly Coordinate[]): Array<{ lat: number; lng: number }> {
+  return vertici.map((v) => ({ lat: v.latitude, lng: v.longitude }))
+}
+
+function daPath(path: google.maps.MVCArray<google.maps.LatLng>): Coordinate[] {
+  const out: Coordinate[] = []
+  for (let i = 0; i < path.getLength(); i++) {
+    const p = path.getAt(i)
+    out.push({ latitude: p.lat(), longitude: p.lng() })
+  }
+  return out
+}
+
+function stileFalda(selezionata: boolean) {
+  if (selezionata) {
+    return {
+      strokeColor: '#e8c765',
+      strokeOpacity: 0.98,
+      strokeWeight: 2.5,
+      fillColor: '#d9a441',
+      fillOpacity: 0.28,
+      zIndex: 20,
+      editable: true,
+      clickable: true,
+    }
+  }
+  return {
+    strokeColor: '#5b9bd5',
+    strokeOpacity: 0.75,
+    strokeWeight: 1.25,
+    fillColor: '#3f7fc4',
+    fillOpacity: 0.16,
+    zIndex: 10,
+    editable: false,
+    clickable: true,
   }
 }
 
-export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
+export interface MappaTettoProps {
+  analisi: AnalisiTetto
+  poligoni: Readonly<Record<number, readonly Coordinate[]>>
+  faldaSelezionata: number | null
+  onSeleziona: (indice: number | null) => void
+  onPoligonoCambiato: (indice: number, vertici: Coordinate[]) => void
+}
+
+export function MappaTetto({
+  analisi,
+  poligoni,
+  faldaSelezionata,
+  onSeleziona,
+  onPoligonoCambiato,
+}: MappaTettoProps) {
   const contenitore = useRef<HTMLDivElement>(null)
+  const mapsRef = useRef<typeof google.maps | null>(null)
+  const mappaRef = useRef<google.maps.Map | null>(null)
+  const edificioRef = useRef<google.maps.Rectangle | null>(null)
+  const poligoniRef = useRef<Map<number, google.maps.Polygon>>(new Map())
+  const markersRef = useRef<Map<number, google.maps.Marker>>(new Map())
+  const quoteRef = useRef<google.maps.Marker[]>([])
+  const pathListenersRef = useRef<google.maps.MapsEventListener[]>([])
+  const skipEmitRef = useRef(false)
+  const onSelezionaRef = useRef(onSeleziona)
+  const onPoligonoCambiatoRef = useRef(onPoligonoCambiato)
   const [errore, setErrore] = useState<string | null>(null)
-  const [modo, setModo] = useState<'caricamento' | 'interattiva' | 'statica'>('caricamento')
+  const [modo, setModo] = useState<'caricamento' | 'interattiva' | 'statica'>(
+    'caricamento',
+  )
 
   const lat = analisi.location.latitude
   const lng = analisi.location.longitude
@@ -98,9 +134,17 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
     `https://www.google.com/maps/@${lat},${lng},19z/data=!3m1!1e3`
 
   useEffect(() => {
+    onSelezionaRef.current = onSeleziona
+    onPoligonoCambiatoRef.current = onPoligonoCambiato
+  }, [onSeleziona, onPoligonoCambiato])
+
+  // Crea mappa una volta per analisi.
+  useEffect(() => {
     let annullato = false
-    const rettangoli: google.maps.Rectangle[] = []
-    const markers: google.maps.Marker[] = []
+    const poligoniLocali = poligoniRef.current
+    const markersLocali = markersRef.current
+    const quoteLocali = quoteRef.current
+    const pathListenersLocali = pathListenersRef.current
 
     ;(async () => {
       try {
@@ -113,6 +157,7 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
         const maps = await caricaMapsJs(chiave.data.apiKey)
         if (annullato || !contenitore.current) return
 
+        mapsRef.current = maps
         const mappa = new maps.Map(contenitore.current, {
           center: { lat, lng },
           zoom: 19,
@@ -125,6 +170,7 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
             mapTypeIds: ['satellite', 'hybrid', 'roadmap'],
           },
         })
+        mappaRef.current = mappa
 
         const bounds = new maps.LatLngBounds()
         bounds.extend({ lat, lng })
@@ -139,13 +185,14 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
               east: analisi.boundingBox.ne.longitude,
             },
             strokeColor: '#e8c765',
-            strokeOpacity: 0.95,
-            strokeWeight: 2,
+            strokeOpacity: 0.55,
+            strokeWeight: 1.5,
             fillColor: '#d9a441',
-            fillOpacity: 0.12,
+            fillOpacity: 0.06,
+            clickable: false,
+            zIndex: 1,
           })
-          rettangoli.push(edificio)
-          aggiungiQuoteLati(maps, mappa, analisi.boundingBox, '#e8c765', markers)
+          edificioRef.current = edificio
           bounds.extend({
             lat: analisi.boundingBox.sw.latitude,
             lng: analisi.boundingBox.sw.longitude,
@@ -154,64 +201,6 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
             lat: analisi.boundingBox.ne.latitude,
             lng: analisi.boundingBox.ne.longitude,
           })
-        }
-
-        const selezionate = faldeDaMostrare(analisi.falde)
-        const conQuote = new Set(
-          selezionate.slice(0, MAX_FALDE_CON_QUOTE).map((f) => f.indice),
-        )
-
-        for (const falda of selezionate) {
-          if (falda.boundingBox) {
-            const r = new maps.Rectangle({
-              map: mappa,
-              bounds: {
-                south: falda.boundingBox.sw.latitude,
-                west: falda.boundingBox.sw.longitude,
-                north: falda.boundingBox.ne.latitude,
-                east: falda.boundingBox.ne.longitude,
-              },
-              strokeColor: '#5b9bd5',
-              strokeOpacity: 0.85,
-              strokeWeight: 1,
-              fillColor: '#3f7fc4',
-              fillOpacity: 0.22,
-            })
-            rettangoli.push(r)
-            if (conQuote.has(falda.indice)) {
-              aggiungiQuoteLati(maps, mappa, falda.boundingBox, '#cfe3f7', markers)
-            }
-            bounds.extend({
-              lat: falda.boundingBox.sw.latitude,
-              lng: falda.boundingBox.sw.longitude,
-            })
-            bounds.extend({
-              lat: falda.boundingBox.ne.latitude,
-              lng: falda.boundingBox.ne.longitude,
-            })
-          }
-
-          if (falda.center) {
-            const marker = new maps.Marker({
-              map: mappa,
-              position: {
-                lat: falda.center.latitude,
-                lng: falda.center.longitude,
-              },
-              label: {
-                text: String(falda.indice + 1),
-                color: '#050a14',
-                fontSize: '11px',
-                fontWeight: '700',
-              },
-              title: `Falda ${falda.indice + 1} · ${falda.areaMeters2.toFixed(0)} m²`,
-            })
-            markers.push(marker)
-            bounds.extend({
-              lat: falda.center.latitude,
-              lng: falda.center.longitude,
-            })
-          }
         }
 
         if (!bounds.isEmpty()) {
@@ -236,10 +225,155 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
 
     return () => {
       annullato = true
-      for (const r of rettangoli) r.setMap(null)
-      for (const m of markers) m.setMap(null)
+      for (const l of pathListenersLocali) l.remove()
+      pathListenersLocali.length = 0
+      for (const q of quoteLocali) q.setMap(null)
+      quoteLocali.length = 0
+      for (const p of poligoniLocali.values()) {
+        mapsRef.current?.event.clearInstanceListeners(p)
+        p.setMap(null)
+      }
+      poligoniLocali.clear()
+      for (const m of markersLocali.values()) {
+        mapsRef.current?.event.clearInstanceListeners(m)
+        m.setMap(null)
+      }
+      markersLocali.clear()
+      edificioRef.current?.setMap(null)
+      edificioRef.current = null
+      mappaRef.current = null
+      mapsRef.current = null
     }
   }, [analisi, lat, lng])
+
+  // Sincronizza poligoni, selezione, quote.
+  useEffect(() => {
+    const maps = mapsRef.current
+    const mappa = mappaRef.current
+    if (!maps || !mappa || modo !== 'interattiva') return
+
+    const mostrate = faldeDaMostrare(analisi.falde)
+    const indiciAttivi = new Set(mostrate.map((f) => f.indice))
+
+    for (const [indice, poly] of [...poligoniRef.current.entries()]) {
+      if (!indiciAttivi.has(indice) || !poligoni[indice]) {
+        maps.event.clearInstanceListeners(poly)
+        poly.setMap(null)
+        poligoniRef.current.delete(indice)
+      }
+    }
+    for (const [indice, marker] of [...markersRef.current.entries()]) {
+      if (!indiciAttivi.has(indice)) {
+        maps.event.clearInstanceListeners(marker)
+        marker.setMap(null)
+        markersRef.current.delete(indice)
+      }
+    }
+
+    for (const l of pathListenersRef.current) l.remove()
+    pathListenersRef.current.length = 0
+
+    for (const falda of mostrate) {
+      const vertici = poligoni[falda.indice]
+      if (!vertici || vertici.length < 3) continue
+
+      const selezionata = faldaSelezionata === falda.indice
+      let poly = poligoniRef.current.get(falda.indice)
+      if (!poly) {
+        poly = new maps.Polygon({
+          map: mappa,
+          paths: aPath(vertici),
+          ...stileFalda(selezionata),
+        })
+        poly.addListener('click', () => {
+          onSelezionaRef.current(falda.indice)
+        })
+        poligoniRef.current.set(falda.indice, poly)
+      } else {
+        const correnti = daPath(poly.getPath())
+        if (!poligoniQuasiUguali(correnti, vertici)) {
+          skipEmitRef.current = true
+          poly.setPath(aPath(vertici))
+          skipEmitRef.current = false
+        }
+        poly.setOptions(stileFalda(selezionata))
+      }
+
+      if (selezionata) {
+        const path = poly.getPath()
+        const emetti = () => {
+          if (skipEmitRef.current) return
+          onPoligonoCambiatoRef.current(falda.indice, daPath(path))
+        }
+        pathListenersRef.current.push(
+          path.addListener('set_at', emetti),
+          path.addListener('insert_at', emetti),
+          path.addListener('remove_at', emetti),
+        )
+      }
+
+      const centro =
+        falda.center ??
+        ({
+          latitude:
+            vertici.reduce((s, v) => s + v.latitude, 0) / vertici.length,
+          longitude:
+            vertici.reduce((s, v) => s + v.longitude, 0) / vertici.length,
+        } satisfies Coordinate)
+
+      let marker = markersRef.current.get(falda.indice)
+      if (!marker) {
+        marker = new maps.Marker({
+          map: mappa,
+          position: { lat: centro.latitude, lng: centro.longitude },
+          label: {
+            text: String(falda.indice + 1),
+            color: '#050a14',
+            fontSize: '11px',
+            fontWeight: '700',
+          },
+          title: `Falda ${falda.indice + 1}`,
+          zIndex: 30,
+        })
+        marker.addListener('click', () => {
+          onSelezionaRef.current(falda.indice)
+        })
+        markersRef.current.set(falda.indice, marker)
+      }
+    }
+
+    for (const q of quoteRef.current) q.setMap(null)
+    quoteRef.current.length = 0
+
+    if (faldaSelezionata != null) {
+      const vertici = poligoni[faldaSelezionata]
+      if (vertici && vertici.length >= 2) {
+        for (const lato of latiPoligono(vertici)) {
+          if (lato.metri < 0.3) continue
+          quoteRef.current.push(
+            new maps.Marker({
+              map: mappa,
+              position: { lat: lato.meta.latitude, lng: lato.meta.longitude },
+              clickable: false,
+              icon: {
+                path: maps.SymbolPath?.CIRCLE ?? 0,
+                scale: 0,
+                labelOrigin: { x: 0, y: 0 },
+              },
+              label: {
+                text: lato.etichetta,
+                color: '#e8c765',
+                fontSize: '12px',
+                fontWeight: '700',
+              },
+              title: lato.etichetta,
+              zIndex: 40,
+            }),
+          )
+        }
+      }
+    }
+  }, [analisi.falde, poligoni, faldaSelezionata, modo])
 
   const selezionate = faldeDaMostrare(analisi.falde)
   const troncate = analisi.falde.length > selezionate.length
@@ -250,7 +384,7 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
         <div>
           <h3 className="text-sm font-medium">Mappa del tetto</h3>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-            Vista satellitare · quote in metri su ogni lato del riquadro
+            Seleziona una falda (marker o tabella), poi trascina i vertici
             {troncate
               ? ` · mostrate le ${selezionate.length} falde più ampie su ${analisi.falde.length}`
               : null}
@@ -268,11 +402,11 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
 
       <div
         className="relative overflow-hidden rounded-xl border"
-        style={{ borderColor: 'var(--bordo)', minHeight: 360 }}
+        style={{ borderColor: 'var(--bordo)', minHeight: 420 }}
       >
         <div
           ref={contenitore}
-          className="h-[360px] w-full sm:h-[420px]"
+          className="h-[420px] w-full sm:h-[480px]"
           style={{ display: modo === 'statica' ? 'none' : 'block' }}
         />
 
@@ -290,15 +424,15 @@ export function MappaTetto({ analisi }: { analisi: AnalisiTetto }) {
           <img
             src={urlStatica}
             alt={`Vista satellitare: ${analisi.formattedAddress}`}
-            className="h-[360px] w-full object-cover sm:h-[420px]"
+            className="h-[420px] w-full object-cover sm:h-[480px]"
           />
         ) : null}
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-        Le misure sono i lati del riquadro Solar (bounding box) di edificio e falde,
-        non un rilievo CAD del perimetro reale. Oro = edificio; blu = falde (quote
-        sulle {MAX_FALDE_CON_QUOTE} più ampie).
+        Oro tenue = edificio Solar. Blu = falde. La falda selezionata (oro) è
+        editabile: i metri sui lati sono il rilievo del poligono, non il bbox
+        Solar. Inclinazione ed esposizione restano stime Google.
       </p>
 
       {errore && modo === 'statica' ? (
