@@ -13,15 +13,22 @@ const sizeStats = z.object({
   sunshineQuantiles: z.array(z.number()).optional(),
 })
 
+const boundingBox = z.object({
+  sw: latLng,
+  ne: latLng,
+})
+
 const roofSegment = z.object({
   pitchDegrees: z.number().optional(),
   azimuthDegrees: z.number().optional(),
   stats: sizeStats.optional(),
   center: latLng.optional(),
+  boundingBox: boundingBox.optional(),
 })
 
 const buildingInsightsSchema = z.object({
   center: latLng.optional(),
+  boundingBox: boundingBox.optional(),
   imageryQuality: z.enum(['HIGH', 'MEDIUM', 'BASE']).optional(),
   imageryDate: z
     .object({
@@ -172,6 +179,18 @@ export async function buildingInsights(
     center: s.center
       ? { latitude: s.center.latitude, longitude: s.center.longitude }
       : null,
+    boundingBox: s.boundingBox
+      ? {
+          sw: {
+            latitude: s.boundingBox.sw.latitude,
+            longitude: s.boundingBox.sw.longitude,
+          },
+          ne: {
+            latitude: s.boundingBox.ne.latitude,
+            longitude: s.boundingBox.ne.longitude,
+          },
+        }
+      : null,
     sunshineMedio: mediaSunshine(s.stats?.sunshineQuantiles),
   }))
 
@@ -179,6 +198,18 @@ export async function buildingInsights(
     ok: true,
     dati: {
       location: body.center ?? location,
+      boundingBox: body.boundingBox
+        ? {
+            sw: {
+              latitude: body.boundingBox.sw.latitude,
+              longitude: body.boundingBox.sw.longitude,
+            },
+            ne: {
+              latitude: body.boundingBox.ne.latitude,
+              longitude: body.boundingBox.ne.longitude,
+            },
+          }
+        : null,
       imageryQuality: body.imageryQuality ?? null,
       imageryDate: body.imageryDate ? formattaDataImmagine(body.imageryDate) : null,
       maxArrayPanelsCount: potential?.maxArrayPanelsCount ?? null,

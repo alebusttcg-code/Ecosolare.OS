@@ -105,9 +105,9 @@ documentate se non applicabili.
 
 | # | Azione | Esito | Data | Note |
 |---|---|---|---|---|
-| S0 | GCP: abilitare **Geocoding API** e **Solar API**; creare API key server-side; impostare `GOOGLE_MAPS_API_KEY` su Vercel / `.env.local` | ☐ | | |
+| S0 | GCP: abilitare **Geocoding API**, **Solar API**, **Maps JavaScript API**, **Maps Static API**; API key in `GOOGLE_MAPS_API_KEY` (Vercel / `.env.local`) | ☐ | | |
 | S1 | Come admin o commerciale: menu **Sviluppo** → inserire indirizzo IT noto → **Analizza tetto** | ☐ | | |
-| S2 | Compare indirizzo geocodificato, qualità immagini e tabella falde (inclinazione, esposizione, area) | ☐ | | |
+| S2 | Compare mappa satellitare del tetto, indirizzo geocodificato, qualità immagini e tabella falde | ☐ | | |
 | S3 | Indirizzo inesistente o zona senza copertura: messaggio chiaro (non crash) | ☐ | | |
 | S4 | Utente contabilità/cantiere: voce Sviluppo assente | ☐ | | |
 

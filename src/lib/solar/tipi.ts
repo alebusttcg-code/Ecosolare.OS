@@ -7,6 +7,11 @@ export interface Coordinate {
   readonly longitude: number
 }
 
+export interface RettangoloGeo {
+  readonly sw: Coordinate
+  readonly ne: Coordinate
+}
+
 export interface FaldaTetto {
   readonly indice: number
   readonly pitchDegrees: number
@@ -15,6 +20,7 @@ export interface FaldaTetto {
   readonly areaMeters2: number
   readonly groundAreaMeters2: number | null
   readonly center: Coordinate | null
+  readonly boundingBox: RettangoloGeo | null
   /** Media grezza dei sunshine quantiles (ore equivalenti relative). */
   readonly sunshineMedio: number | null
 }
@@ -22,6 +28,7 @@ export interface FaldaTetto {
 export interface AnalisiTetto {
   readonly formattedAddress: string
   readonly location: Coordinate
+  readonly boundingBox: RettangoloGeo | null
   readonly imageryQuality: QualitaImmagini | null
   readonly imageryDate: string | null
   readonly maxArrayPanelsCount: number | null

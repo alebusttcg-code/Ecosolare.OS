@@ -6,6 +6,7 @@ import { Badge, Card, Vuoto } from '@/components/ui'
 import { analizzaTetto } from '@/lib/actions/sviluppo'
 import { etichettaAzimuth, type AnalisiTetto } from '@/lib/solar'
 import { useAzioneServer } from '@/lib/use-azione-server'
+import { MappaTetto } from './mappa-tetto'
 
 export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
   const avvisa = useAvvisi()
@@ -19,8 +20,9 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
       <Card>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
           Solar non configurato su questo ambiente. Imposta{' '}
-          <code className="text-xs">GOOGLE_MAPS_API_KEY</code> con Geocoding API e
-          Solar API abilitate sul progetto Google Cloud (vedi collaudo E2E).
+          <code className="text-xs">GOOGLE_MAPS_API_KEY</code> con Geocoding API,
+          Solar API, Maps JavaScript API e Maps Static API abilitate (vedi collaudo
+          E2E).
         </p>
       </Card>
     )
@@ -88,6 +90,10 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
 function Risultato({ analisi }: { analisi: AnalisiTetto }) {
   return (
     <div className="space-y-4">
+      <Card title="Mappa">
+        <MappaTetto analisi={analisi} />
+      </Card>
+
       <Card title="Edificio">
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div className="sm:col-span-2">

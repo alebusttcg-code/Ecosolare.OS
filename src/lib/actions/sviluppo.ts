@@ -44,3 +44,20 @@ export async function analizzaTetto(
     },
   }
 }
+
+/**
+ * Chiave Maps per il browser (solo utenti autorizzati a Sviluppo).
+ * Serve Maps JavaScript API sulla stessa key. Non loggare il valore.
+ */
+export async function chiaveMapsPerMappa(): Promise<ActionResult<{ apiKey: string }>> {
+  await guard('read', 'sviluppo')
+  const { env } = await import('@/env')
+  const apiKey = env().GOOGLE_MAPS_API_KEY?.trim()
+  if (!apiKey) {
+    return {
+      ok: false,
+      errors: { _: 'Solar non configurato: manca GOOGLE_MAPS_API_KEY.' },
+    }
+  }
+  return { ok: true, data: { apiKey } }
+}
