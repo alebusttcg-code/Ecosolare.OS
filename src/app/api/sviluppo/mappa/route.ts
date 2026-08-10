@@ -12,6 +12,10 @@ const querySchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),
   zoom: z.coerce.number().int().min(15).max(21).optional().default(19),
+  marker: z
+    .enum(['0', '1'])
+    .optional()
+    .default('1'),
 })
 
 export async function GET(request: Request) {
@@ -34,19 +38,22 @@ export async function GET(request: Request) {
     lat: urlReq.searchParams.get('lat'),
     lng: urlReq.searchParams.get('lng'),
     zoom: urlReq.searchParams.get('zoom') ?? undefined,
+    marker: urlReq.searchParams.get('marker') ?? undefined,
   })
   if (!parsed.success) {
     return NextResponse.json({ errore: 'Coordinate non valide' }, { status: 400 })
   }
 
-  const { lat, lng, zoom } = parsed.data
+  const { lat, lng, zoom, marker } = parsed.data
   const staticUrl = new URL('https://maps.googleapis.com/maps/api/staticmap')
   staticUrl.searchParams.set('center', `${lat},${lng}`)
   staticUrl.searchParams.set('zoom', String(zoom))
   staticUrl.searchParams.set('size', '640x420')
   staticUrl.searchParams.set('scale', '2')
   staticUrl.searchParams.set('maptype', 'satellite')
-  staticUrl.searchParams.set('markers', `color:0xd9a441|${lat},${lng}`)
+  if (marker === '1') {
+    staticUrl.searchParams.set('markers', `color:0xd9a441|${lat},${lng}`)
+  }
   staticUrl.searchParams.set('key', chiave)
 
   try {

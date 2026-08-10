@@ -71,7 +71,11 @@ function daPath(path: google.maps.MVCArray<google.maps.LatLng>): Coordinate[] {
   return out
 }
 
-function stileFalda(selezionata: boolean) {
+/**
+ * Con una falda in editing, le altre non devono intercettare i click
+ * sui manici (poligoni sovrapposti / marker).
+ */
+function stileFalda(selezionata: boolean, editingAttivo: boolean) {
   if (selezionata) {
     return {
       strokeColor: '#e8c765',
@@ -79,20 +83,20 @@ function stileFalda(selezionata: boolean) {
       strokeWeight: 2.5,
       fillColor: '#d9a441',
       fillOpacity: 0.28,
-      zIndex: 20,
+      zIndex: 200,
       editable: true,
       clickable: true,
     }
   }
   return {
     strokeColor: '#5b9bd5',
-    strokeOpacity: 0.75,
+    strokeOpacity: editingAttivo ? 0.4 : 0.75,
     strokeWeight: 1.25,
     fillColor: '#3f7fc4',
-    fillOpacity: 0.16,
-    zIndex: 10,
+    fillOpacity: editingAttivo ? 0.05 : 0.16,
+    zIndex: 5,
     editable: false,
-    clickable: true,
+    clickable: !editingAttivo,
   }
 }
 
@@ -273,6 +277,8 @@ export function MappaTetto({
     for (const l of pathListenersRef.current) l.remove()
     pathListenersRef.current.length = 0
 
+    const editingAttivo = faldaSelezionata != null
+
     for (const falda of mostrate) {
       const vertici = poligoni[falda.indice]
       if (!vertici || vertici.length < 3) continue
@@ -283,7 +289,7 @@ export function MappaTetto({
         poly = new maps.Polygon({
           map: mappa,
           paths: aPath(vertici),
-          ...stileFalda(selezionata),
+          ...stileFalda(selezionata, editingAttivo),
         })
         poly.addListener('click', () => {
           onSelezionaRef.current(falda.indice)
@@ -296,7 +302,7 @@ export function MappaTetto({
           poly.setPath(aPath(vertici))
           skipEmitRef.current = false
         }
-        poly.setOptions(stileFalda(selezionata))
+        poly.setOptions(stileFalda(selezionata, editingAttivo))
       }
 
       if (selezionata) {
@@ -321,6 +327,20 @@ export function MappaTetto({
             vertici.reduce((s, v) => s + v.longitude, 0) / vertici.length,
         } satisfies Coordinate)
 
+      // In editing i marker delle altre falde (e quello della selezionata)
+      // restano sotto e non clickabili: altrimenti coprono i manici.
+      const markerOpts = editingAttivo
+        ? {
+            clickable: false,
+            opacity: selezionata ? 0.55 : 0.25,
+            zIndex: 1,
+          }
+        : {
+            clickable: true,
+            opacity: 1,
+            zIndex: 30,
+          }
+
       let marker = markersRef.current.get(falda.indice)
       if (!marker) {
         marker = new maps.Marker({
@@ -333,12 +353,14 @@ export function MappaTetto({
             fontWeight: '700',
           },
           title: `Falda ${falda.indice + 1}`,
-          zIndex: 30,
+          ...markerOpts,
         })
         marker.addListener('click', () => {
           onSelezionaRef.current(falda.indice)
         })
         markersRef.current.set(falda.indice, marker)
+      } else {
+        marker.setOptions(markerOpts)
       }
     }
 
@@ -402,11 +424,11 @@ export function MappaTetto({
 
       <div
         className="relative overflow-hidden rounded-xl border"
-        style={{ borderColor: 'var(--bordo)', minHeight: 420 }}
+        style={{ borderColor: 'var(--bordo)', minHeight: 300 }}
       >
         <div
           ref={contenitore}
-          className="h-[420px] w-full sm:h-[480px]"
+          className="h-[300px] w-full lg:h-[340px]"
           style={{ display: modo === 'statica' ? 'none' : 'block' }}
         />
 
@@ -424,7 +446,7 @@ export function MappaTetto({
           <img
             src={urlStatica}
             alt={`Vista satellitare: ${analisi.formattedAddress}`}
-            className="h-[420px] w-full object-cover sm:h-[480px]"
+            className="h-[300px] w-full object-cover lg:h-[340px]"
           />
         ) : null}
       </div>

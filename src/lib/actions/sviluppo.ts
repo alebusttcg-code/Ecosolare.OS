@@ -3,10 +3,25 @@
 import { z } from 'zod'
 import { guard } from '@/lib/auth/session'
 import { buildingInsights, geocodeIndirizzo, type AnalisiTetto } from '@/lib/solar'
+import { caricaGrigliaDsm, raggioMetriDaBbox } from '@/lib/solar/data-layers'
+import { chiaveCacheDsm, getDsmCached, setDsmCached } from '@/lib/solar/dsm-cache'
+import type { GrigliaDsm } from '@/lib/solar/griglia-dsm'
 import type { ActionResult } from './opportunities'
 
 const schema = z.object({
   indirizzo: z.string().trim().min(5, 'Inserisci un indirizzo più completo.').max(300),
+})
+
+const schemaDsm = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  boundingBox: z
+    .object({
+      sw: z.object({ latitude: z.number(), longitude: z.number() }),
+      ne: z.object({ latitude: z.number(), longitude: z.number() }),
+    })
+    .nullable()
+    .optional(),
 })
 
 /**
@@ -60,4 +75,39 @@ export async function chiaveMapsPerMappa(): Promise<ActionResult<{ apiKey: strin
     }
   }
   return { ok: true, data: { apiKey } }
+}
+
+/**
+ * Scarica DSM (+ mask) Solar per l’edificio. Griglia downsampled, cache process-local.
+ * Billable: evitare refetch inutili lato client.
+ */
+export async function caricaDsmEdificio(
+  input: z.input<typeof schemaDsm>,
+): Promise<ActionResult<GrigliaDsm>> {
+  await guard('read', 'sviluppo')
+
+  const parsed = schemaDsm.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, errors: { _: 'Coordinate non valide per il DSM.' } }
+  }
+
+  const location = {
+    latitude: parsed.data.latitude,
+    longitude: parsed.data.longitude,
+  }
+  const boundingBox = parsed.data.boundingBox ?? null
+  const radius = raggioMetriDaBbox(location, boundingBox)
+  const chiave = chiaveCacheDsm(location.latitude, location.longitude, radius)
+  const cached = getDsmCached(chiave)
+  if (cached) {
+    return { ok: true, data: cached }
+  }
+
+  const esito = await caricaGrigliaDsm({ location, boundingBox, radiusMeters: radius })
+  if (!esito.ok) {
+    return { ok: false, errors: { _: esito.errore.messaggio } }
+  }
+
+  setDsmCached(chiave, esito.griglia)
+  return { ok: true, data: esito.griglia }
 }

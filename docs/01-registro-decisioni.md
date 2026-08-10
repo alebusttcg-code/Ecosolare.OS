@@ -394,6 +394,12 @@ regolare come poligono editabile sulla mappa satellitare; i metri sui lati e
 l’area editata sono calcolo locale sul perimetro disegnato. Pitch/azimuth
 restano stime Solar. Nessuna persistenza (solo sessione UI).
 
+**DSM / sezione / 3D:** dopo l’analisi si scarica Solar `dataLayers` (DSM +
+mask, server-side, cache processo). Sulla falda selezionata: profilo sezione
+lungo l’azimuth e mesh 3D orbitabile dalle quote DSM. Billable; non è un
+rilievo di cantiere. Poligoni falda restano quelli editati (non estratti
+automaticamente dal solo DSM).
+
 **Fuori scope step 1:** salvataggio su CRM, Places Autocomplete, motore calcoli
-EcoSolare (foglio), poligoni automatici da DSM/Data Layers.
+EcoSolare (foglio), flux/shade orari, export CAD.
 

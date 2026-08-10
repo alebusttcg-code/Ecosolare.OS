@@ -16,6 +16,8 @@ declare namespace google.maps {
   class Marker {
     constructor(opts?: Record<string, unknown>)
     setMap(map: Map | null): void
+    setOptions(opts: Record<string, unknown>): void
+    setVisible(visible: boolean): void
     addListener(eventName: string, handler: (...args: unknown[]) => void): MapsEventListener
   }
   class Rectangle {

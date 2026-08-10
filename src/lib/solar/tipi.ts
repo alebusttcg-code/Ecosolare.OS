@@ -23,6 +23,8 @@ export interface FaldaTetto {
   readonly boundingBox: RettangoloGeo | null
   /** Media grezza dei sunshine quantiles (ore equivalenti relative). */
   readonly sunshineMedio: number | null
+  /** Quota del piano falda al centro (m s.l.m.), se fornita da Solar. */
+  readonly planeHeightAtCenterMeters: number | null
 }
 
 export interface AnalisiTetto {

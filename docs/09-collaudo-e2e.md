@@ -110,8 +110,12 @@ documentate se non applicabili.
 | S2 | Compare mappa satellitare del tetto, indirizzo geocodificato, qualità immagini e tabella falde | ☐ | | |
 | S2b | Selezionare una falda (marker o riga tabella) → poligono oro editabile → trascina un vertice → quote in metri e pannello falda si aggiornano | ☐ | | |
 | S2c | **Ripristina bbox Solar** riporta il poligono allo stato iniziale; **Deseleziona** toglie l’editing | ☐ | | |
+| S2d | Dopo analisi: messaggio DSM pronto (o errore copertura). Selezionare falda → compare **Sezione (DSM)** e **Vista 3D**; orbit/zoom sulla mesh | ☐ | | |
+| S2e | Seconda analisi stesso indirizzo: DSM da cache server (niente doppio download evidente / risposta più rapida) | ☐ | | |
 | S3 | Indirizzo inesistente o zona senza copertura: messaggio chiaro (non crash) | ☐ | | |
 | S4 | Utente contabilità/cantiere: voce Sviluppo assente | ☐ | | |
+
+**Nota costi:** ogni `dataLayers:get` + download GeoTIFF è fatturato da Google. Il lab mette in cache la griglia per ~30 min sullo stesso punto/raggio.
 
 ---
 

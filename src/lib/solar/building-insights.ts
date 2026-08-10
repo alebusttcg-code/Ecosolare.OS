@@ -24,6 +24,7 @@ const roofSegment = z.object({
   stats: sizeStats.optional(),
   center: latLng.optional(),
   boundingBox: boundingBox.optional(),
+  planeHeightAtCenterMeters: z.number().optional(),
 })
 
 const buildingInsightsSchema = z.object({
@@ -192,6 +193,7 @@ export async function buildingInsights(
         }
       : null,
     sunshineMedio: mediaSunshine(s.stats?.sunshineQuantiles),
+    planeHeightAtCenterMeters: s.planeHeightAtCenterMeters ?? null,
   }))
 
   return {
