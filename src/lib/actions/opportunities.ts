@@ -488,7 +488,7 @@ export async function changeStage(
 
   const stages = await getStages()
   const destinazione = stages.find((s) => s.code === dati.toStage)
-  // «Contratto firmato» solo via Registra firma (apre anche la commessa).
+  // Stage vinto solo via «Conferma e apri cantiere» (firma → contratto + progetto).
   if (destinazione?.isWon) {
     return {
       ok: false,

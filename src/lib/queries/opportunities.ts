@@ -31,7 +31,7 @@ export interface LeadInElenco {
 }
 
 /**
- * Elenco lead. Default: solo aperti. `clienti` = contratto firmato (vinti);
+ * Elenco lead. Default: solo aperti. `clienti` = stage vinti (cantiere aperto);
  * `tutti` include anche i persi.
  */
 export async function listOpportunities(

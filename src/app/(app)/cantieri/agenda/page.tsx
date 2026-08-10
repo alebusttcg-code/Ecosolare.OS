@@ -48,7 +48,7 @@ export default async function AgendaCantieriPage() {
     <div className="space-y-8">
       <div>
         <Link href="/cantieri" className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          ← Cantieri e commesse
+          ← Cantieri
         </Link>
         <Intestazione
           titolo="Agenda cantieri"

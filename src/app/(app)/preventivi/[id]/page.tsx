@@ -115,8 +115,12 @@ export default async function PreventivoPage({
             />
           </Card>
 
-          {stato === 'inviato' || stato === 'accettato' ? (
-            <Card title="Contratto" accento="oro">
+          {stato === 'accettato' ? (
+            <Card title="Cliente e cantiere" accento="oro">
+              <p className="mb-3 text-xs leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
+                Preventivo accettato. Confermalo per creare il cliente e aprire il
+                cantiere.
+              </p>
               <RegistraFirma versionId={dati.versione.id} />
             </Card>
           ) : null}

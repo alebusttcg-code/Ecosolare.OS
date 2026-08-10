@@ -47,7 +47,7 @@ export interface CommessaInElenco {
 /**
  * Elenco commesse.
  *
- * `attive` = ciclo operativo (Cantieri e commesse).
+ * `attive` = ciclo operativo (Cantieri).
  * `completate` = archivio (Lavori completati): solo stati con `is_closed`.
  * Separarli è la differenza fra «cosa sto portando avanti» e «dove ritrovo
  * un lavoro già finito senza mischiarlo a quelli aperti».

@@ -89,7 +89,8 @@ const firmaSchema = z.object({
 })
 
 /**
- * Registra la firma e apre la commessa (criterio di accettazione 11).
+ * Conferma preventivo accettato: registra la firma e apre il cantiere
+ * (criterio di accettazione 11).
  *
  * Tutto avviene in una sola transazione: contratto, commessa, distinta
  * materiali, task, checklist documentale, pratiche e piano pagamenti. È la

@@ -87,7 +87,7 @@ export function ElencoLead({
           <Vuoto
             messaggio={
               vista === 'clienti'
-                ? 'Nessun cliente con contratto firmato in elenco.'
+                ? 'Nessun lead diventato cliente in elenco.'
                 : vista === 'tutti'
                   ? 'Nessun lead. Creane uno con «Nuovo lead».'
                   : 'Nessun lead aperto. Creane uno con «Nuovo lead».'

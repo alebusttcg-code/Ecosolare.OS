@@ -15,7 +15,7 @@ function fraGiorni(giorni: number): string {
  * Cambio di stato manuale.
  *
  * «Contratto firmato» (isWon) non è selezionabile: si raggiunge solo con
- * Registra la firma sul preventivo, che apre anche la commessa.
+ * «Conferma e apri cantiere» sul preventivo accettato.
  */
 export function CambiaStato({
   opportunityId,
@@ -37,7 +37,8 @@ export function CambiaStato({
   if (giaVinto) {
     return (
       <p className="text-xs leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
-        Contratto firmato: lo stato non si cambia a mano. La commessa è in Cantieri.
+        Questo lead è già cliente: lo stato non si cambia a mano. Il cantiere è
+        in Cantieri.
       </p>
     )
   }
@@ -87,7 +88,8 @@ export function CambiaStato({
       </select>
 
       <p className="text-[11px] leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-        Per «Contratto firmato» usa Registra la firma sul preventivo.
+        Per diventare cliente usa «Conferma e apri cantiere» sul preventivo
+        accettato.
       </p>
 
       {serveProssimaAzione ? (

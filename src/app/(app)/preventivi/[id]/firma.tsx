@@ -7,12 +7,10 @@ import { useAzioneServer } from '@/lib/use-azione-server'
 import { signContractAndOpenProject } from '@/lib/actions/projects'
 
 /**
- * Registrazione della firma.
+ * Conferma del preventivo accettato: crea il cliente e apre il cantiere.
  *
- * È il passaggio che apre la commessa con dentro tutto già impostato: task,
- * checklist documentale, distinta materiali, pratiche e piano pagamenti. Per
- * questo il modulo dice cosa succederà: l'operazione non è annullabile con un
- * clic e vale la pena saperlo prima.
+ * Backend invariato (`signContractAndOpenProject`): data e modalità restano
+ * traccia della firma; in UI il messaggio è commerciale (cliente + cantiere).
  */
 export function RegistraFirma({ versionId }: { versionId: string }) {
   const router = useRouter()
@@ -34,7 +32,7 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
           color: '#050a14',
         }}
       >
-        Registra la firma
+        Conferma e apri cantiere
       </button>
     )
   }
@@ -51,7 +49,7 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
             signatureMethod: String(fd.get('method') ?? 'cartacea') as 'cartacea',
           })
           if (esito.ok) {
-            avvisa('Firma registrata: cantiere aperto.')
+            avvisa('Cliente creato e cantiere aperto.')
             router.push(`/cantieri/${esito.data.projectId}`)
           } else setErrore(Object.values(esito.errors)[0] ?? 'Operazione non riuscita.')
         })
@@ -59,7 +57,7 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
       className="space-y-3"
     >
       <label className="block">
-        <span className="mb-1 block text-xs font-medium">Data della firma</span>
+        <span className="mb-1 block text-xs font-medium">Data conferma / firma</span>
         <input
           name="signedAt"
           type="date"
@@ -91,9 +89,9 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
           color: '#e8c765',
         }}
       >
-        Verrà aperta la commessa in «Cantieri e commesse» con task, checklist
-        documentale, distinta materiali, pratiche e piano pagamenti. Il lead
-        passerà a <strong>contratto firmato</strong>.
+        Il lead diventa <strong>cliente</strong> e si apre un cantiere in «Cantieri»
+        con task, checklist documentale, distinta materiali, pratiche e piano
+        pagamenti. L’operazione non è annullabile con un clic.
       </p>
 
       {errore ? <p className="text-xs text-eco-red-400">{errore}</p> : null}
@@ -108,7 +106,7 @@ export function RegistraFirma({ versionId }: { versionId: string }) {
             color: '#050a14',
           }}
         >
-          {inCorso ? 'Apertura…' : 'Conferma e apri'}
+          {inCorso ? 'Apertura…' : 'Conferma e apri cantiere'}
         </button>
         <button
           type="button"

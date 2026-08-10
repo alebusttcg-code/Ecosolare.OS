@@ -25,8 +25,8 @@ export default async function ClientiPage({
         titolo="Clienti"
         sottotitolo={
           totale === 0
-            ? 'Nessun cliente ancora: nasce quando un lead firma un preventivo.'
-            : `${totale} ${totale === 1 ? 'cliente' : 'clienti'} con contratto firmato`
+            ? 'Nessun cliente ancora: nasce quando confermi un preventivo accettato e apri il cantiere.'
+            : `${totale} ${totale === 1 ? 'cliente' : 'clienti'} con cantiere aperto`
         }
       />
 
@@ -53,7 +53,7 @@ export default async function ClientiPage({
             messaggio={
               q
                 ? `Nessun risultato per "${q}".`
-                : 'Un lead diventa cliente solo dopo aver accettato e firmato un preventivo. Parti da Lead → Nuovo lead.'
+                : 'Un lead diventa cliente quando accetti il preventivo e usi «Conferma e apri cantiere». Parti da Lead → Nuovo lead.'
             }
           />
         ) : (
@@ -64,7 +64,7 @@ export default async function ClientiPage({
             >
               <span>Nome</span>
               <span>Recapiti</span>
-              <span className="text-center">Commesse</span>
+              <span className="text-center">Cantieri</span>
               <span className="text-right">Cliente dal</span>
             </div>
             <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>

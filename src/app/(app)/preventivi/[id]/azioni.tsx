@@ -95,6 +95,10 @@ export function AzioniPreventivo({
 
       {stato === 'inviato' ? (
         <div className="space-y-2">
+          <p className="text-[11px] leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
+            Accettare registra l’esito. Per diventare cliente e aprire il cantiere
+            serve poi «Conferma e apri cantiere».
+          </p>
           <button
             type="button"
             onClick={() => registraEsito('accettato')}
@@ -102,7 +106,7 @@ export function AzioniPreventivo({
             className="w-full rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, #a3c563 0%, #7fa348 100%)', color: '#050a14' }}
           >
-            Il contatto ha accettato
+            Accettato dal cliente
           </button>
           {mostraRifiuto ? (
             <form

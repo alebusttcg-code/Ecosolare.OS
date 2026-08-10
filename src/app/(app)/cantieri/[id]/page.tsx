@@ -23,7 +23,7 @@ import {
   ControlloPratica,
 } from './controlli'
 
-export const metadata = { title: 'Cantieri e commesse — EcoSolare OS' }
+export const metadata = { title: 'Cantieri — EcoSolare OS' }
 
 const PIANIFICABILITA: Record<
   StatoPianificabilita,
@@ -69,7 +69,7 @@ export default async function CommessaPage({
     <div className="space-y-6">
       <div>
         <Link href="/cantieri" className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
-          ← Cantieri e commesse
+          ← Cantieri
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">

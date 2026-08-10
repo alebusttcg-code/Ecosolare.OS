@@ -26,7 +26,7 @@ export default async function LeadPage({
     vista === 'aperti'
       ? `${righe.length} ${righe.length === 1 ? 'aperto' : 'aperti'}`
       : vista === 'clienti'
-        ? `${righe.length} con contratto firmato`
+        ? `${righe.length} diventati clienti`
         : `${righe.length} in elenco`
 
   return (

@@ -6,7 +6,7 @@ import { etichettaStatoWorkOrder } from '@/lib/domain/schedule'
 import { listProjects } from '@/lib/queries/projects'
 import { mappaPianificazioniAttive } from '@/lib/queries/schedule'
 
-export const metadata = { title: 'Cantieri e commesse — EcoSolare OS' }
+export const metadata = { title: 'Cantieri — EcoSolare OS' }
 
 const PIANIFICABILITA: Record<
   StatoPianificabilita,
@@ -30,7 +30,7 @@ export default async function CommessePage() {
   return (
     <div>
       <Intestazione
-        titolo="Cantieri e commesse"
+        titolo="Cantieri"
         sottotitolo={`${righe.length} aperte · i lavori chiusi sono in «Lavori completati»`}
         azione={
           <Link
@@ -44,7 +44,7 @@ export default async function CommessePage() {
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Commesse attive" value={righe.length} icona="◫" indice={0} />
+        <Stat label="Cantieri attivi" value={righe.length} icona="◫" indice={0} />
         <Stat
           label="Pianificabili"
           value={pianificabili}

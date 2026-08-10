@@ -208,7 +208,7 @@ export default async function DettaglioLeadPage({
                   color: '#050a14',
                 }}
               >
-                Commessa
+                Cantiere
               </Link>
             ) : null}
             {riga.clienteTelefono ? (

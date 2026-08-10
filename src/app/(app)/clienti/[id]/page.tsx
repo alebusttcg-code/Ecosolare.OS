@@ -107,7 +107,7 @@ export default async function SchedaClientePage({
         <div className="space-y-6 lg:col-span-2">
           {eCliente ? (
             <Card
-              title="Cantieri e commesse"
+              title="Cantieri"
               action={
                 <Link
                   href="/cantieri"
@@ -118,7 +118,7 @@ export default async function SchedaClientePage({
               }
             >
               {commesse.length === 0 ? (
-                <Vuoto messaggio="Nessuna commessa aperta dopo la firma del contratto." />
+                <Vuoto messaggio="Nessun cantiere aperto per questo cliente." />
               ) : (
                 <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
                   {commesse.map((c) => {
@@ -286,7 +286,7 @@ export default async function SchedaClientePage({
                     <div key={c.id} className="space-y-2">
                       <p className="text-sm font-medium">{c.title}</p>
                       <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                        Contratto firmato: per partire mancano ancora elementi sul cantiere.
+                        Cliente attivo: per partire mancano ancora elementi sul cantiere.
                       </p>
                       {voci.length > 0 ? (
                         <ul className="space-y-1 text-xs" style={{ color: 'var(--testo-tenue)' }}>

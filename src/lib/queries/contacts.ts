@@ -30,10 +30,10 @@ export interface ContattoInElenco {
 }
 
 /**
- * Elenco clienti = contatti con almeno un contratto firmato.
+ * Elenco clienti = contatti con almeno un contratto (cantiere aperto).
  *
- * L'anagrafica nasce col lead; diventa «cliente» solo alla firma del preventivo
- * (accettazione + firma → contratto). Prima di quel momento resta in Lead.
+ * L'anagrafica nasce col lead; diventa «cliente» quando si conferma il
+ * preventivo accettato (apertura cantiere). Prima resta in Lead.
  */
 export async function searchContacts(
   utente: UtenteConId,
