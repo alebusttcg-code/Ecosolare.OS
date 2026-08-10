@@ -5,6 +5,11 @@ export interface RettangoloModulo {
   /** Quattro angoli WGS84 in senso orario. */
   readonly angoli: readonly [Coordinate, Coordinate, Coordinate, Coordinate]
   readonly centro: Coordinate
+  /**
+   * Rotazione aggiuntiva rispetto all’allineamento falda (gradi orari).
+   * 0 = landscape/portrait rispetto all’azimuth Solar.
+   */
+  readonly rotazioneDegrees: number
 }
 
 export interface LayoutModuli {
@@ -170,6 +175,7 @@ export function layoutModuliInFalda(opzioni: {
       moduli.push({
         angoli,
         centro: daMetriLocali(ce, cn, origine),
+        rotazioneDegrees: 0,
       })
     }
     if (moduli.length >= richiesti) break
@@ -191,14 +197,23 @@ export function moduloDaCentro(opzioni: {
   formato: FormatoModuloFv
   azimuthDegrees: number
   landscape?: boolean
+  /** Rotazione extra rispetto all’allineamento falda (gradi). */
+  rotazioneDegrees?: number
   /** Origine della proiezione locale (centroid falda). */
   origineProiezione: Coordinate
 }): RettangoloModulo {
-  const { centro, formato, azimuthDegrees, landscape = true, origineProiezione } =
-    opzioni
+  const {
+    centro,
+    formato,
+    azimuthDegrees,
+    landscape = true,
+    rotazioneDegrees = 0,
+    origineProiezione,
+  } = opzioni
   const w = landscape ? formato.lunghezzaM : formato.larghezzaM
   const h = landscape ? formato.larghezzaM : formato.lunghezzaM
-  const θ = ((azimuthDegrees + 90) * Math.PI) / 180
+  const θ =
+    ((azimuthDegrees + 90 + rotazioneDegrees) * Math.PI) / 180
   const cosA = Math.cos(θ)
   const sinA = Math.sin(θ)
   const { e: cx, n: cy } = aMetriLocali(centro, origineProiezione)
@@ -215,7 +230,50 @@ export function moduloDaCentro(opzioni: {
     return daMetriLocali(e, n, origineProiezione)
   }) as [Coordinate, Coordinate, Coordinate, Coordinate]
 
-  return { angoli: corners, centro }
+  return { angoli: corners, centro, rotazioneDegrees }
+}
+
+/** Sposta un modulo di Δ lat/lng mantenendo rotazione. */
+export function spostaModulo(
+  m: RettangoloModulo,
+  deltaLat: number,
+  deltaLng: number,
+  formato: FormatoModuloFv,
+  azimuthDegrees: number,
+  landscape: boolean,
+  origineProiezione: Coordinate,
+): RettangoloModulo {
+  return moduloDaCentro({
+    centro: {
+      latitude: m.centro.latitude + deltaLat,
+      longitude: m.centro.longitude + deltaLng,
+    },
+    formato,
+    azimuthDegrees,
+    landscape,
+    rotazioneDegrees: m.rotazioneDegrees,
+    origineProiezione,
+  })
+}
+
+/** Ruota un modulo di `deltaDegrees` attorno al suo centro. */
+export function ruotaModulo(
+  m: RettangoloModulo,
+  deltaDegrees: number,
+  formato: FormatoModuloFv,
+  azimuthDegrees: number,
+  landscape: boolean,
+  origineProiezione: Coordinate,
+): RettangoloModulo {
+  const rot = ((m.rotazioneDegrees + deltaDegrees) % 360 + 360) % 360
+  return moduloDaCentro({
+    centro: m.centro,
+    formato,
+    azimuthDegrees,
+    landscape,
+    rotazioneDegrees: rot,
+    origineProiezione,
+  })
 }
 
 /** Metri/pixel per Static Maps (immagine già a `scale`). */

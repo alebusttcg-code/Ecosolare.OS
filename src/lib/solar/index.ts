@@ -25,6 +25,8 @@ export {
   moduloDaCentro,
   pixelAGeo,
   puntoInRettangoloSchermo,
+  ruotaModulo,
+  spostaModulo,
 } from './layout-moduli'
 export {
   FORMATI_MODULO_FV,
