@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
 import { Badge, Card, Vuoto } from '@/components/ui'
-import { analizzaTetto, caricaDsmEdificio } from '@/lib/actions/sviluppo'
+import { analizzaTetto, analizzaTettoAlPunto, caricaDsmEdificio } from '@/lib/actions/sviluppo'
 import {
   areaPoligonoMetri2,
   etichettaAzimuth,
@@ -21,6 +21,7 @@ import {
 } from '@/lib/solar'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { EditorModuli } from './editor-moduli'
+import { CampoIndirizzo } from './campo-indirizzo'
 import { MappaTetto } from './mappa-tetto'
 import { SezioneFalda } from './sezione-falda'
 import { Vista3dFalda } from './vista-3d-falda'
@@ -49,6 +50,7 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
   const [faldeRimosse, setFaldeRimosse] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
+  const [scegliTetto, setScegliTetto] = useState(false)
 
   if (!configurato) {
     return (
@@ -56,8 +58,8 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
         <p className="text-sm leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
           Solar non configurato su questo ambiente. Imposta{' '}
           <code className="text-xs">GOOGLE_MAPS_API_KEY</code> con Geocoding API,
-          Solar API, Maps JavaScript API e Maps Static API abilitate (vedi collaudo
-          E2E).
+          Solar API, Maps JavaScript API, Maps Static API, Map Tiles API e Places
+          API (New) abilitate (vedi collaudo E2E).
         </p>
       </Card>
     )
@@ -88,6 +90,7 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
               setPoligoni(poligoniDaAnalisi(esito.data.falde))
               setFaldaSelezionata(null)
               setFaldeRimosse(new Set())
+              setScegliTetto(false)
               avvisa('Tetto analizzato. Caricamento DSM in corso…')
             })
           }}
@@ -96,15 +99,15 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
             <span className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
               Indirizzo dell’impianto
             </span>
-            <input
+            <CampoIndirizzo
               value={indirizzo}
-              onChange={(e) => setIndirizzo(e.target.value)}
-              placeholder="Via, civico, CAP, comune…"
-              required
-              minLength={5}
-              className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:border-eco-blue-400"
-              style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              onChange={setIndirizzo}
+              disabled={inCorso}
             />
+            <span className="mt-1.5 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+              Suggerimenti Google Places (Italia). Puoi anche scrivere l’indirizzo
+              a mano.
+            </span>
           </label>
 
           {errore ? <p className="text-sm text-eco-red-400">{errore}</p> : null}
@@ -129,7 +132,33 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
           poligoni={poligoni}
           faldaSelezionata={faldaSelezionata}
           faldeRimosse={faldeRimosse}
+          scegliTetto={scegliTetto}
+          ripresaInCorso={inCorso}
           onSeleziona={setFaldaSelezionata}
+          onScegliTettoChange={setScegliTetto}
+          onPuntoTetto={(punto) => {
+            setErrore(null)
+            setScegliTetto(false)
+            esegui(async () => {
+              const esito = await analizzaTettoAlPunto({
+                latitude: punto.latitude,
+                longitude: punto.longitude,
+                formattedAddress: analisi.formattedAddress,
+              })
+              if (!esito.ok) {
+                const msg = esito.errors._ ?? 'Cambio tetto non riuscito.'
+                setErrore(msg)
+                avvisa(msg)
+                setScegliTetto(true)
+                return
+              }
+              setAnalisi(esito.data)
+              setPoligoni(poligoniDaAnalisi(esito.data.falde))
+              setFaldaSelezionata(null)
+              setFaldeRimosse(new Set())
+              avvisa('Tetto aggiornato. Caricamento DSM in corso…')
+            })
+          }}
           onPoligonoCambiato={(indice, vertici) => {
             setPoligoni((prev) => ({ ...prev, [indice]: vertici }))
           }}
@@ -176,7 +205,11 @@ function Risultato({
   poligoni,
   faldaSelezionata,
   faldeRimosse,
+  scegliTetto,
+  ripresaInCorso,
   onSeleziona,
+  onScegliTettoChange,
+  onPuntoTetto,
   onPoligonoCambiato,
   onRipristina,
   onEliminaFalda,
@@ -186,7 +219,11 @@ function Risultato({
   poligoni: Record<number, Coordinate[]>
   faldaSelezionata: number | null
   faldeRimosse: ReadonlySet<number>
+  scegliTetto: boolean
+  ripresaInCorso: boolean
   onSeleziona: (indice: number | null) => void
+  onScegliTettoChange: (attivo: boolean) => void
+  onPuntoTetto: (punto: Coordinate) => void
   onPoligonoCambiato: (indice: number, vertici: Coordinate[]) => void
   onRipristina: (indice: number) => void
   onEliminaFalda: (indice: number) => void
@@ -208,6 +245,21 @@ function Risultato({
     griglia: GrigliaDsm | null
     errore: string | null
   }>({ chiave: '', stato: 'caricamento', griglia: null, errore: null })
+  /** Su telefono mappa e moduli insieme saturano CPU/GPU: una vista per volta. */
+  const [vistaMobile, setVistaMobile] = useState<'mappa' | 'moduli'>('mappa')
+  /** null = non ancora misurato (mostra entrambe, evita flash desktop). */
+  const [desktop, setDesktop] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const sync = () => setDesktop(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  const mostraMappa = desktop !== false || vistaMobile === 'mappa'
+  const mostraModuli = desktop !== false || vistaMobile === 'moduli'
 
   useEffect(() => {
     let annullato = false
@@ -254,19 +306,63 @@ function Risultato({
   return (
     <div className="space-y-4">
       <Card title="Mappa e anteprima moduli">
+        <div
+          className="mb-3 flex gap-1 rounded-lg border p-1 lg:hidden"
+          style={{ borderColor: 'var(--bordo)', background: 'rgba(5,10,20,0.45)' }}
+          role="tablist"
+          aria-label="Vista mobile"
+        >
+          {(
+            [
+              ['mappa', 'Mappa'],
+              ['moduli', 'Moduli'],
+            ] as const
+          ).map(([id, label]) => {
+            const attivo = vistaMobile === id
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={attivo}
+                onClick={() => setVistaMobile(id)}
+                className="flex-1 rounded-md px-3 py-2 text-xs font-medium transition"
+                style={{
+                  background: attivo
+                    ? 'rgba(217, 164, 65, 0.18)'
+                    : 'transparent',
+                  color: attivo ? '#e8c765' : 'var(--testo-tenue)',
+                  boxShadow: attivo
+                    ? 'inset 0 0 0 1px rgba(232, 199, 101, 0.35)'
+                    : undefined,
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
         <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-          <div className="min-w-0">
+          {mostraMappa && (
+            <div className="min-w-0">
             <MappaTetto
               analisi={analisiVista}
               poligoni={poligoni}
               faldaSelezionata={faldaSelezionata}
               onSeleziona={onSeleziona}
               onPoligonoCambiato={onPoligonoCambiato}
+              scegliTetto={scegliTetto}
+              onScegliTettoChange={onScegliTettoChange}
+              onPuntoTetto={onPuntoTetto}
+              ripresaInCorso={ripresaInCorso}
             />
-          </div>
-          <div className="min-w-0">
-            <EditorModuli falda={falda} poligono={verticiSelezionati} />
-          </div>
+            </div>
+          )}
+          {mostraModuli && (
+            <div className="min-w-0">
+              <EditorModuli falda={falda} poligono={verticiSelezionati} />
+            </div>
+          )}
         </div>
         <p className="mt-3 text-xs" style={{ color: 'var(--testo-fioco)' }}>
           {dsmStato === 'caricamento'
@@ -544,16 +640,20 @@ function PannelloFalda({
     : null
   const modificata = seed ? !poligoniQuasiUguali(vertici, seed) : false
 
+  /** Sezione/3D restano chiusi finché non servono (mesh DSM è pesante su mobile). */
+  const [mostraDsmViz, setMostraDsmViz] = useState(false)
+
   const profilo = useMemo(
     () =>
-      grigliaDsm
+      mostraDsmViz && grigliaDsm
         ? profiloSezioneDsm(grigliaDsm, vertici, falda.azimuthDegrees)
         : null,
-    [grigliaDsm, vertici, falda.azimuthDegrees],
+    [mostraDsmViz, grigliaDsm, vertici, falda.azimuthDegrees],
   )
   const mesh = useMemo(
-    () => (grigliaDsm ? meshFaldaDaDsm(grigliaDsm, vertici) : null),
-    [grigliaDsm, vertici],
+    () =>
+      mostraDsmViz && grigliaDsm ? meshFaldaDaDsm(grigliaDsm, vertici) : null,
+    [mostraDsmViz, grigliaDsm, vertici],
   )
 
   return (
@@ -672,19 +772,63 @@ function PannelloFalda({
       ) : null}
 
       <div
-        className="mt-5 grid gap-5 border-t pt-5 lg:grid-cols-2"
+        className="mt-5 border-t pt-5"
         style={{ borderColor: 'var(--bordo-tenue)' }}
       >
-        {dsmStato === 'caricamento' ? (
-          <p className="text-xs lg:col-span-2" style={{ color: 'var(--testo-tenue)' }}>
-            Attendere il DSM Solar per sezione e vista 3D…
-          </p>
-        ) : (
-          <>
-            <SezioneFalda profilo={profilo} pitchSolar={falda.pitchDegrees} />
-            <Vista3dFalda mesh={mesh} />
-          </>
-        )}
+        <button
+          type="button"
+          onClick={() => setMostraDsmViz((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition"
+          style={{
+            borderColor: 'var(--bordo)',
+            background: mostraDsmViz
+              ? 'rgba(217, 164, 65, 0.08)'
+              : 'rgba(5,10,20,0.35)',
+            color: 'var(--testo)',
+          }}
+          aria-expanded={mostraDsmViz}
+        >
+          <span>
+            <span className="font-medium">Sezione e vista 3D</span>
+            <span
+              className="mt-0.5 block text-xs"
+              style={{ color: 'var(--testo-fioco)' }}
+            >
+              {dsmStato === 'caricamento'
+                ? 'DSM in caricamento…'
+                : dsmStato === 'errore'
+                  ? 'DSM non disponibile'
+                  : 'Da DSM Solar — apri solo se ti serve'}
+            </span>
+          </span>
+          <span
+            className="shrink-0 text-xs tabular-nums"
+            style={{ color: '#e8c765' }}
+          >
+            {mostraDsmViz ? 'Chiudi' : 'Apri'}
+          </span>
+        </button>
+
+        {mostraDsmViz ? (
+          <div className="mt-4 grid gap-5 lg:grid-cols-2">
+            {dsmStato === 'caricamento' ? (
+              <p
+                className="text-xs lg:col-span-2"
+                style={{ color: 'var(--testo-tenue)' }}
+              >
+                Attendere il DSM Solar per sezione e vista 3D…
+              </p>
+            ) : (
+              <>
+                <SezioneFalda
+                  profilo={profilo}
+                  pitchSolar={falda.pitchDegrees}
+                />
+                <Vista3dFalda mesh={mesh} />
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
       <p className="mt-3 text-xs leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
         Quote da DSM Solar (Data Layers), non rilievo di cantiere.

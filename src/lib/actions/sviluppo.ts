@@ -2,7 +2,13 @@
 
 import { z } from 'zod'
 import { guard } from '@/lib/auth/session'
-import { buildingInsights, geocodeIndirizzo, type AnalisiTetto } from '@/lib/solar'
+import {
+  buildingInsightsNelRaggio,
+  geocodeIndirizzo,
+  suggerisciIndirizziPlaces,
+  type AnalisiTetto,
+  type SuggerimentoIndirizzo,
+} from '@/lib/solar'
 import { caricaGrigliaDsm, raggioMetriDaBbox } from '@/lib/solar/data-layers'
 import { chiaveCacheDsm, getDsmCached, setDsmCached } from '@/lib/solar/dsm-cache'
 import type { GrigliaDsm } from '@/lib/solar/griglia-dsm'
@@ -10,6 +16,13 @@ import type { ActionResult } from './opportunities'
 
 const schema = z.object({
   indirizzo: z.string().trim().min(5, 'Inserisci un indirizzo più completo.').max(300),
+})
+
+const schemaPunto = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  /** Etichetta da mantenere in UI (indirizzo precedente). */
+  formattedAddress: z.string().trim().min(1).max(400).optional(),
 })
 
 const schemaDsm = z.object({
@@ -24,8 +37,32 @@ const schemaDsm = z.object({
     .optional(),
 })
 
+const schemaSuggerimenti = z.object({
+  input: z.string().trim().min(1).max(200),
+})
+
 /**
- * Laboratorio Sviluppo: geocode + Solar buildingInsights.
+ * Autocomplete indirizzo (Places API New), solo Italia.
+ */
+export async function suggerisciIndirizzi(
+  input: z.input<typeof schemaSuggerimenti>,
+): Promise<ActionResult<{ suggerimenti: readonly SuggerimentoIndirizzo[] }>> {
+  await guard('read', 'sviluppo')
+
+  const parsed = schemaSuggerimenti.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, errors: { _: 'Testo di ricerca non valido.' } }
+  }
+
+  const esito = await suggerisciIndirizziPlaces(parsed.data.input)
+  if (!esito.ok) {
+    return { ok: false, errors: { _: esito.messaggio } }
+  }
+  return { ok: true, data: { suggerimenti: esito.suggerimenti } }
+}
+
+/**
+ * Laboratorio Sviluppo: geocode + Solar buildingInsights (raggio ~200 m).
  * Non persiste nulla sul CRM (step 1).
  */
 export async function analizzaTetto(
@@ -46,7 +83,7 @@ export async function analizzaTetto(
     return { ok: false, errors: { _: geo.errore.messaggio } }
   }
 
-  const solar = await buildingInsights(geo.location)
+  const solar = await buildingInsightsNelRaggio(geo.location)
   if (!solar.ok) {
     return { ok: false, errors: { _: solar.errore.messaggio } }
   }
@@ -55,6 +92,41 @@ export async function analizzaTetto(
     ok: true,
     data: {
       formattedAddress: geo.formatted,
+      ...solar.dati,
+    },
+  }
+}
+
+/**
+ * Riesegue Solar su un punto scelto in mappa (cambio tetto).
+ */
+export async function analizzaTettoAlPunto(
+  input: z.input<typeof schemaPunto>,
+): Promise<ActionResult<AnalisiTetto>> {
+  await guard('update', 'sviluppo')
+
+  const parsed = schemaPunto.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, errors: { _: 'Coordinate non valide.' } }
+  }
+
+  const location = {
+    latitude: parsed.data.latitude,
+    longitude: parsed.data.longitude,
+  }
+  const solar = await buildingInsightsNelRaggio(location)
+  if (!solar.ok) {
+    return { ok: false, errors: { _: solar.errore.messaggio } }
+  }
+
+  const etichetta =
+    parsed.data.formattedAddress?.trim() ||
+    `Punto ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
+
+  return {
+    ok: true,
+    data: {
+      formattedAddress: etichetta,
       ...solar.dati,
     },
   }

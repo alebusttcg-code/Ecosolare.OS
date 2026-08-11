@@ -1,9 +1,21 @@
 /** Dichiarazioni minime per Maps JavaScript nel laboratorio Sviluppo. */
 
 declare namespace google.maps {
+  function importLibrary(name: string): Promise<unknown>
+
   class Map {
     constructor(el: HTMLElement, opts?: Record<string, unknown>)
     fitBounds(bounds: LatLngBounds, padding?: number): void
+    setOptions(opts: Record<string, unknown>): void
+    setTilt(tilt: number): void
+    setHeading(heading: number): void
+    getZoom(): number | undefined
+    setZoom(zoom: number): void
+    setMapTypeId(mapTypeId: string): void
+    addListener(
+      eventName: string,
+      handler: (...args: unknown[]) => void,
+    ): MapsEventListener
   }
   class LatLngBounds {
     extend(latLng: { lat: number; lng: number }): void

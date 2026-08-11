@@ -1,4 +1,6 @@
-export { buildingInsights } from './building-insights'
+export { buildingInsights, buildingInsightsNelRaggio, puntiRicercaEdificio, RAGGIO_MAX_EDIFICIO_SOLAR_M } from './building-insights'
+export { suggerisciIndirizziPlaces } from './places-autocomplete'
+export type { SuggerimentoIndirizzo } from './places-autocomplete'
 export {
   areaPoligonoMetri2,
   formattaMetri,
@@ -19,6 +21,7 @@ export {
 } from './griglia-dsm'
 export { etichettaAzimuth } from './orientamento'
 export {
+  GAP_MODULI_M,
   geoAPixel,
   layoutModuliInFalda,
   metriPerPixelStaticMap,
@@ -26,6 +29,9 @@ export {
   pixelAGeo,
   puntoInRettangoloSchermo,
   ruotaModulo,
+  snapCentroModulo,
+  snapModuloTraVicini,
+  SOGLIA_SNAP_MODULI_M,
   spostaModulo,
 } from './layout-moduli'
 export {

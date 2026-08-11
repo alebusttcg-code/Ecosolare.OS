@@ -4,8 +4,8 @@ import { useEffect, useRef } from 'react'
 import type { MeshFalda } from '@/lib/solar'
 
 /**
- * Vista 3D leggera (canvas 2D + proiezione prospettica).
- * Orbit con drag; evita dipendenza three.js (rete npm instabile in CI/dev).
+ * Vista 3D leggera (canvas 2D). Ridiseagna solo a richiesta
+ * (mount / drag / zoom) — niente loop RAF continuo (blocca i telefoni).
  */
 export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -25,8 +25,10 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    let raf = 0
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    // Su mobile meno triangoli e dpr più basso = meno jank.
+    const mobile = window.matchMedia('(max-width: 1023px)').matches
+    const maxFaces = mobile ? 800 : 4000
+    const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 2)
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect()
@@ -53,7 +55,6 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
       let X = (x - cx) / span
       let Y = (y - cy) / span
       let Z = (z - cz) / span
-      // yaw attorno a Z (verticale locale → Y schermo dopo)
       const cosY = Math.cos(yaw)
       const sinY = Math.sin(yaw)
       ;[X, Y] = [X * cosY - Y * sinY, X * sinY + Y * cosY]
@@ -77,7 +78,6 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
       ctx.fillStyle = 'rgba(5,10,20,0.85)'
       ctx.fillRect(0, 0, w, h)
 
-      // Griglia suolo.
       ctx.strokeStyle = 'rgba(92,117,149,0.25)'
       ctx.lineWidth = 1 * dpr
       for (let i = -2; i <= 2; i++) {
@@ -96,7 +96,8 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
       }
 
       const faces: { depth: number; pts: { x: number; y: number }[] }[] = []
-      for (let i = 0; i + 2 < mesh.indici.length; i += 3) {
+      const step = Math.max(1, Math.ceil(mesh.indici.length / 3 / maxFaces))
+      for (let i = 0; i + 2 < mesh.indici.length; i += 3 * step) {
         const ia = mesh.indici[i]!
         const ib = mesh.indici[i + 1]!
         const ic = mesh.indici[i + 2]!
@@ -126,13 +127,12 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
         ctx.fill()
         ctx.stroke()
       }
-
-      raf = requestAnimationFrame(draw)
     }
 
-    raf = requestAnimationFrame(draw)
+    draw()
 
     const onDown = (e: PointerEvent) => {
+      e.preventDefault()
       stato.current.dragging = true
       stato.current.lastX = e.clientX
       stato.current.lastY = e.clientY
@@ -140,6 +140,7 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
     }
     const onMove = (e: PointerEvent) => {
       if (!stato.current.dragging) return
+      e.preventDefault()
       const dx = e.clientX - stato.current.lastX
       const dy = e.clientY - stato.current.lastY
       stato.current.lastX = e.clientX
@@ -149,6 +150,7 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
         0.15,
         Math.min(1.35, stato.current.pitch + dy * 0.01),
       )
+      draw()
     }
     const onUp = () => {
       stato.current.dragging = false
@@ -159,6 +161,11 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
         0.4,
         Math.min(3, stato.current.distanza + e.deltaY * 0.0015),
       )
+      draw()
+    }
+    const onResize = () => {
+      resize()
+      draw()
     }
 
     canvas.addEventListener('pointerdown', onDown)
@@ -166,16 +173,15 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
     canvas.addEventListener('pointerup', onUp)
     canvas.addEventListener('pointercancel', onUp)
     canvas.addEventListener('wheel', onWheel, { passive: false })
-    window.addEventListener('resize', resize)
+    window.addEventListener('resize', onResize)
 
     return () => {
-      cancelAnimationFrame(raf)
       canvas.removeEventListener('pointerdown', onDown)
       canvas.removeEventListener('pointermove', onMove)
       canvas.removeEventListener('pointerup', onUp)
       canvas.removeEventListener('pointercancel', onUp)
       canvas.removeEventListener('wheel', onWheel)
-      window.removeEventListener('resize', resize)
+      window.removeEventListener('resize', onResize)
     }
   }, [mesh])
 
@@ -192,13 +198,13 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="text-sm font-medium">Vista 3D (DSM)</h4>
         <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-          Trascina per orbitare · scroll per zoom
+          Trascina per orbitare
         </p>
       </div>
       <canvas
         ref={canvasRef}
-        className="h-[260px] w-full touch-none rounded-lg border sm:h-[300px]"
-        style={{ borderColor: 'var(--bordo)', cursor: 'grab' }}
+        className="h-[220px] w-full touch-none rounded-lg border sm:h-[300px]"
+        style={{ borderColor: 'var(--bordo)', cursor: 'grab', touchAction: 'none' }}
       />
     </div>
   )

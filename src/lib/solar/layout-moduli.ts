@@ -256,6 +256,158 @@ export function spostaModulo(
   })
 }
 
+/** Interspazio tipico tra moduli (come nel layout automatico). */
+export const GAP_MODULI_M = 0.03
+
+/** Raggio della calamita: entro questa distanza (m) scatta lo snap. */
+export const SOGLIA_SNAP_MODULI_M = 0.32
+
+function diffRotazioneDegrees(a: number, b: number): number {
+  let d = Math.abs(a - b) % 360
+  if (d > 180) d = 360 - d
+  return d
+}
+
+function dimensioniModuloM(
+  formato: FormatoModuloFv,
+  landscape: boolean,
+): { w: number; h: number } {
+  return landscape
+    ? { w: formato.lunghezzaM, h: formato.larghezzaM }
+    : { w: formato.larghezzaM, h: formato.lunghezzaM }
+}
+
+/**
+ * Calamita: avvicina il centro a un allineamento preciso con i moduli fissi
+ * (bordo a bordo + gap, o allineamento degli assi), nello spazio locale
+ * della rotazione del pannello.
+ */
+export function snapCentroModulo(opzioni: {
+  centro: Coordinate
+  rotazioneDegrees: number
+  formato: FormatoModuloFv
+  azimuthDegrees: number
+  landscape: boolean
+  origineProiezione: Coordinate
+  /** Moduli già posizionati (non trascinate). */
+  fissi: readonly RettangoloModulo[]
+  sogliaM?: number
+  gapM?: number
+}): Coordinate {
+  const {
+    centro,
+    rotazioneDegrees,
+    formato,
+    azimuthDegrees,
+    landscape,
+    origineProiezione,
+    fissi,
+    sogliaM = SOGLIA_SNAP_MODULI_M,
+    gapM = GAP_MODULI_M,
+  } = opzioni
+
+  if (fissi.length === 0 || sogliaM <= 0) return centro
+
+  const { w, h } = dimensioniModuloM(formato, landscape)
+  const θ = ((azimuthDegrees + 90 + rotazioneDegrees) * Math.PI) / 180
+  const cosA = Math.cos(θ)
+  const sinA = Math.sin(θ)
+
+  const toUV = (c: Coordinate) => {
+    const { e, n } = aMetriLocali(c, origineProiezione)
+    return { u: e * cosA + n * sinA, v: -e * sinA + n * cosA }
+  }
+  const fromUV = (u: number, v: number): Coordinate => {
+    const e = u * cosA - v * sinA
+    const n = u * sinA + v * cosA
+    return daMetriLocali(e, n, origineProiezione)
+  }
+
+  const { u, v } = toUV(centro)
+  let bestDu = 0
+  let bestDuAbs = sogliaM
+  let bestDv = 0
+  let bestDvAbs = sogliaM
+
+  const considera = (
+    target: number,
+    attuale: number,
+    asse: 'u' | 'v',
+  ) => {
+    const d = target - attuale
+    const a = Math.abs(d)
+    if (asse === 'u') {
+      if (a < bestDuAbs) {
+        bestDuAbs = a
+        bestDu = d
+      }
+    } else if (a < bestDvAbs) {
+      bestDvAbs = a
+      bestDv = d
+    }
+  }
+
+  for (const fisso of fissi) {
+    if (diffRotazioneDegrees(fisso.rotazioneDegrees, rotazioneDegrees) > 1) {
+      continue
+    }
+    const { u: fu, v: fv } = toUV(fisso.centro)
+    // Stesso formato → stessi w/h nello spazio di rotazione.
+    const semiU = w + gapM
+    const semiV = h + gapM
+
+    considera(fu + semiU, u, 'u')
+    considera(fu - semiU, u, 'u')
+    considera(fu, u, 'u')
+    considera(fv + semiV, v, 'v')
+    considera(fv - semiV, v, 'v')
+    considera(fv, v, 'v')
+  }
+
+  if (bestDu === 0 && bestDv === 0) return centro
+  return fromUV(u + bestDu, v + bestDv)
+}
+
+/**
+ * Applica la calamita a un modulo (ricostruisce angoli dal centro snappato).
+ */
+export function snapModuloTraVicini(
+  m: RettangoloModulo,
+  fissi: readonly RettangoloModulo[],
+  formato: FormatoModuloFv,
+  azimuthDegrees: number,
+  landscape: boolean,
+  origineProiezione: Coordinate,
+  sogliaM?: number,
+  gapM?: number,
+): RettangoloModulo {
+  const centro = snapCentroModulo({
+    centro: m.centro,
+    rotazioneDegrees: m.rotazioneDegrees,
+    formato,
+    azimuthDegrees,
+    landscape,
+    origineProiezione,
+    fissi,
+    sogliaM,
+    gapM,
+  })
+  if (
+    centro.latitude === m.centro.latitude &&
+    centro.longitude === m.centro.longitude
+  ) {
+    return m
+  }
+  return moduloDaCentro({
+    centro,
+    formato,
+    azimuthDegrees,
+    landscape,
+    rotazioneDegrees: m.rotazioneDegrees,
+    origineProiezione,
+  })
+}
+
 /** Ruota un modulo di `deltaDegrees` attorno al suo centro. */
 export function ruotaModulo(
   m: RettangoloModulo,

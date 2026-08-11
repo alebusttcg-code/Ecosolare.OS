@@ -1,6 +1,14 @@
 import { z } from 'zod'
 import { env } from '@/env'
+import { metriFra } from './geo'
+import { spostaMetri } from './sezione-dsm'
 import type { AnalisiTetto, Coordinate, ErroreSolar, FaldaTetto } from './tipi'
+
+/** Raggio massimo prodotto: oltre, l’edificio trovato non è accettato. */
+export const RAGGIO_MAX_EDIFICIO_SOLAR_M = 200
+
+const MSG_EDIFICIO_NON_TROVATO =
+  'Nessun edificio Solar entro circa 200 m da questo punto. Clicca più vicino al tetto o verifica la copertura nella zona.'
 
 const latLng = z.object({
   latitude: z.number(),
@@ -76,9 +84,13 @@ function formattaDataImmagine(d: {
 /**
  * Solar API: edificio più vicino alle coordinate.
  * @see https://developers.google.com/maps/documentation/solar/building-insights
+ *
+ * @param maxDistanzaDalPuntoM `null` = non filtrare per distanza (usato dai probe);
+ *   default = raggio prodotto 200 m.
  */
 export async function buildingInsights(
   location: Coordinate,
+  maxDistanzaDalPuntoM: number | null = RAGGIO_MAX_EDIFICIO_SOLAR_M,
 ): Promise<EsitoBuildingInsights> {
   const chiave = env().GOOGLE_MAPS_API_KEY?.trim()
   if (!chiave) {
@@ -135,8 +147,7 @@ export async function buildingInsights(
         ok: false,
         errore: {
           codice: 'edificio_non_trovato',
-          messaggio:
-            'Nessun edificio con dati Solar vicino a questo indirizzo (copertura o qualità insufficiente).',
+          messaggio: MSG_EDIFICIO_NON_TROVATO,
         },
       }
     }
@@ -170,6 +181,20 @@ export async function buildingInsights(
   }
 
   const potential = body.solarPotential
+  const centroEdificio = body.center ?? location
+  if (
+    maxDistanzaDalPuntoM != null &&
+    metriFra(location, centroEdificio) > maxDistanzaDalPuntoM
+  ) {
+    return {
+      ok: false,
+      errore: {
+        codice: 'edificio_non_trovato',
+        messaggio: MSG_EDIFICIO_NON_TROVATO,
+      },
+    }
+  }
+
   const segmenti = potential?.roofSegmentStats ?? []
   const falde: FaldaTetto[] = segmenti.map((s, indice) => ({
     indice,
@@ -199,7 +224,7 @@ export async function buildingInsights(
   return {
     ok: true,
     dati: {
-      location: body.center ?? location,
+      location: centroEdificio,
       boundingBox: body.boundingBox
         ? {
             sw: {
@@ -220,4 +245,72 @@ export async function buildingInsights(
       falde,
     },
   }
+}
+
+/**
+ * Punti di prova entro `raggioMaxM` (origine + anelli).
+ * findClosest Google guarda ~50 m: gli anelli estendono la ricerca prodotto a 200 m.
+ */
+export function puntiRicercaEdificio(
+  origine: Coordinate,
+  raggioMaxM: number = RAGGIO_MAX_EDIFICIO_SOLAR_M,
+): Coordinate[] {
+  const out: Coordinate[] = [origine]
+  const raggi = [55, 110, 165, 200].filter((r) => r <= raggioMaxM + 1e-6)
+  const settori = 6
+  for (const r of raggi) {
+    for (let i = 0; i < settori; i++) {
+      out.push(spostaMetri(origine, (i * 360) / settori, r))
+    }
+  }
+  return out
+}
+
+/**
+ * Cerca l’edificio Solar più vicino accettando un centro entro ~200 m
+ * dal punto richiesto (prove a anello se findClosest sul punto fallisce).
+ */
+export async function buildingInsightsNelRaggio(
+  location: Coordinate,
+): Promise<EsitoBuildingInsights> {
+  const punti = puntiRicercaEdificio(location)
+  let ultimo: EsitoBuildingInsights | null = null
+
+  for (const punto of punti) {
+    // Sui probe non filtriamo vs il punto di prova: il filtro è sull’origine.
+    const esito = await buildingInsights(
+      punto,
+      punto === location ? RAGGIO_MAX_EDIFICIO_SOLAR_M : null,
+    )
+    if (esito.ok) {
+      // Distanza rispetto al click/geocode originale, non al probe.
+      const d = metriFra(location, esito.dati.location)
+      if (d <= RAGGIO_MAX_EDIFICIO_SOLAR_M) {
+        return esito
+      }
+      ultimo = {
+        ok: false,
+        errore: {
+          codice: 'edificio_non_trovato',
+          messaggio: MSG_EDIFICIO_NON_TROVATO,
+        },
+      }
+      continue
+    }
+    ultimo = esito
+    // Solo per NOT_FOUND continuiamo a sondare; quota/rete si fermano.
+    if (esito.errore.codice !== 'edificio_non_trovato') {
+      return esito
+    }
+  }
+
+  return (
+    ultimo ?? {
+      ok: false,
+      errore: {
+        codice: 'edificio_non_trovato',
+        messaggio: MSG_EDIFICIO_NON_TROVATO,
+      },
+    }
+  )
 }

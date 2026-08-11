@@ -9,6 +9,7 @@ import {
   pixelAGeo,
   puntoInRettangoloSchermo,
   ruotaModulo,
+  snapCentroModulo,
   spostaModulo,
   type Coordinate,
   type FaldaTetto,
@@ -64,18 +65,20 @@ export function EditorModuli({
   const [selezionati, setSelezionati] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
-  const [marqueeLive, setMarqueeLive] = useState<{
-    x0: number
-    y0: number
-    x1: number
-    y1: number
-  } | null>(null)
   const [schermoIntero, setSchermoIntero] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgRef = useRef<HTMLImageElement | null>(null)
   const proiezioneRef = useRef<ProiezioneCanvas | null>(null)
   const dragRef = useRef<DragMode | null>(null)
+  const marqueeRef = useRef<{
+    x0: number
+    y0: number
+    x1: number
+    y1: number
+  } | null>(null)
+  const disegnaRef = useRef<() => void>(() => {})
+  const pendingCommitRef = useRef<RettangoloModulo[] | null>(null)
 
   const centro = useMemo(
     () =>
@@ -147,7 +150,10 @@ export function EditorModuli({
 
     const w = canvas.clientWidth || 400
     const h = canvas.clientHeight || 320
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const mobile =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 1023px)').matches
+    const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2)
     canvas.width = Math.floor(w * dpr)
     canvas.height = Math.floor(h * dpr)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -219,7 +225,7 @@ export function EditorModuli({
       ctx.stroke()
     })
 
-    const mq = marqueeLive
+    const mq = marqueeRef.current
     if (mq) {
       const x = Math.min(mq.x0, mq.x1)
       const y = Math.min(mq.y0, mq.y1)
@@ -233,7 +239,11 @@ export function EditorModuli({
       ctx.strokeRect(x, y, bw, bh)
       ctx.setLineDash([])
     }
-  }, [centro, poligono, marqueeLive])
+  }, [centro, poligono])
+
+  useEffect(() => {
+    disegnaRef.current = disegna
+  }, [disegna])
 
   useEffect(() => {
     if (!urlStatica || !centro || !poligono || poligono.length < 3) return
@@ -305,14 +315,19 @@ export function EditorModuli({
     }
 
     const onDown = (e: PointerEvent) => {
+      e.preventDefault()
       const { x, y } = coordsLocale(e)
       const hit = hitTest(x, y)
       const toggle = e.shiftKey || e.metaKey || e.ctrlKey
 
       if (hit == null) {
-        if (!toggle) setSelezionati(new Set())
+        if (!toggle) {
+          setSelezionati(new Set())
+          selezionatiRef.current = new Set()
+        }
         dragRef.current = { tipo: 'marquee', x0: x, y0: y, x1: x, y1: y }
-        setMarqueeLive({ x0: x, y0: y, x1: x, y1: y })
+        marqueeRef.current = { x0: x, y0: y, x1: x, y1: y }
+        disegnaRef.current()
         canvas.setPointerCapture(e.pointerId)
         return
       }
@@ -344,6 +359,7 @@ export function EditorModuli({
         centri0,
         pointer0,
       }
+      pendingCommitRef.current = null
       canvas.setPointerCapture(e.pointerId)
       canvas.style.cursor = 'grabbing'
     }
@@ -351,12 +367,14 @@ export function EditorModuli({
     const onMove = (e: PointerEvent) => {
       const drag = dragRef.current
       if (!drag) return
+      e.preventDefault()
       const { x, y } = coordsLocale(e)
 
       if (drag.tipo === 'marquee') {
         drag.x1 = x
         drag.y1 = y
-        setMarqueeLive({ x0: drag.x0, y0: drag.y0, x1: x, y1: y })
+        marqueeRef.current = { x0: drag.x0, y0: drag.y0, x1: x, y1: y }
+        disegnaRef.current()
         return
       }
 
@@ -367,29 +385,72 @@ export function EditorModuli({
       const dLng = pointer.longitude - drag.pointer0.longitude
       const fmt = formatoModuloById(formatoId)
 
-      aggiornaModuli((prev) =>
-        prev.map((m, i) => {
-          const pos = drag.indici.indexOf(i)
-          if (pos < 0) return m
-          const c0 = drag.centri0[pos]!
-          return spostaModulo(
-            { ...m, centro: c0 },
-            dLat,
-            dLng,
-            fmt,
-            falda.azimuthDegrees,
-            landscape,
-            centro,
-          )
-        }),
-      )
+      const next = moduliRef.current.map((m, i) => {
+        const pos = drag.indici.indexOf(i)
+        if (pos < 0) return m
+        const c0 = drag.centri0[pos]!
+        return spostaModulo(
+          { ...m, centro: c0 },
+          dLat,
+          dLng,
+          fmt,
+          falda.azimuthDegrees,
+          landscape,
+          centro,
+        )
+      })
+
+      // Calamita rispetto ai moduli non trascinati (corpo rigido sulla selezione).
+      const selezionatiDrag = new Set(drag.indici)
+      const fissi = next.filter((_, i) => !selezionatiDrag.has(i))
+      const leaderIdx = drag.indici[0]!
+      const leader = next[leaderIdx]!
+      if (leader && fissi.length > 0) {
+        const snappato = snapCentroModulo({
+          centro: leader.centro,
+          rotazioneDegrees: leader.rotazioneDegrees,
+          formato: fmt,
+          azimuthDegrees: falda.azimuthDegrees,
+          landscape,
+          origineProiezione: centro,
+          fissi,
+        })
+        const sLat = snappato.latitude - leader.centro.latitude
+        const sLng = snappato.longitude - leader.centro.longitude
+        if (sLat !== 0 || sLng !== 0) {
+          for (const i of drag.indici) {
+            const m = next[i]!
+            next[i] = spostaModulo(
+              m,
+              sLat,
+              sLng,
+              fmt,
+              falda.azimuthDegrees,
+              landscape,
+              centro,
+            )
+          }
+        }
+      }
+
+      // Nessun setState durante il drag: evita freeze su mobile.
+      moduliRef.current = next
+      pendingCommitRef.current = next
+      disegnaRef.current()
     }
 
     const onUp = (e: PointerEvent) => {
       const drag = dragRef.current
       dragRef.current = null
       canvas.style.cursor = 'grab'
-      setMarqueeLive(null)
+      marqueeRef.current = null
+
+      if (pendingCommitRef.current) {
+        aggiornaModuli(pendingCommitRef.current)
+        pendingCommitRef.current = null
+      }
+
+      disegnaRef.current()
 
       if (!drag || drag.tipo !== 'marquee') return
       const proj = proiezioneRef.current
@@ -509,8 +570,8 @@ export function EditorModuli({
         <div>
           <h3 className="text-sm font-medium">Anteprima moduli</h3>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-            Falda {falda.indice + 1} · trascina · Shift/⌘ click o riquadro per
-            gruppo
+            Falda {falda.indice + 1} · trascina (calamita sui vicini) · Shift/⌘
+            o riquadro per gruppo
             {schermoIntero ? ' · Esc per uscire' : null}
           </p>
         </div>
@@ -657,17 +718,21 @@ export function EditorModuli({
         ref={canvasRef}
         className={
           schermoIntero
-            ? 'min-h-[50vh] w-full flex-1 touch-none rounded-xl border'
-            : 'h-[280px] w-full touch-none rounded-xl border sm:h-[320px]'
+            ? 'min-h-[50dvh] w-full flex-1 touch-none rounded-xl border'
+            : 'h-[240px] w-full touch-none rounded-xl border sm:h-[320px]'
         }
-        style={{ borderColor: 'var(--bordo)', background: '#050a14' }}
+        style={{
+          borderColor: 'var(--bordo)',
+          background: '#050a14',
+          touchAction: 'none',
+        }}
       />
 
       {!schermoIntero ? (
         <p className="text-[11px] leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-          Shift/⌘+click o trascina un riquadro per selezionare un gruppo, poi
-          sposta o ruota insieme. Usa «Tutto schermo» per lavorare più a
-          largo. Anteprima non contrattuale.
+          Vicini entro ~30 cm si attaccano da soli (bordo a bordo e
+          allineamento). Shift/⌘+click o riquadro per un gruppo. «Tutto
+          schermo» per lavorare più a largo. Anteprima non contrattuale.
         </p>
       ) : null}
     </div>
