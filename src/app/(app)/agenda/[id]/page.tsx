@@ -12,8 +12,13 @@ import {
   risposteDaPrequalifica,
   unisciRisposteSopralluogo,
 } from '@/lib/domain/sopralluogo-prequalifica'
+import {
+  haDatiStudioPerSopralluogo,
+  risposteDaStudioTetto,
+} from '@/lib/domain/sopralluogo-studio-tetto'
 import { correggiDefinizioneQuestionario } from '@/lib/domain/etichette-ui'
 import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnaire'
+import { getUltimoStudioCompletoPerLead } from '@/lib/queries/site-studies'
 import { CompilaSopralluogo } from './compila'
 
 export const metadata = { title: 'Agenda e sopralluoghi — EcoSolare OS' }
@@ -65,11 +70,16 @@ export default async function SopralluogoPage({
   }
 
   const prequalifica = (riga.prequalifica ?? {}) as Risposte
+  const studio = await getUltimoStudioCompletoPerLead(riga.opportunityId)
+  const daPrequalifica = risposteDaPrequalifica(prequalifica)
+  const daStudio = risposteDaStudioTetto(studio?.payload)
+  // Priorità: salvate > studio tetto (geometria) > prequalifica.
   const risposteIniziali = unisciRisposteSopralluogo(
-    risposteDaPrequalifica(prequalifica),
+    { ...daPrequalifica, ...daStudio },
     (riga.sopralluogo.answers ?? {}) as Risposte,
   )
-  const daPrequalifica = haDatiPrequalificaPerSopralluogo(prequalifica)
+  const haPrequalifica = haDatiPrequalificaPerSopralluogo(prequalifica)
+  const haStudio = haDatiStudioPerSopralluogo(studio?.payload)
 
   const completato = riga.sopralluogo.status === 'completato'
 
@@ -122,11 +132,23 @@ export default async function SopralluogoPage({
 
       <CompilaSopralluogo
         surveyId={riga.sopralluogo.id}
+        opportunityId={riga.opportunityId}
         definizione={correggiDefinizioneQuestionario(
           riga.template.definition as DefinizioneQuestionario,
         )}
         risposteIniziali={risposteIniziali}
-        daPrequalifica={daPrequalifica}
+        risposteStudio={daStudio}
+        studioCompleto={
+          studio
+            ? {
+                id: studio.id,
+                powerKwp: studio.powerKwp,
+                formattedAddress: studio.formattedAddress,
+              }
+            : null
+        }
+        daPrequalifica={haPrequalifica}
+        daStudioTetto={haStudio}
         noteIniziali={riga.sopralluogo.notes ?? ''}
         completato={completato}
         fotoPerCampo={fotoPerCampo}

@@ -1,9 +1,11 @@
+import Link from 'next/link'
 import { Intestazione } from '@/components/ui'
 import { getDb } from '@/db'
 import { contacts, opportunities, sites } from '@/db/schema'
 import { env } from '@/env'
 import { guard } from '@/lib/auth/session'
 import type { SnapshotStudioTetto } from '@/lib/domain/studio-tetto'
+import { percorsoAppSicuro } from '@/lib/percorso-app'
 import { getStudioTetto } from '@/lib/queries/site-studies'
 import { and, eq, isNull } from 'drizzle-orm'
 import { LaboratorioSolar } from './laboratorio'
@@ -13,11 +15,13 @@ export const metadata = { title: 'Sviluppo — EcoSolare OS' }
 export default async function SviluppoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ lead?: string; studio?: string }>
+  searchParams: Promise<{ lead?: string; studio?: string; da?: string }>
 }) {
   await guard('read', 'sviluppo')
   const configurato = Boolean(env().GOOGLE_MAPS_API_KEY?.trim())
-  const { lead, studio } = await searchParams
+  const { lead, studio, da: daRaw } = await searchParams
+  const ritorno = percorsoAppSicuro(daRaw)
+  const daSopralluogo = ritorno?.startsWith('/agenda/') ?? false
 
   let contestoCrm: {
     opportunityId: string
@@ -80,16 +84,31 @@ export default async function SviluppoPage({
 
   return (
     <div className="space-y-6">
+      {ritorno && daSopralluogo ? (
+        <Link
+          href={ritorno}
+          className="inline-block text-sm"
+          style={{ color: 'var(--testo-tenue)' }}
+        >
+          ← Torna al sopralluogo
+        </Link>
+      ) : null}
       <Intestazione
         eyebrow={contestoCrm ? 'Studio tetto' : 'Laboratorio'}
         titolo="Sviluppo"
         sottotitolo={
-          contestoCrm
-            ? 'Analisi dell’immobile del lead e salvataggio per il preventivo'
-            : 'Analisi del tetto da indirizzo e anteprima disposizione moduli'
+          daSopralluogo
+            ? 'Analizza il tetto e salva lo studio completo per tornare al sopralluogo con la geometria'
+            : contestoCrm
+              ? 'Analisi dell’immobile del lead e salvataggio per il preventivo'
+              : 'Analisi del tetto da indirizzo e anteprima disposizione moduli'
         }
       />
-      <LaboratorioSolar configurato={configurato} contestoCrm={contestoCrm} />
+      <LaboratorioSolar
+        configurato={configurato}
+        contestoCrm={contestoCrm}
+        ritorno={ritorno}
+      />
     </div>
   )
 }

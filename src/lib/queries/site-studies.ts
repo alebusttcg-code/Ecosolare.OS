@@ -54,3 +54,31 @@ export async function getStudioCompletoPerLead(
     },
   })
 }
+
+/** Ultimo studio completo del lead (payload incluso), per prefill sopralluogo. */
+export async function getUltimoStudioCompletoPerLead(opportunityId: string) {
+  const riga = await getDb().query.siteStudies.findFirst({
+    where: and(
+      eq(siteStudies.opportunityId, opportunityId),
+      eq(siteStudies.status, 'completo'),
+    ),
+    orderBy: [desc(siteStudies.completedAt), desc(siteStudies.updatedAt)],
+    columns: {
+      id: true,
+      title: true,
+      payload: true,
+      powerKwp: true,
+      formattedAddress: true,
+      completedAt: true,
+    },
+  })
+  if (!riga) return null
+  return {
+    id: riga.id,
+    title: riga.title,
+    payload: riga.payload as SnapshotStudioTetto,
+    powerKwp: riga.powerKwp,
+    formattedAddress: riga.formattedAddress,
+    completedAt: riga.completedAt,
+  }
+}

@@ -36,7 +36,9 @@ l'adozione. Ogni voce: eseguire, segnare data/esito, annotare anomalie.
 | 3 | Apertura popup lead: tel/WhatsApp funzionano | ☐ | | |
 | 4 | «Scheda completa» chiude overlay e naviga (no scroll bloccato) | ☐ | | |
 | 5 | Prequalifica / questionario compilato | ☐ | | |
-| 6 | Sopralluogo creato e chiuso con checklist | ☐ | | |
+| 5b | Sopralluogo: card **Studio tetto** → Apri Sviluppo → salva studio completo → ritorno automatico all’agenda | ☐ | | |
+| 5c | Geometria Copertura precompilata e editabile; senza studio «Completa» resta disabilitato | ☐ | | |
+| 6 | Sopralluogo creato e chiuso con checklist (dopo studio completo) | ☐ | | |
 | 7 | Preventivo creato, versione visibile, margine per chi ha `can_view_costs` | ☐ | | |
 | 8 | Approvazione sotto soglia (se applicabile) | ☐ | | |
 | 9 | «Invia preventivo» / cambio stato coerente con UI | ☐ | | |
@@ -115,6 +117,7 @@ documentate se non applicabili.
 | S2f | **Cambia tetto** → click su altro edificio in mappa → nuova analisi entro ~200 m; oltre / senza copertura: messaggio chiaro | ☐ | | |
 | S3 | Indirizzo inesistente o zona senza copertura: messaggio chiaro (non crash) | ☐ | | |
 | S4 | Utente contabilità/cantiere: voce Sviluppo assente | ☐ | | |
+| S5 | Dal sopralluogo (commerciale): Apri Sviluppo con `?da=/agenda/…` → salva completo → redirect al sopralluogo; «← Torna al sopralluogo» visibile | ☐ | | |
 
 **Nota costi:** ogni `dataLayers:get` + download GeoTIFF è fatturato da Google. Il lab mette in cache la griglia per ~30 min sullo stesso punto/raggio.
 

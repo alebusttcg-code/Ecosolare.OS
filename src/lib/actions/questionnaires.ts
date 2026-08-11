@@ -19,6 +19,7 @@ import {
   annullaFollowUpPre,
   creaFollowUpPost,
 } from '@/lib/follow-up'
+import { getUltimoStudioCompletoPerLead } from '@/lib/queries/site-studies'
 import type { ActionResult } from './opportunities'
 
 /**
@@ -224,6 +225,8 @@ export interface EsitoSopralluogo {
   readonly violazioni: readonly { campo: string; label: string; messaggio: string }[]
   readonly criticita: readonly string[]
   readonly percentuale: number
+  /** Tentata chiusura senza studio tetto Solar completo sullo stesso lead. */
+  readonly mancaStudioTetto?: boolean
 }
 
 /**
@@ -270,7 +273,13 @@ export async function saveSurvey(
   const { calcolaCompletezza } = await import('@/lib/domain/questionnaire')
   const completezza = calcolaCompletezza(definizione, risposte)
 
-  const puoCompletare = dati.completa && violazioni.length === 0
+  // Chiusura solo con studio tetto completo (stesso lead): geometria reale prima del checklist.
+  const mancaStudioTetto =
+    dati.completa &&
+    !(await getUltimoStudioCompletoPerLead(sopralluogo.opportunityId))
+
+  const puoCompletare =
+    dati.completa && violazioni.length === 0 && !mancaStudioTetto
   const adesso = new Date()
 
   // Colonne promosse (ADR-004): i campi usati in elenchi e KPI diventano colonne.
@@ -360,6 +369,7 @@ export async function saveSurvey(
       })),
       criticita: criticita.map((c) => c.label),
       percentuale: completezza.percentuale,
+      ...(mancaStudioTetto ? { mancaStudioTetto: true as const } : {}),
     },
   }
 }

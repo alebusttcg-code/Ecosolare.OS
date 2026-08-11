@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
 import { Badge, Card, Vuoto } from '@/components/ui'
@@ -63,10 +64,14 @@ export type ContestoCrmStudio = {
 export function LaboratorioSolar({
   configurato,
   contestoCrm,
+  ritorno = null,
 }: {
   configurato: boolean
   contestoCrm?: ContestoCrmStudio | null
+  /** Path interno sicuro (`?da=`) dopo salvataggio studio completo. */
+  ritorno?: string | null
 }) {
+  const router = useRouter()
   const avvisa = useAvvisi()
   const { inCorso, esegui } = useAzioneServer()
   const iniziale = contestoCrm?.snapshotIniziale
@@ -292,11 +297,19 @@ export function LaboratorioSolar({
         return
       }
       setStudyId(esito.data.studyId)
-      avvisa(
-        esito.data.status === 'completo'
-          ? 'Studio completo: puoi creare il preventivo dal lead.'
-          : 'Bozza studio salvata.',
-      )
+      if (esito.data.status === 'completo') {
+        avvisa(
+          ritorno
+            ? 'Studio completo: torni al sopralluogo con la geometria aggiornata.'
+            : 'Studio completo: puoi creare il preventivo dal lead.',
+        )
+        if (ritorno) {
+          router.push(ritorno)
+          router.refresh()
+        }
+        return
+      }
+      avvisa('Bozza studio salvata.')
     })
   }
 
@@ -313,8 +326,10 @@ export function LaboratorioSolar({
               </>
             ) : null}
             . Analizza il tetto, posiziona i moduli e salva come{' '}
-            <strong style={{ color: 'var(--testo)' }}>completo</strong> per
-            sbloccare il preventivo.
+            <strong style={{ color: 'var(--testo)' }}>completo</strong>
+            {ritorno?.startsWith('/agenda/')
+              ? ' per tornare al sopralluogo con la geometria e sbloccare la chiusura.'
+              : ' per sbloccare il preventivo.'}
           </p>
         </Card>
       ) : null}
