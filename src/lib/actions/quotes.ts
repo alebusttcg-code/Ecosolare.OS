@@ -34,6 +34,7 @@ import {
 } from '@/lib/domain/dossier-preventivo'
 import { unitaRichiedeIntero } from '@/lib/domain/unita'
 import { getParametriSimulazioneFv } from '@/lib/queries/parametri-simulazione'
+import { getDocumentiTecniciProdotti } from '@/lib/queries/documenti-tecnici'
 import type { ActionResult } from './opportunities'
 
 function errori(issues: readonly z.core.$ZodIssue[]): Record<string, string> {
@@ -169,7 +170,38 @@ const bloccoTermicoSchema = z
     descrizione: z.string().trim().max(500),
     prezzoLordoEur: z.number().min(0).max(1_000_000),
     detrazionePct: z.number().min(0).max(100),
+    incentivo: z.enum(['detrazione', 'conto_termico', 'nessuno']),
     contoTermicoEur: z.number().min(0).max(1_000_000).nullable(),
+    /*
+     * I tre dati che trasformano il blocco termico da descrizione a calcolo.
+     * Facoltativi: senza, la pompa di calore resta nel preventivo come voce di
+     * spesa e non entra nel piano economico — meglio un capitolo muto che un
+     * risparmio inventato.
+     */
+    scop: z.number().min(1).max(8).nullable().optional(),
+    prezzoGasEurSmc: z.number().min(0).max(10).nullable().optional(),
+    anniDetrazione: z.number().int().min(1).max(20).nullable().optional(),
+    anniContoTermico: z.number().int().min(1).max(10).nullable().optional(),
+  })
+  .superRefine((termico, ctx) => {
+    if (!termico.presente) return
+    if (termico.incentivo === 'detrazione' && !(termico.detrazionePct > 0)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['detrazionePct'],
+        message: 'Indica una percentuale di detrazione maggiore di zero.',
+      })
+    }
+    if (
+      termico.incentivo === 'conto_termico' &&
+      !(termico.contoTermicoEur != null && termico.contoTermicoEur > 0)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['contoTermicoEur'],
+        message: 'Indica l’importo del Conto Termico.',
+      })
+    }
   })
   .nullable()
   .optional()
@@ -422,6 +454,13 @@ export async function sendQuote(versionId: string): Promise<ActionResult<{ invia
 
   const adesso = new Date()
   const parametriSimulazione = await getParametriSimulazioneFv()
+  const documentiTecnici = await getDocumentiTecniciProdotti(
+    db,
+    righe
+      .map((riga) => riga.productId)
+      .filter((productId): productId is string => productId != null),
+    adesso,
+  )
   await db
     .update(quoteVersions)
     .set({
@@ -433,6 +472,9 @@ export async function sendQuote(versionId: string): Promise<ActionResult<{ invia
         inviatoIl: adesso.toISOString(),
         sogliaMarginePct: (soglia / 100).toFixed(2),
         parametriSimulazione,
+        // Le schede sono parte dell'offerta contrattuale: salviamo versione,
+        // percorso immutabile e hash, non soltanto il collegamento al prodotto.
+        documentiTecnici,
         totali: {
           imponibile: versione.revenueNet,
           costo: versione.costTotal,
@@ -442,6 +484,7 @@ export async function sendQuote(versionId: string): Promise<ActionResult<{ invia
           totale: versione.grossTotal,
         },
         righe: righe.map((r) => ({
+          productId: r.productId,
           descrizione: r.description,
           quantita: r.quantity,
           unita: r.unit,
@@ -800,4 +843,3 @@ export async function deleteQuote(
   revalidatePath('/')
   return { ok: true, data: { opportunityId: preventivo.opportunityId } }
 }
-

@@ -57,6 +57,21 @@ function nuovaChiave(): string {
  * Restano comunque un'anteprima — il valore che fa fede e' quello ricalcolato
  * dal server, perche' il browser non e' una fonte attendibile.
  */
+
+/**
+ * Valore numerico da un campo facoltativo, o `null` se vuoto.
+ *
+ * Vuoto e zero non sono la stessa cosa: uno SCOP pari a zero renderebbe il
+ * termico incalcolabile, mentre un campo non compilato deve semplicemente
+ * lasciare il blocco descrittivo.
+ */
+function valoreOpzionale(grezzo: string): number | null {
+  const pulito = grezzo.trim().replace(',', '.')
+  if (pulito === '') return null
+  const n = Number.parseFloat(pulito)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 export function EditorPreventivo({
   versionId,
   righeIniziali,
@@ -95,6 +110,27 @@ export function EditorPreventivo({
   )
   const [termicoDetrazione, setTermicoDetrazione] = useState(
     termicoIniziale ? String(termicoIniziale.detrazionePct) : '50',
+  )
+  const [termicoIncentivo, setTermicoIncentivo] = useState<
+    BloccoTermicoDossier['incentivo']
+  >(termicoIniziale?.incentivo ?? 'detrazione')
+  const [termicoAnniDetrazione, setTermicoAnniDetrazione] = useState(
+    termicoIniziale?.anniDetrazione != null
+      ? String(termicoIniziale.anniDetrazione)
+      : '10',
+  )
+  const [termicoScop, setTermicoScop] = useState(
+    termicoIniziale?.scop != null ? String(termicoIniziale.scop) : '',
+  )
+  const [termicoPrezzoGas, setTermicoPrezzoGas] = useState(
+    termicoIniziale?.prezzoGasEurSmc != null
+      ? String(termicoIniziale.prezzoGasEurSmc)
+      : '',
+  )
+  const [termicoAnniCt, setTermicoAnniCt] = useState(
+    termicoIniziale?.anniContoTermico != null
+      ? String(termicoIniziale.anniContoTermico)
+      : '5',
   )
   const [termicoCt, setTermicoCt] = useState(
     termicoIniziale?.contoTermicoEur != null
@@ -190,14 +226,42 @@ export function EditorPreventivo({
           setErrore('Prezzo termico non valido.')
           return
         }
+        if (
+          termicoIncentivo === 'detrazione' &&
+          !(Number.isFinite(detrazione) && detrazione > 0)
+        ) {
+          setErrore('Indica una percentuale di detrazione maggiore di zero.')
+          return
+        }
+        if (
+          termicoIncentivo === 'conto_termico' &&
+          !(ct != null && Number.isFinite(ct) && ct > 0)
+        ) {
+          setErrore('Indica l’importo del Conto Termico scelto.')
+          return
+        }
         dossier = {
           termico: {
             presente: true,
             tipo: termicoTipo,
             descrizione: termicoDesc.trim(),
             prezzoLordoEur: prezzo,
-            detrazionePct: Number.isFinite(detrazione) ? detrazione : 50,
-            contoTermicoEur: ct != null && Number.isFinite(ct) ? ct : null,
+            incentivo: termicoIncentivo,
+            detrazionePct:
+              termicoIncentivo === 'detrazione' && Number.isFinite(detrazione)
+                ? detrazione
+                : 0,
+            contoTermicoEur:
+              termicoIncentivo === 'conto_termico' && ct != null && Number.isFinite(ct)
+                ? ct
+                : null,
+            anniDetrazione:
+              termicoIncentivo === 'detrazione'
+                ? valoreOpzionale(termicoAnniDetrazione)
+                : null,
+            scop: valoreOpzionale(termicoScop),
+            prezzoGasEurSmc: valoreOpzionale(termicoPrezzoGas),
+            anniContoTermico: valoreOpzionale(termicoAnniCt),
           },
         }
       }
@@ -561,34 +625,143 @@ export function EditorPreventivo({
                 style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
               />
             </label>
-            <label className="block">
-              <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                Detrazione (%)
-              </span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={termicoDetrazione}
-                disabled={!modificabile}
-                onChange={(e) => setTermicoDetrazione(e.target.value)}
-                className="w-full rounded-md border px-2 py-1.5 text-sm"
-                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
-              />
-            </label>
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                Conto Termico indicativo (€, opzionale)
+                Agevolazione sulle spese termiche
+              </span>
+              <select
+                value={termicoIncentivo}
+                disabled={!modificabile}
+                onChange={(e) =>
+                  setTermicoIncentivo(
+                    e.target.value as BloccoTermicoDossier['incentivo'],
+                  )
+                }
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              >
+                <option value="detrazione">Detrazione fiscale</option>
+                <option value="conto_termico">Conto Termico 3.0</option>
+                <option value="nessuno">Nessuna agevolazione</option>
+              </select>
+            </label>
+            {termicoIncentivo === 'detrazione' ? (
+              <>
+                <label className="block">
+                  <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                    Detrazione (%)
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={termicoDetrazione}
+                    disabled={!modificabile}
+                    onChange={(e) => setTermicoDetrazione(e.target.value)}
+                    className="w-full rounded-md border px-2 py-1.5 text-sm"
+                    style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                    Ripartita in (anni)
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={termicoAnniDetrazione}
+                    disabled={!modificabile}
+                    onChange={(e) => setTermicoAnniDetrazione(e.target.value)}
+                    className="w-full rounded-md border px-2 py-1.5 text-sm"
+                    style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+                  />
+                </label>
+              </>
+            ) : null}
+            {termicoIncentivo === 'conto_termico' ? (
+              <>
+                <label className="block">
+                  <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                    Conto Termico indicativo (€)
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={termicoCt}
+                    disabled={!modificabile}
+                    onChange={(e) => setTermicoCt(e.target.value)}
+                    className="w-full rounded-md border px-2 py-1.5 text-sm"
+                    style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                    Erogato in (anni)
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={termicoAnniCt}
+                    disabled={!modificabile}
+                    onChange={(e) => setTermicoAnniCt(e.target.value)}
+                    className="w-full rounded-md border px-2 py-1.5 text-sm"
+                    style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+                  />
+                </label>
+              </>
+            ) : null}
+
+            <p
+              className="text-[11px] sm:col-span-2"
+              style={{ color: 'var(--testo-fioco)' }}
+            >
+              La detrazione e il Conto Termico sono alternativi sulle stesse
+              spese. Il piano economico usa soltanto l’agevolazione selezionata.
+            </p>
+
+            {/*
+              I due campi che fanno la differenza fra un blocco descrittivo e
+              un blocco calcolato: senza SCOP e prezzo del gas il risparmio
+              sul riscaldamento non entra nel piano economico.
+            */}
+            <label className="block">
+              <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                SCOP della pompa di calore
               </span>
               <input
                 type="text"
                 inputMode="decimal"
-                value={termicoCt}
+                value={termicoScop}
                 disabled={!modificabile}
-                onChange={(e) => setTermicoCt(e.target.value)}
+                placeholder="es. 3,8"
+                onChange={(e) => setTermicoScop(e.target.value)}
                 className="w-full rounded-md border px-2 py-1.5 text-sm"
                 style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
               />
             </label>
+            <label className="block">
+              <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                Prezzo gas (€/Smc)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={termicoPrezzoGas}
+                disabled={!modificabile}
+                placeholder="dalla bolletta"
+                onChange={(e) => setTermicoPrezzoGas(e.target.value)}
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              />
+            </label>
+
+            <p
+              className="text-[11px] sm:col-span-2"
+              style={{ color: 'var(--testo-fioco)' }}
+            >
+              Con SCOP e prezzo del gas compilati — e il gas consumato nello studio
+              tetto — il risparmio sul riscaldamento entra nel piano economico
+              insieme al costo. Senza, la pompa di calore resta una voce di spesa.
+            </p>
           </div>
         ) : null}
       </div>

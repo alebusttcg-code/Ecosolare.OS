@@ -36,6 +36,7 @@ import {
 } from '@/lib/solar'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { EditorModuli, type LayoutModuliCorrente } from './editor-moduli'
+import { catturaAnteprimaModuli } from './anteprima-moduli'
 import { CampoIndirizzo } from './campo-indirizzo'
 import { MappaTetto } from './mappa-tetto'
 import { SezioneFalda } from './sezione-falda'
@@ -59,6 +60,21 @@ export type ContestoCrmStudio = {
   readonly indirizzoProposto?: string
   readonly titoloLead?: string
   readonly snapshotIniziale?: import('@/lib/domain/studio-tetto').SnapshotStudioTetto
+}
+
+
+/**
+ * Numero da un campo facoltativo, o `null` se vuoto.
+ *
+ * Distinguere «vuoto» da «zero» conta: uno zero inviato al posto di un campo
+ * non compilato diventerebbe un consumo di gas dichiarato pari a zero, cioè un
+ * dato falso invece di un dato assente.
+ */
+function numeroOpzionale(grezzo: string): number | null {
+  const pulito = grezzo.trim().replace(',', '.')
+  if (pulito === '') return null
+  const n = Number.parseFloat(pulito)
+  return Number.isFinite(n) && n >= 0 ? n : null
 }
 
 export function LaboratorioSolar({
@@ -123,7 +139,14 @@ export function LaboratorioSolar({
       .filter(
         (l) => l.moduli.length > 0 && !faldeRimosse.has(l.faldaIndice),
       )
-      .map(({ kWp: _k, ...rest }) => rest)
+      .map((layout) => ({
+        faldaIndice: layout.faldaIndice,
+        formatoId: layout.formatoId,
+        wattPicco: layout.wattPicco,
+        quantitaRichiesta: layout.quantitaRichiesta,
+        landscape: layout.landscape,
+        moduli: layout.moduli,
+      }))
       .sort((a, b) => a.faldaIndice - b.faldaIndice)
   }, [layoutsPerFalda, faldeRimosse])
 
@@ -149,6 +172,19 @@ export function LaboratorioSolar({
   )
   const [tariffaExport, setTariffaExport] = useState(
     iniziale ? String(iniziale.tariffaExportEurKwh) : '0,10',
+  )
+  /*
+   * Gas dell'ultimo anno, dalla bolletta del cliente. È da qui che si ricava
+   * il fabbisogno termico quando il preventivo comprende una pompa di calore:
+   * è un dato che il cliente ha in mano e che l'anno scorso ha davvero
+   * bruciato, mentre ogni stima da metri quadri e zona climatica sbaglia
+   * facilmente del trenta per cento.
+   */
+  const [consumoGasSmc, setConsumoGasSmc] = useState(
+    iniziale?.consumoGasAnnuoSmc != null ? String(iniziale.consumoGasAnnuoSmc) : '',
+  )
+  const [gasCucinaSmc, setGasCucinaSmc] = useState(
+    iniziale?.gasNonSostituitoSmc != null ? String(iniziale.gasNonSostituitoSmc) : '',
   )
   const [autoconsumoPct, setAutoconsumoPct] = useState(
     iniziale?.frazioneAutoconsumo != null
@@ -273,6 +309,18 @@ export function LaboratorioSolar({
         faldeRimosse: [...faldeRimosse],
         layouts,
       })
+      let anteprimaModuliDataUri: string | undefined
+      if (contaModuli(layouts) > 0) {
+        try {
+          const jpeg = await catturaAnteprimaModuli({
+            poligoni: poligoniJson,
+            layouts,
+          })
+          if (jpeg) anteprimaModuliDataUri = jpeg
+        } catch {
+          // Il salvataggio non dipende dall’anteprima PDF.
+        }
+      }
       const esito = await salvaStudioTetto({
         studyId,
         opportunityId: contestoCrm.opportunityId,
@@ -290,6 +338,15 @@ export function LaboratorioSolar({
           tariffaImportEurKwh: tImport,
           tariffaExportEurKwh: tExport,
           frazioneAutoconsumo: fPct / 100,
+          // Campi facoltativi: si inviano solo se compilati, così un preventivo
+          // senza pompa di calore non porta con sé uno zero che sembra un dato.
+          ...(numeroOpzionale(consumoGasSmc) != null
+            ? { consumoGasAnnuoSmc: numeroOpzionale(consumoGasSmc)! }
+            : {}),
+          ...(numeroOpzionale(gasCucinaSmc) != null
+            ? { gasNonSostituitoSmc: numeroOpzionale(gasCucinaSmc)! }
+            : {}),
+          ...(anteprimaModuliDataUri ? { anteprimaModuliDataUri } : {}),
         },
       })
       if (!esito.ok) {
@@ -417,6 +474,52 @@ export function LaboratorioSolar({
               />
               <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
                 0 = impianto aggiuntivo (tutta l’energia in rete).
+              </span>
+            </label>
+            <label className="block">
+              <span
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: 'var(--testo-fioco)' }}
+              >
+                Gas ultimo anno (Smc)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={consumoGasSmc}
+                onChange={(e) => setConsumoGasSmc(e.target.value)}
+                placeholder="dalla bolletta"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: 'rgba(5,10,20,0.55)',
+                  borderColor: 'var(--bordo)',
+                }}
+              />
+              <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+                Serve solo con la pompa di calore: da qui esce il fabbisogno termico.
+              </span>
+            </label>
+            <label className="block">
+              <span
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: 'var(--testo-fioco)' }}
+              >
+                Di cui cucina (Smc)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={gasCucinaSmc}
+                onChange={(e) => setGasCucinaSmc(e.target.value)}
+                placeholder="es. 120"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: 'rgba(5,10,20,0.55)',
+                  borderColor: 'var(--bordo)',
+                }}
+              />
+              <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+                Resta a gas e non viene sostituito.
               </span>
             </label>
             <label className="block">

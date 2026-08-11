@@ -2,21 +2,18 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { Font } from '@react-pdf/renderer'
 
-/**
- * Tipografia del dossier cliente.
- * Cormorant Garamond (display) + DM Sans (testo) — OFL in public/brand/fonts.
- * TTF statici: woff2/variable fonts rompono il subsetting di fontkit.
- */
-export const FONT_DISPLAY = 'CormorantGaramond'
-export const FONT_CORPO = 'DMSans'
+/** Tipografia editoriale prescritta dal brief commerciale. */
+export const FONT_DISPLAY = 'BodoniModa'
+export const FONT_DISPLAY_TEXT = 'BodoniModaText'
+export const FONT_CORPO = 'Manrope'
 
 const FILE_FONT = [
-  'CormorantGaramond-Regular.ttf',
-  'CormorantGaramond-SemiBold.ttf',
-  'CormorantGaramond-Bold.ttf',
-  'DMSans-Regular.ttf',
-  'DMSans-Medium.ttf',
-  'DMSans-Bold.ttf',
+  'BodoniModa-Regular.ttf',
+  'BodoniModa-Bold.ttf',
+  'BodoniModa-Text.ttf',
+  'Manrope-Regular.ttf',
+  'Manrope-SemiBold.ttf',
+  'Manrope-Bold.ttf',
 ] as const
 
 let registrati = false
@@ -36,15 +33,11 @@ export function registraFontiPreventivo(): void {
     family: FONT_DISPLAY,
     fonts: [
       {
-        src: path.join(dir, 'CormorantGaramond-Regular.ttf'),
+        src: path.join(dir, 'BodoniModa-Regular.ttf'),
         fontWeight: 400,
       },
       {
-        src: path.join(dir, 'CormorantGaramond-SemiBold.ttf'),
-        fontWeight: 600,
-      },
-      {
-        src: path.join(dir, 'CormorantGaramond-Bold.ttf'),
+        src: path.join(dir, 'BodoniModa-Bold.ttf'),
         fontWeight: 700,
       },
     ],
@@ -53,9 +46,17 @@ export function registraFontiPreventivo(): void {
   Font.register({
     family: FONT_CORPO,
     fonts: [
-      { src: path.join(dir, 'DMSans-Regular.ttf'), fontWeight: 400 },
-      { src: path.join(dir, 'DMSans-Medium.ttf'), fontWeight: 500 },
-      { src: path.join(dir, 'DMSans-Bold.ttf'), fontWeight: 700 },
+      { src: path.join(dir, 'Manrope-Regular.ttf'), fontWeight: 400 },
+      { src: path.join(dir, 'Manrope-Regular.ttf'), fontWeight: 500 },
+      { src: path.join(dir, 'Manrope-SemiBold.ttf'), fontWeight: 600 },
+      { src: path.join(dir, 'Manrope-Bold.ttf'), fontWeight: 700 },
+    ],
+  })
+
+  Font.register({
+    family: FONT_DISPLAY_TEXT,
+    fonts: [
+      { src: path.join(dir, 'BodoniModa-Text.ttf'), fontWeight: 400 },
     ],
   })
 

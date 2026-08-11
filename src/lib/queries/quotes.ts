@@ -16,6 +16,10 @@ import {
 import { ECOSOLARE } from '@/lib/brand/ecosolare'
 import { normalizzaDossier } from '@/lib/domain/dossier-preventivo'
 import { formattaImporto, importoDaEuro } from '@/lib/domain/money'
+import {
+  leggiConfigurazione,
+  nomeComponente,
+} from '@/lib/domain/componenti-impianto'
 import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
 import {
   layoutsAttivi,
@@ -35,7 +39,12 @@ import {
   NOTA_GARANZIA,
 } from '@/lib/pdf/dossier-testi'
 import { mappaSimulazionePerPdf } from '@/lib/pdf/mappa-simulazione-pdf'
+import {
+  leggiDocumentiTecniciSnapshot,
+  type DocumentoTecnicoPreventivo,
+} from '@/lib/pdf/premium/documenti-tecnici'
 import { planimetriaDaStudio } from '@/lib/pdf/planimetria-moduli'
+import { getDocumentiTecniciProdotti } from '@/lib/queries/documenti-tecnici'
 import { getParametriSimulazioneFv } from '@/lib/queries/parametri-simulazione'
 
 export interface RigaVisibile {
@@ -126,6 +135,8 @@ export type QuoteVersionPdfBundle = {
   readonly dati: DatiPdfPreventivo
   /** Snapshot studio per ortofoto satellitare in generazione PDF. */
   readonly studio: SnapshotStudioTetto | null
+  /** Schede versionate selezionate dai prodotti effettivamente quotati. */
+  readonly documentiTecnici: readonly DocumentoTecnicoPreventivo[]
 }
 
 export async function getQuoteVersionPerPdf(
@@ -163,6 +174,7 @@ export async function getQuoteVersionPerPdf(
       studioIndirizzo: siteStudies.formattedAddress,
       studioPayload: siteStudies.payload,
       dossier: quoteVersions.dossier,
+      snapshotPreventivo: quoteVersions.snapshot,
       ownerName: users.name,
       ownerEmail: users.email,
       ownerRole: users.role,
@@ -182,6 +194,7 @@ export async function getQuoteVersionPerPdf(
 
   const righeDb = await db
     .select({
+      productId: quoteLines.productId,
       description: quoteLines.description,
       unit: quoteLines.unit,
       quantity: quoteLines.quantity,
@@ -189,12 +202,33 @@ export async function getQuoteVersionPerPdf(
       discountPct: quoteLines.discountPct,
       vatRate: quoteLines.vatRate,
       lineNet: quoteLines.lineNet,
+      // Dati tecnici del prodotto collegato: sono ciò che rende il preventivo
+      // calcolato invece che raccontato (D-021). Nulli finché il catalogo non
+      // è compilato: `leggiConfigurazione` sa ripiegare sulla descrizione.
+      componentRole: products.componentRole,
+      ratedPowerW: products.ratedPowerW,
+      acPowerKw: products.acPowerKw,
+      capacityKwh: products.capacityKwh,
+      brand: products.brand,
+      model: products.model,
     })
     .from(quoteLines)
+    .leftJoin(products, eq(products.id, quoteLines.productId))
     .where(eq(quoteLines.quoteVersionId, versionId))
     .orderBy(asc(quoteLines.sortOrder))
 
   if (righeDb.length === 0) return null
+
+  const productIds = [
+    ...new Set(
+      righeDb
+        .map((riga) => riga.productId)
+        .filter((id): id is string => id != null),
+    ),
+  ]
+  const documentiCongelati = leggiDocumentiTecniciSnapshot(riga.snapshotPreventivo)
+  const documentiTecnici: readonly DocumentoTecnicoPreventivo[] =
+    documentiCongelati ?? (await getDocumentiTecniciProdotti(db, productIds))
 
   const scontoGlobale = Number.parseFloat(riga.globalDiscountPct)
   const ripartizioneGrezza = Array.isArray(riga.vatBreakdown)
@@ -223,6 +257,31 @@ export async function getQuoteVersionPerPdf(
   let planimetria: DatiPdfPreventivo['planimetria'] = null
   let copertinaKpi: DatiPdfPreventivo['copertinaKpi'] = null
 
+  /*
+   * La configurazione tecnica esce dalle righe: numero moduli, Watt di picco,
+   * potenza in alternata dell'inverter, capacità di accumulo. Cambiare la
+   * batteria nel listino cambia i numeri del PDF, non il suo stile.
+   */
+  const configurazione = leggiConfigurazione(
+    righeDb.map((r) => ({
+      descrizione: r.description,
+      quantita: Number.parseFloat(r.quantity),
+      ruolo: r.componentRole,
+      potenzaModuloW: r.ratedPowerW,
+      potenzaCaKw: r.acPowerKw ? Number.parseFloat(r.acPowerKw) : null,
+      capacitaKwh: r.capacityKwh ? Number.parseFloat(r.capacityKwh) : null,
+      marca: r.brand,
+      modello: r.model,
+    })),
+  )
+
+  /*
+   * Il dossier va letto PRIMA della simulazione: se il preventivo comprende
+   * una pompa di calore, il suo risparmio deve entrare nel piano economico
+   * insieme al suo costo, che e' gia' dentro il totale del preventivo.
+   */
+  const dossier = normalizzaDossier(riga.dossier)
+
   const payload = riga.studioPayload as SnapshotStudioTetto | null
   if (
     payload &&
@@ -233,6 +292,37 @@ export async function getQuoteVersionPerPdf(
     const sim = simulaImpiantoFv({
       snapshot: payload,
       investimentoLordoCents: importoDaEuro(riga.grossTotal),
+      capacitaAccumuloKwh: configurazione.capacitaAccumuloKwh,
+      potenzaCaKw: configurazione.potenzaCaKw,
+      /*
+       * Il costo e l'agevolazione termica vanno sempre separati dalla quota
+       * FV. Il risparmio operativo, invece, nasce solo quando sono presenti
+       * gas consumato, SCOP e prezzo del gas: i valori zero fanno quindi
+       * restare il capitolo descrittivo senza inventare un beneficio.
+       */
+      termico: dossier.termico?.presente
+        ? {
+              consumoGasAnnuoSmc: payload.consumoGasAnnuoSmc ?? 0,
+              ...(payload.gasNonSostituitoSmc != null
+                ? { gasNonSostituitoSmc: payload.gasNonSostituitoSmc }
+                : {}),
+              scop: dossier.termico.scop ?? 0,
+              prezzoGasEurSmc: dossier.termico.prezzoGasEurSmc ?? 0,
+              prezzoLordoCents: importoDaEuro(
+                dossier.termico.prezzoLordoEur,
+              ),
+              incentivo: dossier.termico.incentivo,
+              detrazionePct: dossier.termico.detrazionePct,
+              anniDetrazione:
+                dossier.termico.anniDetrazione ?? parametri.detrazioneAnni,
+              contoTermicoCents:
+                dossier.termico.incentivo === 'conto_termico' &&
+                dossier.termico.contoTermicoEur != null
+                  ? importoDaEuro(dossier.termico.contoTermicoEur)
+                  : 0,
+              anniErogazioneContoTermico: dossier.termico.anniContoTermico ?? 5,
+            }
+        : null,
       parametri,
     })
     const mappata = mappaSimulazionePerPdf(sim)
@@ -258,12 +348,16 @@ export async function getQuoteVersionPerPdf(
     }
   }
 
-  const dossier = normalizzaDossier(riga.dossier)
   let bloccoTermico: DatiPdfPreventivo['bloccoTermico'] = null
   if (dossier.termico?.presente) {
     const t = dossier.termico
     const prezzoCents = importoDaEuro(t.prezzoLordoEur)
-    const detrazioneCents = Math.round((prezzoCents * t.detrazionePct) / 100)
+    const incentivoCents =
+      t.incentivo === 'detrazione'
+        ? Math.round((prezzoCents * t.detrazionePct) / 100)
+        : t.incentivo === 'conto_termico' && t.contoTermicoEur != null
+          ? importoDaEuro(t.contoTermicoEur)
+          : 0
     const tipoEtichetta =
       t.tipo === 'pdc'
         ? 'Pompa di calore'
@@ -274,18 +368,78 @@ export async function getQuoteVersionPerPdf(
       tipoEtichetta,
       descrizione: t.descrizione,
       prezzoLordo: formattaImporto(prezzoCents),
-      detrazionePct: `${t.detrazionePct.toLocaleString('it-IT')}%`,
-      detrazioneImporto: formattaImporto(detrazioneCents),
-      contoTermico:
-        t.contoTermicoEur != null
-          ? formattaImporto(importoDaEuro(t.contoTermicoEur))
-          : null,
-      nettoIndicativo: formattaImporto(prezzoCents - detrazioneCents),
+      incentivoEtichetta:
+        t.incentivo === 'detrazione'
+          ? `Detrazione fiscale ${t.detrazionePct.toLocaleString('it-IT')}%`
+          : t.incentivo === 'conto_termico'
+            ? 'Conto Termico 3.0'
+            : 'Nessuna agevolazione inclusa',
+      incentivoImporto:
+        incentivoCents > 0 ? formattaImporto(incentivoCents) : null,
+      notaIncentivo:
+        t.incentivo === 'conto_termico'
+          ? 'Il Conto Termico e la detrazione fiscale sono alternativi sulle stesse spese; il piano usa soltanto il contributo selezionato.'
+          : t.incentivo === 'detrazione'
+            ? 'Il piano usa la detrazione termica selezionata e non somma il Conto Termico sulle stesse spese.'
+            : 'Nessuna agevolazione termica è inclusa nel piano economico.',
+      nettoIndicativo: formattaImporto(
+        Math.max(0, prezzoCents - incentivoCents),
+      ),
     }
   }
 
   const studio =
     payload && layoutsAttivi(payload).length > 0 ? payload : null
+
+  const vociFotovoltaico = [
+    dettagliImpianto
+      ? `Campo fotovoltaico da ${dettagliImpianto.potenzaKwp}, con produzione annua stimata di ${dettagliImpianto.produzioneKwh}.`
+      : null,
+    ...configurazione.moduliDescritti.map(
+      (c) =>
+        `${c.quantita.toLocaleString('it-IT')} moduli ${nomeComponente(c)}${configurazione.wattPicco ? ` da ${configurazione.wattPicco.toLocaleString('it-IT')} Wp` : ''}.`,
+    ),
+    ...configurazione.inverterDescritti.map(
+      (c) =>
+        `${c.quantita.toLocaleString('it-IT')} inverter ${nomeComponente(c)}${configurazione.potenzaCaKw ? ` - potenza CA complessiva ${configurazione.potenzaCaKw.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kW` : ''}.`,
+    ),
+    ...configurazione.struttureDescritte.map(
+      (c) => `${c.quantita.toLocaleString('it-IT')} ${nomeComponente(c)}.`,
+    ),
+    ...configurazione.quadriDescritti.map(
+      (c) => `${c.quantita.toLocaleString('it-IT')} ${nomeComponente(c)}.`,
+    ),
+  ].filter((x): x is string => !!x)
+
+  const configurazioneTecnica: DatiPdfPreventivo['configurazioneTecnica'] = [
+    ...(vociFotovoltaico.length > 0
+      ? [{ titolo: 'Impianto fotovoltaico', voci: vociFotovoltaico }]
+      : []),
+    ...(configurazione.accumuliDescritti.length > 0
+      ? [
+          {
+            titolo: 'Sistema di accumulo',
+            voci: configurazione.accumuliDescritti.map(
+              (c) =>
+                `${c.quantita.toLocaleString('it-IT')} ${nomeComponente(c)} - capacità complessiva ${configurazione.capacitaAccumuloKwh.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWh.`,
+            ),
+          },
+        ]
+      : []),
+    ...(dossier.termico?.presente
+      ? [
+          {
+            titolo: 'Impianto termico',
+            voci: [
+              dossier.termico.descrizione,
+              ...(dossier.termico.scop
+                ? [`Rendimento stagionale dichiarato (SCOP): ${dossier.termico.scop.toLocaleString('it-IT')}.`]
+                : []),
+            ],
+          },
+        ]
+      : []),
+  ]
 
   const dati: DatiPdfPreventivo = {
     codice: riga.quoteCode,
@@ -312,6 +466,7 @@ export async function getQuoteVersionPerPdf(
     dettagliImpianto,
     condizioniEconomiche,
     bloccoTermico,
+    configurazioneTecnica,
     dossierTestuale: {
       incluso: INCLUSO_FV,
       escluso: ESCLUSO_OFFERTA,
@@ -320,7 +475,6 @@ export async function getQuoteVersionPerPdf(
     },
     planimetria,
     simulazione,
-    pagineMarketing: [],
     righe: righeDb.map((r) => {
       const sconto = Number.parseFloat(r.discountPct)
       return {
@@ -346,7 +500,7 @@ export async function getQuoteVersionPerPdf(
     note: riga.notes?.trim() || null,
   }
 
-  return { dati, studio }
+  return { dati, studio, documentiTecnici }
 }
 
 /** Catalogo attivo per il selettore di riga. */

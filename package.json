@@ -34,6 +34,7 @@
     "geotiff": "^3.0.5",
     "geotiff-geokeys-to-proj4": "^2024.4.13",
     "next": "16.3.0",
+    "pdf-lib": "^1.17.1",
     "postgres": "^3.4.7",
     "proj4": "^2.21.0",
     "react": "19.2.8",

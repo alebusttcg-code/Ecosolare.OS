@@ -175,18 +175,26 @@ export function EditorModuli({
     ]
   }, [falda, poligono, formato, quantita, landscape])
 
-  // Se il seedKey cambia e l’auto-pack è vuoto, non perdere i moduli manuali.
-  useEffect(() => {
-    setManuale((prev) => {
-      if (!prev || prev.chiave === seedKey) return prev
-      if (autoModuli.length > 0) return null
-      if (prev.moduli.length === 0) return null
-      return { chiave: seedKey, moduli: prev.moduli }
-    })
-  }, [seedKey, autoModuli])
+  /*
+   * Adegua lo stato alla nuova falda/configurazione durante il render, come
+   * stato derivato dalla chiave. Farlo in un Effect causava un render
+   * intermedio incoerente e una cascata di aggiornamenti; la condizione sulla
+   * chiave garantisce che il nuovo render converga immediatamente.
+   */
+  if (manuale && manuale.chiave !== seedKey) {
+    setManuale(
+      autoModuli.length > 0 || manuale.moduli.length === 0
+        ? null
+        : { chiave: seedKey, moduli: manuale.moduli },
+    )
+  }
 
+  const usaManualeDuranteCambio =
+    manuale && autoModuli.length === 0 && manuale.moduli.length > 0
   const moduli =
-    manuale && manuale.chiave === seedKey ? manuale.moduli : autoModuli
+    manuale && (manuale.chiave === seedKey || usaManualeDuranteCambio)
+      ? manuale.moduli
+      : autoModuli
 
   const moduliRef = useRef(moduli)
   const selezionatiRef = useRef(selezionati)

@@ -442,10 +442,19 @@ grassetti sui numeri, sezioni fisse identiche per tutti i preventivi, grafici
 SVG (produzione mensile, stacked energia, cashflow). Dopo le pagine marketing
 segue il blocco **EcoSolare Design** (ex “SolarEdge Design”): ortofoto con
 overlay moduli dallo studio tetto, KPI finanziari, energia, tabella moduli,
-cashflow ed energia mensile. Schede prodotto catalogo restano miglioramento
-successivo.
+cashflow ed energia mensile. Se lo studio ha `anteprimaModuliDataUri` (screenshot
+della vista Moduli al salvataggio), il PDF usa quella immagine al posto
+dell’overlay SVG.
+
+**Composizione ibrida** (11 agosto 2026): le pagine istituzionali senza dati di
+sopralluogo o di progetto sono finite una volta sola e restano identiche in ogni
+preventivo; le pagine tecniche ed economiche sono alimentate dal CRM. Dopo le 14
+pagine del corpo, il sistema accoda soltanto le schede dei prodotti presenti
+nelle righe (moduli, inverter, accumulo, pompe di calore ecc.). Al momento
+dell’invio ID, versione, pagine, percorso e checksum delle schede vengono
+congelati nello snapshot della versione, così un aggiornamento del catalogo non
+modifica retroattivamente un’offerta già trasmessa.
 
 **Multi-falda** (11 agosto 2026): i moduli possono stare su più falde nello
 stesso studio (`layouts[]`); la produzione è la somma delle stime per falda.
 Payload legacy con `layout` singolo restano leggibili.
-

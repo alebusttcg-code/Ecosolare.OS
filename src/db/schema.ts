@@ -759,6 +759,24 @@ export const productType = pgEnum('product_type', [
  * I prezzi qui sono i DEFAULT correnti. Ogni preventivo inviato congela i propri
  * (ADR-008): cambiare un prezzo in catalogo non altera i documenti gia' emessi.
  */
+/**
+ * Ruolo di un prodotto dentro l'impianto.
+ *
+ * Diverso da `product_type`, che dice come si vende (materiale, manodopera,
+ * servizio): questo dice come **entra nei calcoli**. Un modulo porta potenza,
+ * un inverter porta il limite in alternata, un accumulo cambia l'autoconsumo.
+ * Tutto il resto e' `altro` e non sposta nessun numero.
+ */
+export const componentRole = pgEnum('component_role', [
+  'modulo',
+  'inverter',
+  'accumulo',
+  'struttura',
+  'quadro',
+  'pompa_calore',
+  'altro',
+])
+
 export const products = pgTable(
   'products',
   {
@@ -778,6 +796,29 @@ export const products = pgTable(
     /** Se null, il prodotto vale per tutte le linee di business. */
     businessLine: businessLine('business_line'),
 
+    /*
+     * ——— Dati tecnici (D-021) ———
+     *
+     * Servono al preventivo per calcolare invece di raccontare: una batteria
+     * da 5 kWh e una da 10 kWh producono numeri diversi, e finche' la capacita'
+     * vive dentro la descrizione («Batteria di accumulo 10 kWh») nessun calcolo
+     * puo' leggerla. Sono nulli sui prodotti che non li hanno — manodopera,
+     * servizi, minuteria — e chi legge deve reggere il nullo.
+     */
+
+    /** Che ruolo ha il prodotto nell'impianto: decide come entra nei calcoli. */
+    componentRole: componentRole('component_role'),
+    /** Potenza di picco del singolo modulo, in Watt. */
+    ratedPowerW: integer('rated_power_w'),
+    /** Potenza nominale in corrente alternata dell'inverter, in kW. */
+    acPowerKw: numeric('ac_power_kw', { precision: 8, scale: 2 }),
+    /** Capacita' nominale di targa dell'accumulo, in kWh. */
+    capacityKwh: numeric('capacity_kwh', { precision: 8, scale: 2 }),
+
+    /** Marca e modello: compaiono nella narrativa tecnica del preventivo. */
+    brand: text('brand'),
+    model: text('model'),
+
     isActive: boolean('is_active').notNull().default(true),
     notes: text('notes'),
 
@@ -789,6 +830,60 @@ export const products = pgTable(
   (table) => [
     index('products_type_idx').on(table.type),
     index('products_name_idx').on(table.name),
+    index('products_role_idx').on(table.componentRole),
+  ],
+)
+
+/** Categoria del documento che può essere accodato al preventivo. */
+export const productDocumentCategory = pgEnum('product_document_category', [
+  'scheda_tecnica',
+  'garanzia',
+  'certificazione',
+  'manuale',
+])
+
+/**
+ * Libreria versionata delle schede prodotto.
+ *
+ * La presenza di una riga prodotto nel preventivo seleziona automaticamente i
+ * documenti attivi collegati. Il file resta nell'object storage; nel database
+ * vivono identità, versione, ordine e pagine da includere.
+ */
+export const productDocuments = pgTable(
+  'product_documents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    category: productDocumentCategory('category').notNull().default('scheda_tecnica'),
+    title: text('title').notNull(),
+    versionLabel: text('version_label').notNull(),
+    storageKey: text('storage_key').notNull(),
+    filename: text('filename').notNull(),
+    mimeType: text('mime_type').notNull().default('application/pdf'),
+    checksum: text('checksum'),
+    /** Numeri 1-based; null include tutte le pagine del documento. */
+    includedPages: jsonb('included_pages').$type<readonly number[] | null>(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    validFrom: timestamp('valid_from', { withTimezone: true }),
+    validUntil: timestamp('valid_until', { withTimezone: true }),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('product_documents_product_idx').on(table.productId),
+    index('product_documents_active_order_idx').on(
+      table.isActive,
+      table.sortOrder,
+    ),
+    uniqueIndex('product_documents_version_idx').on(
+      table.productId,
+      table.category,
+      table.versionLabel,
+    ),
   ],
 )
 
@@ -1865,6 +1960,7 @@ export type Activity = typeof activities.$inferSelect
 export type NewActivity = typeof activities.$inferInsert
 
 export type Product = typeof products.$inferSelect
+export type ProductDocument = typeof productDocuments.$inferSelect
 export type SurveyTemplate = typeof surveyTemplates.$inferSelect
 export type Survey = typeof surveys.$inferSelect
 export type SurveyFile = typeof surveyFiles.$inferSelect

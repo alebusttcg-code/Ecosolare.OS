@@ -98,8 +98,8 @@ describe('ortofoto moduli PDF', () => {
     expect(zoom).toBeGreaterThanOrEqual(15)
     expect(zoom).toBeLessThanOrEqual(21)
 
-    const mx = ORTOFOTO_PIXEL_W * 0.08
-    const my = ORTOFOTO_PIXEL_H * 0.08
+    const mx = ORTOFOTO_PIXEL_W * 0.045
+    const my = ORTOFOTO_PIXEL_H * 0.045
     for (const p of punti) {
       const { x, y } = geoAPixel(
         p,

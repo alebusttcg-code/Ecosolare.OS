@@ -110,4 +110,17 @@ describe('planimetria multi-falda', () => {
     expect(p!.legenda).not.toContain('F2:')
     expect(p!.fotoDataUri).toBeNull()
   })
+
+  it('preferisce l’anteprima Moduli senza overlay SVG', () => {
+    const jpeg = 'data:image/jpeg;base64,/9j/4AAQ'
+    const p = planimetriaDaStudio({
+      ...snapshotDueFalde(),
+      anteprimaModuliDataUri: jpeg,
+    })
+    expect(p).not.toBeNull()
+    expect(p!.fotoDataUri).toBe(jpeg)
+    expect(p!.moduliPaths).toHaveLength(0)
+    expect(p!.poligoniPaths).toHaveLength(0)
+    expect(p!.legenda).toContain('moduli')
+  })
 })

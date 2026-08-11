@@ -16,8 +16,8 @@ export const ORTOFOTO_PIXEL_W = ORTOFOTO_CSS_W * ORTOFOTO_SCALE
 export const ORTOFOTO_PIXEL_H = ORTOFOTO_CSS_H * ORTOFOTO_SCALE
 const ZOOM_MIN = 15
 const ZOOM_MAX = 21
-/** Margine rispetto al bordo dell’immagine (frazione). */
-const MARGINE = 0.08
+/** Margine rispetto al bordo dell’immagine (frazione). Più stretto = tetto più grande in PDF. */
+const MARGINE = 0.045
 
 export type InquadraturaOrtofoto = {
   readonly centro: Coordinate

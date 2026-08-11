@@ -34,7 +34,10 @@ export async function GET(
     )
   }
 
-  const pdf = await generaPdfPreventivo(bundle.dati, { studio: bundle.studio })
+  const pdf = await generaPdfPreventivo(bundle.dati, {
+    studio: bundle.studio,
+    documentiTecnici: bundle.documentiTecnici,
+  })
   const nome = nomeFilePreventivo(bundle.dati.codice, bundle.dati.versione)
 
   return new NextResponse(new Uint8Array(pdf), {

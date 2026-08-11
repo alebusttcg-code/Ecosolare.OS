@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
@@ -9,17 +10,15 @@ import type { DatiPdfPreventivo } from '@/lib/pdf/dati-preventivo'
 import { registraFontiPreventivo } from '@/lib/pdf/fonti-preventivo'
 import { arricchisciPlanimetriaConOrtofoto } from '@/lib/pdf/ortofoto-moduli-pdf'
 import { DocumentoPreventivo } from '@/lib/pdf/preventivo'
+import {
+  assemblaPreventivoConDocumentiTecnici,
+  type DocumentoTecnicoCaricato,
+  type DocumentoTecnicoPreventivo,
+} from '@/lib/pdf/premium/documenti-tecnici'
+import { PAGINE_MARKETING } from '@/lib/pdf/testi-marketing'
+import { getArchivio } from '@/lib/storage'
 
 let logoCache: Buffer | null = null
-
-/** JPEG compressi per il PDF (i PNG sorgente restano in template/). */
-const MARKETING_RELATIVI = [
-  'public/preventivo/template/perche-qualita.jpg',
-  'public/preventivo/template/altroconsumo.jpg',
-  'public/preventivo/template/recensioni.jpg',
-  'public/preventivo/template/garanzie.jpg',
-  'public/preventivo/template/garanzia-10-anni.jpg',
-] as const
 
 const marketingCache = new Map<string, string>()
 
@@ -30,7 +29,7 @@ async function logoBuffer(): Promise<Buffer> {
   return logoCache
 }
 
-async function marketingDataUri(relativo: string): Promise<string | null> {
+async function immagineDataUri(relativo: string): Promise<string | null> {
   const cached = marketingCache.get(relativo)
   if (cached) return cached
   try {
@@ -48,6 +47,7 @@ async function marketingDataUri(relativo: string): Promise<string | null> {
 
 export type OpzioniGeneraPdf = {
   readonly studio?: SnapshotStudioTetto | null
+  readonly documentiTecnici?: readonly DocumentoTecnicoPreventivo[]
 }
 
 /** Produce il PDF del preventivo come buffer, pronto per la risposta HTTP. */
@@ -59,12 +59,27 @@ export async function generaPdfPreventivo(
 
   const logo = await logoBuffer()
   const logoSrc = `data:image/png;base64,${logo.toString('base64')}`
-  const pagineMarketing = (
-    await Promise.all(MARKETING_RELATIVI.map((r) => marketingDataUri(r)))
-  ).filter((u): u is string => !!u)
+  /*
+   * Le immagini delle pagine marketing, risolte una volta sola e nell'ordine in
+   * cui il testo se le aspetta. Una che manca lascia il suo posto vuoto senza
+   * far saltare la generazione: un PDF senza un logo è consegnabile, un PDF che
+   * non esiste no.
+   */
+  const immaginiMarketing = await Promise.all(
+    PAGINE_MARKETING.map(async (pagina) =>
+      (
+        await Promise.all(
+          pagina.immagini.map((relativo) =>
+            immagineDataUri(path.join('public', relativo)),
+          ),
+        )
+      ).filter((u): u is string => !!u),
+    ),
+  )
 
   let planimetria = dati.planimetria
-  if (planimetria && opzioni?.studio) {
+  // Anteprima Moduli già nello snapshot: non ricomporre ortofoto+SVG.
+  if (planimetria && opzioni?.studio && !planimetria.fotoDataUri) {
     const chiave = env().GOOGLE_MAPS_API_KEY
     planimetria = await arricchisciPlanimetriaConOrtofoto(
       planimetria,
@@ -75,9 +90,48 @@ export async function generaPdfPreventivo(
 
   const documento = (
     <DocumentoPreventivo
-      dati={{ ...dati, planimetria, pagineMarketing }}
+      dati={{ ...dati, planimetria }}
+      immaginiMarketing={immaginiMarketing}
       logoSrc={logoSrc}
+      copertinaPremium={process.env.PREVENTIVO_PDF_PREMIUM_V2 === '1'}
     />
   ) as ReactElement<DocumentProps>
-  return renderToBuffer(documento)
+  const corpo = await renderToBuffer(documento)
+  const documenti = opzioni?.documentiTecnici ?? []
+  if (documenti.length === 0) return corpo
+
+  const archivio = getArchivio()
+  const caricati: DocumentoTecnicoCaricato[] = []
+  for (const documentoTecnico of documenti) {
+    if (documentoTecnico.mimeType !== 'application/pdf') {
+      throw new Error(
+        `La scheda tecnica “${documentoTecnico.title}” non è un PDF.`,
+      )
+    }
+    const bytes = await archivio.leggi(documentoTecnico.storageKey)
+    if (!bytes) {
+      throw new Error(
+        `Scheda tecnica non trovata in archivio: ${documentoTecnico.storageKey}`,
+      )
+    }
+    if (documentoTecnico.checksum) {
+      const checksum = createHash('sha256').update(bytes).digest('hex')
+      if (checksum !== documentoTecnico.checksum) {
+        throw new Error(
+          `Checksum non valido per la scheda tecnica “${documentoTecnico.title}”.`,
+        )
+      }
+    }
+    caricati.push({ ...documentoTecnico, bytes })
+  }
+
+  return assemblaPreventivoConDocumentiTecnici({
+    corpo,
+    documenti: caricati,
+    shell: {
+      codice: dati.codice,
+      dataDocumento: dati.dataDocumento,
+      logoPng: logo,
+    },
+  })
 }

@@ -47,10 +47,19 @@ const snapshotSchema = z.object({
   /** Legacy: singolo layout. */
   layout: layoutSchema.nullable().optional(),
   consumoAnnuoKwh: z.number().min(0).max(500_000),
+  /** Dalla bolletta del gas: serve al calcolo della pompa di calore. */
+  consumoGasAnnuoSmc: z.number().min(0).max(50_000).optional(),
+  gasNonSostituitoSmc: z.number().min(0).max(50_000).optional(),
   produzioneAnnuakWh: z.number().min(0).max(500_000).optional(),
   tariffaImportEurKwh: z.number().min(0).max(5).default(0.3),
   tariffaExportEurKwh: z.number().min(0).max(5).default(0.1),
   frazioneAutoconsumo: z.number().min(0).max(1).optional(),
+  /** Screenshot JPEG vista Moduli (data-URI). */
+  anteprimaModuliDataUri: z
+    .string()
+    .max(800_000)
+    .regex(/^data:image\/jpeg;base64,/)
+    .optional(),
 })
 
 const salvaSchema = z.object({
@@ -77,6 +86,12 @@ function normalizzaSnapshot(
     faldeRimosse,
     layouts,
     consumoAnnuoKwh: grezzo.consumoAnnuoKwh,
+    ...(grezzo.consumoGasAnnuoSmc != null
+      ? { consumoGasAnnuoSmc: grezzo.consumoGasAnnuoSmc }
+      : {}),
+    ...(grezzo.gasNonSostituitoSmc != null
+      ? { gasNonSostituitoSmc: grezzo.gasNonSostituitoSmc }
+      : {}),
     produzioneAnnuakWh: 0,
     tariffaImportEurKwh: grezzo.tariffaImportEurKwh,
     tariffaExportEurKwh: grezzo.tariffaExportEurKwh,
@@ -91,6 +106,9 @@ function normalizzaSnapshot(
     produzioneAnnuakWh: produzione,
     ...(grezzo.frazioneAutoconsumo != null
       ? { frazioneAutoconsumo: grezzo.frazioneAutoconsumo }
+      : {}),
+    ...(grezzo.anteprimaModuliDataUri
+      ? { anteprimaModuliDataUri: grezzo.anteprimaModuliDataUri }
       : {}),
   }
 }
@@ -156,13 +174,13 @@ export async function salvaStudioTetto(
   let studyId = parsed.data.studyId
 
   if (studyId) {
-    const esistente = await db.query.siteStudies.findFirst({
-      where: and(
-        eq(siteStudies.id, studyId),
-        eq(siteStudies.opportunityId, opp.id),
-      ),
-      columns: { id: true },
-    })
+    const [esistente] = await db
+      .select({ id: siteStudies.id })
+      .from(siteStudies)
+      .where(
+        and(eq(siteStudies.id, studyId), eq(siteStudies.opportunityId, opp.id)),
+      )
+      .limit(1)
     if (!esistente) {
       return { ok: false, errors: { _: 'Studio non trovato per questo lead.' } }
     }

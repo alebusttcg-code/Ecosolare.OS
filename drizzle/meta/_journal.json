@@ -148,6 +148,20 @@
       "when": 1786459850251,
       "tag": "0020_smooth_mentallo",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1786474955787,
+      "tag": "0021_dati_tecnici_prodotti",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1786484686551,
+      "tag": "0022_gray_bruce_banner",
+      "breakpoints": true
     }
   ]
 }

@@ -313,9 +313,127 @@ describe('economia FV — bollette da situazione cliente', () => {
     expect(sim.kWp).toBe(4)
     expect(sim.bilancio.exportKwh).toBe(5235)
     expect(sim.economia.bollettaAttualeMensileCents).toBe(0)
-    // Solo ricavo RID: credito mensile
-    expect(sim.economia.bollettaConFvMensileCents).toBeLessThan(0)
+    /*
+     * Impianto di sola cessione: non c'e' niente da pagare e il GSE liquida
+     * l'energia immessa. Le due cose stanno in due campi diversi perche' una
+     * «bolletta negativa» non esiste — il ritiro dedicato arriva con un
+     * bonifico separato, non scalato dalla fattura del fornitore.
+     */
+    expect(sim.economia.bollettaConFvMensileCents).toBe(0)
+    expect(sim.economia.creditoMensileCents).toBeGreaterThan(0)
     expect(sim.detrazione.detrazioneTotaleCents).toBe(500_000)
+  })
+
+  it('separa la spesa termica dalla base della detrazione fotovoltaica', () => {
+    const sim = simulaImpiantoFv({
+      snapshot: snapshotCliente({
+        consumoAnnuoKwh: 6000,
+        produzioneAnnuakWh: 7000,
+        frazioneAutoconsumo: 0.4,
+      }),
+      investimentoLordoCents: 2_000_000,
+      termico: {
+        consumoGasAnnuoSmc: 1400,
+        scop: 3.6,
+        prezzoGasEurSmc: 1.1,
+        prezzoLordoCents: 800_000,
+        incentivo: 'conto_termico',
+        contoTermicoCents: 350_000,
+      },
+      parametri: PARAMETRI_TEST,
+    })
+
+    expect(sim.agevolazioni.investimentoFvLordoCents).toBe(1_200_000)
+    expect(sim.detrazione.detrazioneTotaleCents).toBe(600_000)
+    expect(sim.agevolazioni.contoTermicoTotaleCents).toBe(350_000)
+    expect(sim.detrazioneTermico).toBeNull()
+  })
+
+  it('separa costo e incentivo termici anche senza dati per stimare il risparmio', () => {
+    const sim = simulaImpiantoFv({
+      snapshot: snapshotCliente({
+        consumoAnnuoKwh: 6000,
+        produzioneAnnuakWh: 7000,
+        frazioneAutoconsumo: 0.4,
+      }),
+      investimentoLordoCents: 2_000_000,
+      termico: {
+        consumoGasAnnuoSmc: 0,
+        scop: 0,
+        prezzoGasEurSmc: 0,
+        prezzoLordoCents: 800_000,
+        incentivo: 'conto_termico',
+        contoTermicoCents: 350_000,
+      },
+      parametri: PARAMETRI_TEST,
+    })
+
+    expect(sim.termico).toBeNull()
+    expect(sim.agevolazioni.investimentoFvLordoCents).toBe(1_200_000)
+    expect(sim.detrazione.detrazioneTotaleCents).toBe(600_000)
+    expect(sim.economia.cashflow[0]!.rataContoTermicoCents).toBeGreaterThan(0)
+  })
+
+  it('non somma Conto Termico e detrazione sulle stesse spese', () => {
+    const sim = simulaImpiantoFv({
+      snapshot: snapshotCliente({
+        consumoAnnuoKwh: 6000,
+        produzioneAnnuakWh: 7000,
+        frazioneAutoconsumo: 0.4,
+      }),
+      investimentoLordoCents: 2_000_000,
+      termico: {
+        consumoGasAnnuoSmc: 1400,
+        scop: 3.6,
+        prezzoGasEurSmc: 1.1,
+        prezzoLordoCents: 800_000,
+        incentivo: 'detrazione',
+        detrazionePct: 65,
+        anniDetrazione: 10,
+        // Anche se un valore residuo arriva da un vecchio dossier, va ignorato.
+        contoTermicoCents: 350_000,
+      },
+      parametri: PARAMETRI_TEST,
+    })
+
+    expect(sim.detrazioneTermico?.detrazioneTotaleCents).toBe(520_000)
+    expect(sim.agevolazioni.contoTermicoTotaleCents).toBe(0)
+    expect(sim.economia.cashflow.every((anno) => anno.rataContoTermicoCents === 0)).toBe(
+      true,
+    )
+  })
+
+  it('il totale di ogni anno coincide con tutte le colonne del cashflow', () => {
+    const sim = simulaImpiantoFv({
+      snapshot: snapshotCliente({
+        consumoAnnuoKwh: 6000,
+        produzioneAnnuakWh: 7000,
+        frazioneAutoconsumo: 0.4,
+      }),
+      capacitaAccumuloKwh: 10,
+      investimentoLordoCents: 2_000_000,
+      termico: {
+        consumoGasAnnuoSmc: 1400,
+        scop: 3.6,
+        prezzoGasEurSmc: 1.1,
+        prezzoLordoCents: 800_000,
+        incentivo: 'conto_termico',
+        contoTermicoCents: 350_000,
+      },
+      parametri: PARAMETRI_TEST,
+    })
+
+    expect(sim.frazioneAutoconsumoEffettiva).toBeGreaterThan(
+      sim.frazioneAutoconsumoUsata,
+    )
+    for (const anno of sim.economia.cashflow) {
+      expect(anno.flussoCents).toBe(
+        anno.risparmioEnergiaCents +
+          anno.risparmioTermicoCents +
+          anno.rataDetrazioneCents +
+          anno.rataContoTermicoCents,
+      )
+    }
   })
 })
 

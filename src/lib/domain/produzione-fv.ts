@@ -114,6 +114,11 @@ export const PESI_MENSILI_FV_ITALIA: readonly number[] = [
   0.041,
 ]
 
+/** Giorni per mese, anno non bisestile: serve ai modelli mese per mese. */
+export const GIORNI_MESE: readonly number[] = [
+  31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+]
+
 export const ETICHETTE_MESI_IT = [
   'Gen',
   'Feb',

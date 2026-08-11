@@ -11,8 +11,27 @@ export type BloccoTermicoDossier = {
   readonly prezzoLordoEur: number
   /** Percentuale detrazione (es. 50). */
   readonly detrazionePct: number
-  /** Conto Termico indicativo in euro, null se non applicabile. */
+  /**
+   * Agevolazione scelta per le spese del blocco termico.
+   *
+   * Per privati e condomini il Conto Termico 3.0 non si somma a una
+   * detrazione statale sulle stesse spese: la scelta e' quindi esplicita e
+   * mutuamente esclusiva, non dedotta dal template PDF.
+   */
+  readonly incentivo: 'detrazione' | 'conto_termico' | 'nessuno'
+  /** Conto Termico indicativo in euro, null se non e' quello scelto. */
   readonly contoTermicoEur: number | null
+  /** Su quanti anni viene ripartita la detrazione termica. */
+  readonly anniDetrazione?: number | null
+  /**
+   * Rendimento stagionale della pompa di calore proposta. Senza, l'economia
+   * del termico non e' calcolabile e il blocco resta solo descrittivo.
+   */
+  readonly scop?: number | null
+  /** Prezzo del gas in euro per standard metro cubo, dalla bolletta. */
+  readonly prezzoGasEurSmc?: number | null
+  /** Su quanti anni il GSE eroga il Conto Termico. */
+  readonly anniContoTermico?: number | null
 }
 
 export type DossierPreventivo = {
@@ -39,6 +58,18 @@ export function normalizzaDossier(grezzo: unknown): DossierPreventivo {
   if (!descrizione || !Number.isFinite(prezzoLordoEur) || prezzoLordoEur < 0) {
     return { termico: null }
   }
+  const contoTermicoEur =
+    ct != null && Number.isFinite(ct) && ct >= 0 ? ct : null
+  const incentivo =
+    o.incentivo === 'detrazione' ||
+    o.incentivo === 'conto_termico' ||
+    o.incentivo === 'nessuno'
+      ? o.incentivo
+      : contoTermicoEur != null && contoTermicoEur > 0
+        ? 'conto_termico'
+        : Number.isFinite(detrazionePct) && detrazionePct > 0
+          ? 'detrazione'
+          : 'nessuno'
   return {
     termico: {
       presente: true,
@@ -48,8 +79,20 @@ export function normalizzaDossier(grezzo: unknown): DossierPreventivo {
       detrazionePct: Number.isFinite(detrazionePct)
         ? Math.min(100, Math.max(0, detrazionePct))
         : 50,
+      incentivo,
       contoTermicoEur:
-        ct != null && Number.isFinite(ct) && ct >= 0 ? ct : null,
+        incentivo === 'conto_termico' ? contoTermicoEur : null,
+      anniDetrazione: opzionalePositivo(o.anniDetrazione),
+      scop: opzionalePositivo(o.scop),
+      prezzoGasEurSmc: opzionalePositivo(o.prezzoGasEurSmc),
+      anniContoTermico: opzionalePositivo(o.anniContoTermico),
     },
   }
+}
+
+/** Numero positivo, o `null`: non si inventa un valore quando manca il dato. */
+function opzionalePositivo(grezzo: unknown): number | null {
+  if (grezzo == null || grezzo === '') return null
+  const n = Number(grezzo)
+  return Number.isFinite(n) && n > 0 ? n : null
 }

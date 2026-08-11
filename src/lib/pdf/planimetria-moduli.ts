@@ -34,6 +34,20 @@ export function planimetriaDaStudio(
   const layouts = layoutsAttivi(snapshot)
   if (layouts.length === 0) return null
 
+  const nFalde = layouts.length
+  const legenda = `${contaModuli(layouts)} moduli · ${kWpDaLayouts(layouts).toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWp · ${nFalde} falda${nFalde === 1 ? '' : 'e'} (${layouts.map((l) => `F${l.faldaIndice + 1}:${l.moduli.length}`).join(', ')})`
+
+  const anteprima = snapshot.anteprimaModuliDataUri
+  if (anteprima?.startsWith('data:image/')) {
+    return {
+      viewBox: '0 0 960 630',
+      poligoniPaths: [],
+      moduliPaths: [],
+      legenda,
+      fotoDataUri: anteprima,
+    }
+  }
+
   const punti: Coordinate[] = []
   for (const layout of layouts) {
     const poligono = snapshot.poligoni[String(layout.faldaIndice)]
@@ -90,9 +104,6 @@ export function planimetriaDaStudio(
       moduliPaths.push(pathDi(m.angoli))
     }
   }
-
-  const nFalde = layouts.length
-  const legenda = `${contaModuli(layouts)} moduli · ${kWpDaLayouts(layouts).toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWp · ${nFalde} falda${nFalde === 1 ? '' : 'e'} (${layouts.map((l) => `F${l.faldaIndice + 1}:${l.moduli.length}`).join(', ')})`
 
   return {
     viewBox: `${minX.toFixed(3)} ${minY.toFixed(3)} ${(maxX - minX).toFixed(3)} ${(maxY - minY).toFixed(3)}`,

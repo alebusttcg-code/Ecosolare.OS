@@ -30,10 +30,25 @@ export interface SnapshotStudioTetto {
    */
   readonly layout?: LayoutStudioFalda | null
   readonly consumoAnnuoKwh: number
+  /**
+   * Gas consumato nell'ultimo anno, in standard metri cubi, letto dalla
+   * bolletta. E' cio' da cui si ricava il fabbisogno termico quando il
+   * preventivo comprende una pompa di calore: il cliente ha il dato in mano e
+   * l'anno scorso quel gas l'ha davvero bruciato, mentre ogni stima da metri
+   * quadri e zona climatica sbaglia facilmente del trenta per cento.
+   */
+  readonly consumoGasAnnuoSmc?: number
+  /** Quota di gas che resta (tipicamente la cucina), in Smc. */
+  readonly gasNonSostituitoSmc?: number
   readonly produzioneAnnuakWh: number
   readonly tariffaImportEurKwh: number
   readonly tariffaExportEurKwh: number
   readonly frazioneAutoconsumo?: number
+  /**
+   * JPEG data-URI della vista Moduli (cattura client al salvataggio).
+   * Se presente, il PDF la usa al posto dell’overlay SVG sull’ortofoto.
+   */
+  readonly anteprimaModuliDataUri?: string
 }
 
 /**

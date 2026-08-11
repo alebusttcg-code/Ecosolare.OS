@@ -58,11 +58,13 @@ export interface DettagliImpiantoPdf {
 
 export interface CondizioniEconomichePdf {
   readonly totaleLordo: string
-  readonly detrazionePct: string
-  readonly detrazioneImporto: string
+  readonly detrazioneEtichetta: string
+  readonly detrazioneImporto: string | null
+  readonly contoTermicoImporto: string | null
   readonly nettoIndicativo: string
   readonly bollettaAttualeMensile: string
   readonly bollettaConFvMensile: string
+  readonly creditoMensile: string | null
   readonly risparmioMensile: string
   readonly risparmioAnnuo: string
   readonly paybackAnni: string | null
@@ -85,13 +87,51 @@ export interface FlussiEnergiaNumPdf {
   readonly consumo: number
 }
 
+/** Un indicatore della scheda tecnica: icona, etichetta, numero, unità. */
+export interface IndicatorePdf {
+  readonly icona: string
+  readonly etichetta: string
+  readonly valore: string
+  readonly unita: string
+}
+
+/** Voci finanziarie di sintesi, quelle che il cliente legge per prime. */
+export interface KpiFinanziarioPdf {
+  readonly etichetta: string
+  readonly valore: string
+  /** `beneficio` verde, `costo` arancio, `neutro` inchiostro. */
+  readonly tono: 'beneficio' | 'costo' | 'neutro'
+}
+
+/** Risparmio sul riscaldamento, quando il preventivo comprende il termico. */
+export interface TermicoPdf {
+  readonly gasEvitatoSmc: string
+  readonly costoGasEvitato: string
+  readonly consumoElettricoAggiuntivo: string
+  readonly costoElettricoAggiuntivo: string
+  readonly risparmioAnnuo: string
+  readonly incentivoEtichetta: string
+  readonly incentivoImporto: string | null
+  readonly notaIncentivo: string
+}
+
 export interface RigaCashflowPdf {
   readonly anno: string
   readonly risparmio: string
   readonly detrazione: string
   readonly flusso: string
+  /** Risparmio sul riscaldamento nell'anno, o null se non c'è termico. */
+  readonly risparmioTermico: string | null
+  /** Rata del Conto Termico incassata nell'anno, o null. */
+  readonly contoTermico: string | null
   /** Flusso netto in centesimi (grafico). */
   readonly flussoCents: number
+}
+
+/** Un punto della curva cumulata: è il grafico che mostra il rientro. */
+export interface PuntoCumulatoPdf {
+  readonly anno: number
+  readonly cumulatoEur: number
 }
 
 export interface SimulazionePdf {
@@ -103,6 +143,11 @@ export interface SimulazionePdf {
   readonly npvCents: number
   readonly paybackAnni: string | null
   readonly cashflow: readonly RigaCashflowPdf[]
+  /** Tutto l'orizzonte, non solo i primi anni: serve al grafico del rientro. */
+  readonly cumulato: readonly PuntoCumulatoPdf[]
+  readonly indicatori: readonly IndicatorePdf[]
+  readonly kpiFinanziari: readonly KpiFinanziarioPdf[]
+  readonly termico: TermicoPdf | null
   readonly orizzonteAnni: number
 }
 
@@ -110,10 +155,15 @@ export interface BloccoTermicoPdf {
   readonly tipoEtichetta: string
   readonly descrizione: string
   readonly prezzoLordo: string
-  readonly detrazionePct: string
-  readonly detrazioneImporto: string
-  readonly contoTermico: string | null
+  readonly incentivoEtichetta: string
+  readonly incentivoImporto: string | null
+  readonly notaIncentivo: string
   readonly nettoIndicativo: string
+}
+
+export interface SezioneTecnicaPdf {
+  readonly titolo: string
+  readonly voci: readonly string[]
 }
 
 export interface DossierTestualePdf {
@@ -159,11 +209,10 @@ export interface DatiPdfPreventivo {
   readonly dettagliImpianto: DettagliImpiantoPdf | null
   readonly condizioniEconomiche: CondizioniEconomichePdf | null
   readonly bloccoTermico: BloccoTermicoPdf | null
+  readonly configurazioneTecnica: readonly SezioneTecnicaPdf[]
   readonly dossierTestuale: DossierTestualePdf
   readonly planimetria: PlanimetriaPdfDto | null
   readonly simulazione: SimulazionePdf | null
-  /** Data-URI PNG delle pagine marketing (ordine di stampa). */
-  readonly pagineMarketing: readonly string[]
   readonly righe: readonly RigaPdfPreventivo[]
   readonly scontoGlobalePct: string | null
   readonly imponibile: string

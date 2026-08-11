@@ -63,6 +63,14 @@ export function getDb(): ReturnType<typeof buildDb> {
   if (!globalThis.__ecosolareDb) {
     globalThis.__ecosolareDb = buildDb()
   }
+  // HMR: se lo schema è cresciuto dopo il primo buildDb, la query API
+  // resta incompleta sul singleton (es. siteStudies undefined → crash studio).
+  if (
+    process.env.NODE_ENV === 'development' &&
+    !globalThis.__ecosolareDb.query.siteStudies
+  ) {
+    globalThis.__ecosolareDb = buildDb()
+  }
   return globalThis.__ecosolareDb
 }
 
