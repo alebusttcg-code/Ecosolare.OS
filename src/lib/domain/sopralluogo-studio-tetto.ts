@@ -63,27 +63,44 @@ function tipoTettoDaFalde(falde: readonly FaldaTetto[]): string | null {
   return 'falda'
 }
 
+/**
+ * Superficie utile = area dei poligoni editati sulle falde con moduli.
+ * Non sommare tutte le falde: i poligoni iniziali sono i bbox dorati Solar
+ * (spesso molto più grandi della falda reale) e gonfierebbero i mq.
+ */
 function superficieUtileMq(snapshot: SnapshotStudioTetto): number | null {
   const falde = faldeAttive(snapshot)
   if (falde.length === 0) return null
+
+  const conModuli = new Set(
+    layoutsAttivi(snapshot).map((L) => L.faldaIndice),
+  )
+  const daMisurare =
+    conModuli.size > 0
+      ? falde.filter((f) => conModuli.has(f.indice))
+      : (() => {
+          const rif = faldaRiferimento(snapshot)
+          return rif ? [rif] : []
+        })()
+
   let tot = 0
   let n = 0
-  for (const f of falde) {
+  for (const f of daMisurare) {
     const poli = snapshot.poligoni[String(f.indice)]
     if (poli && poli.length >= 3) {
-      tot += areaPoligonoMetri2(poli)
-      n++
-      continue
+      const mq = areaPoligonoMetri2(poli)
+      if (mq > 0) {
+        tot += mq
+        n++
+        continue
+      }
     }
     if (f.areaMeters2 != null && f.areaMeters2 > 0) {
       tot += f.areaMeters2
       n++
     }
   }
-  if (n === 0) {
-    const whole = snapshot.analisi.wholeRoofAreaMeters2
-    return whole != null && whole > 0 ? Math.round(whole * 10) / 10 : null
-  }
+  if (n === 0) return null
   return Math.round(tot * 10) / 10
 }
 

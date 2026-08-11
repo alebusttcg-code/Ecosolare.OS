@@ -19,6 +19,7 @@ import {
   annullaFollowUpPre,
   creaFollowUpPost,
 } from '@/lib/follow-up'
+import { CAMPI_GEOMETRIA_STUDIO, risposteDaStudioTetto } from '@/lib/domain/sopralluogo-studio-tetto'
 import { getUltimoStudioCompletoPerLead } from '@/lib/queries/site-studies'
 import type { ActionResult } from './opportunities'
 
@@ -219,6 +220,90 @@ const salvaSopralluogoSchema = z.object({
   /** Se true, tenta la chiusura: e' allora che la validazione diventa bloccante. */
   completa: z.boolean().default(false),
 })
+
+const riallineaGeometriaSchema = z.object({
+  surveyId: z.uuid(),
+})
+
+/**
+ * Rilegge l’ultimo studio completo del lead e sovrascrive i campi geometrici
+ * del sopralluogo (persistendo in bozza). Non usa lo snapshot stale della pagina.
+ */
+export async function riallineaGeometriaSopralluogo(
+  input: z.input<typeof riallineaGeometriaSchema>,
+): Promise<ActionResult<{ risposte: Risposte; superficieUtile: number | null }>> {
+  const utente = await guard('update', 'survey')
+
+  const parsed = riallineaGeometriaSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, errors: errori(parsed.error.issues) }
+
+  const db = getDb()
+  const sopralluogo = await db.query.surveys.findFirst({
+    where: eq(surveys.id, parsed.data.surveyId),
+  })
+  if (!sopralluogo) return { ok: false, errors: { _: 'Sopralluogo non trovato.' } }
+  if (sopralluogo.status === 'completato') {
+    return { ok: false, errors: { _: 'Il sopralluogo è già stato completato.' } }
+  }
+
+  const studio = await getUltimoStudioCompletoPerLead(sopralluogo.opportunityId)
+  if (!studio) {
+    return {
+      ok: false,
+      errors: { _: 'Nessuno studio tetto completo sul lead. Aprilo da Sviluppo e salvalo completo.' },
+    }
+  }
+
+  const daStudio = risposteDaStudioTetto(studio.payload)
+  if (Object.keys(daStudio).length === 0) {
+    return { ok: false, errors: { _: 'Lo studio non ha geometria importabile.' } }
+  }
+
+  const correnti = (sopralluogo.answers ?? {}) as Risposte
+  const risposteMut: Record<string, Risposte[string]> = { ...correnti }
+  for (const campo of CAMPI_GEOMETRIA_STUDIO) {
+    if (daStudio[campo] !== undefined) risposteMut[campo] = daStudio[campo]!
+    else delete risposteMut[campo]
+  }
+  const risposte = risposteMut as Risposte
+
+  // Merge anche eventuali risposte non ancora salvate? Solo DB: il client
+  // manda poi lo stato aggiornato. Qui allineiamo la bozza ai mq dello studio.
+  const potenza = risposte['potenza_stimata']
+  const tipoTetto = risposte['tipo_tetto']
+  const adesso = new Date()
+
+  await db
+    .update(surveys)
+    .set({
+      answers: risposte,
+      estimatedPowerKw:
+        typeof potenza === 'number' ? potenza.toFixed(2) : potenza ? String(potenza) : null,
+      roofType: typeof tipoTetto === 'string' ? tipoTetto : null,
+      updatedAt: adesso,
+    })
+    .where(eq(surveys.id, parsed.data.surveyId))
+
+  await recordEntityChange({
+    actorId: utente.id,
+    actorLabel: utente.email,
+    action: 'update',
+    entityType: 'survey',
+    entityId: parsed.data.surveyId,
+    after: { riallineaGeometria: true, siteStudyId: studio.id },
+  })
+
+  revalidatePath(`/agenda/${parsed.data.surveyId}`)
+  revalidatePath(`/lead/${sopralluogo.opportunityId}`)
+
+  const superficie =
+    typeof risposte.superficie_utile === 'number' ? risposte.superficie_utile : null
+
+  return {
+    ok: true,
+    data: { risposte, superficieUtile: superficie },
+  }
+}
 
 export interface EsitoSopralluogo {
   readonly completato: boolean

@@ -137,7 +137,6 @@ export default async function SopralluogoPage({
           riga.template.definition as DefinizioneQuestionario,
         )}
         risposteIniziali={risposteIniziali}
-        risposteStudio={daStudio}
         studioCompleto={
           studio
             ? {

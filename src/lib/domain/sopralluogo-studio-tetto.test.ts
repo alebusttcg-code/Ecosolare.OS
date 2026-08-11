@@ -89,9 +89,37 @@ describe('sopralluogo da studio tetto', () => {
     expect(r.tipo_tetto).toBe('misto')
     expect(r.orientamento).toBe('sud')
     expect(r.inclinazione).toBe(20)
-    expect(r.superficie_utile).toBe(65)
+    // Solo falda 0 (con moduli), non somma le altre (bbox dorati).
+    expect(r.superficie_utile).toBe(40)
     expect(r.potenza_stimata).toBe(4)
     expect(faldaRiferimento(snapshotBase())?.indice).toBe(0)
+  })
+
+  it('usa l’area del poligono editato, non il bbox Solar delle altre falde', () => {
+    // Poligono stretto su falda 0 (~poi calcolato); falda 1 ha un bbox enorme
+    // come quelli dorati iniziali — non deve entrare nei mq.
+    const r = risposteDaStudioTetto(
+      snapshotBase({
+        poligoni: {
+          '0': [
+            { latitude: 45.1, longitude: 9.2 },
+            { latitude: 45.1, longitude: 9.2002 },
+            { latitude: 45.10015, longitude: 9.2002 },
+            { latitude: 45.10015, longitude: 9.2 },
+          ],
+          '1': [
+            { latitude: 45.09, longitude: 9.19 },
+            { latitude: 45.09, longitude: 9.21 },
+            { latitude: 45.11, longitude: 9.21 },
+            { latitude: 45.11, longitude: 9.19 },
+          ],
+        },
+      }),
+    )
+    expect(r.superficie_utile).toBeGreaterThan(200)
+    expect(r.superficie_utile).toBeLessThan(400)
+    // Se sommasse anche il bbox della falda 1 sarebbe >> 1000 mq.
+    expect(r.superficie_utile).toBeLessThan(800)
   })
 
   it('ignora falde rimosse e riconosce piano', () => {

@@ -8,8 +8,10 @@ import type { FotoSopralluogo } from '@/components/carica-foto-sopralluogo'
 import { Badge } from '@/components/ui'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { Questionario } from '@/components/questionario'
-import { saveSurvey } from '@/lib/actions/questionnaires'
-import { CAMPI_GEOMETRIA_STUDIO } from '@/lib/domain/sopralluogo-studio-tetto'
+import {
+  riallineaGeometriaSopralluogo,
+  saveSurvey,
+} from '@/lib/actions/questionnaires'
 import {
   calcolaCompletezza,
   criticitaRilevate,
@@ -40,7 +42,6 @@ export function CompilaSopralluogo({
   opportunityId,
   definizione,
   risposteIniziali,
-  risposteStudio = {},
   studioCompleto = null,
   daPrequalifica,
   daStudioTetto = false,
@@ -52,8 +53,6 @@ export function CompilaSopralluogo({
   opportunityId: string
   definizione: DefinizioneQuestionario
   risposteIniziali: Risposte
-  /** Geometria dall’ultimo studio completo (per riallinea). */
-  risposteStudio?: Risposte
   studioCompleto?: SintesiStudioSopralluogo | null
   daPrequalifica: boolean
   /** Prefill geometria da studio tetto Solar completo sullo stesso lead. */
@@ -101,17 +100,36 @@ export function CompilaSopralluogo({
   }
 
   function riallineaGeometria() {
-    const daStudio = Object.fromEntries(
-      CAMPI_GEOMETRIA_STUDIO.filter((c) => risposteStudio[c] !== undefined).map(
-        (c) => [c, risposteStudio[c]!],
-      ),
-    ) as Risposte
-    if (Object.keys(daStudio).length === 0) {
-      avvisa('Nessun dato geometrico nello studio da riallineare.', 'info')
-      return
-    }
-    setRisposte((precedenti) => ({ ...precedenti, ...daStudio }))
-    avvisa('Geometria aggiornata dallo studio tetto.', 'info')
+    esegui(async () => {
+      // Prima persiste le risposte correnti (non geometriche), poi sovrascrive
+      // la geometria dallo studio fresco — altrimenti si perdono bozze non salvate.
+      const bozza = await saveSurvey({
+        surveyId,
+        risposte,
+        notes: note,
+        completa: false,
+      })
+      if (!bozza.ok) {
+        setMessaggio(Object.values(bozza.errors)[0] ?? 'Salvataggio non riuscito.')
+        return
+      }
+
+      const esito = await riallineaGeometriaSopralluogo({ surveyId })
+      if (!esito.ok) {
+        setMessaggio(Object.values(esito.errors)[0] ?? 'Riallineamento non riuscito.')
+        return
+      }
+
+      setRisposte(esito.data.risposte)
+      const mq = esito.data.superficieUtile
+      avvisa(
+        mq != null
+          ? `Geometria aggiornata dallo studio (${mq.toLocaleString('it-IT')} mq utili).`
+          : 'Geometria aggiornata dallo studio tetto.',
+      )
+      setMessaggio(null)
+      router.refresh()
+    })
   }
 
   function salva(completa: boolean) {
@@ -203,14 +221,15 @@ export function CompilaSopralluogo({
               >
                 Apri Sviluppo
               </Link>
-              {haStudio && Object.keys(risposteStudio).length > 0 ? (
+              {haStudio ? (
                 <button
                   type="button"
                   onClick={riallineaGeometria}
-                  className="bottone-fantasma rounded-lg border px-3 py-2 text-sm"
+                  disabled={inCorso}
+                  className="bottone-fantasma rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
                   style={{ borderColor: 'var(--bordo)' }}
                 >
-                  Riallinea geometria
+                  {inCorso ? 'Riallineamento…' : 'Riallinea geometria'}
                 </button>
               ) : null}
             </div>
