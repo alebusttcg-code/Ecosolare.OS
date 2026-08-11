@@ -913,6 +913,52 @@ export const surveyFiles = pgTable(
 )
 
 /* -------------------------------------------------------------------------- */
+/*  Studi tetto (Sviluppo → Preventivo)                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Studio di settore sull’immobile: output di Sviluppo persistito e collegato
+ * al lead. Un preventivo nasce solo da uno studio in stato `completo`.
+ */
+export const siteStudyStatus = pgEnum('site_study_status', ['bozza', 'completo'])
+
+export const siteStudies = pgTable(
+  'site_studies',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    opportunityId: uuid('opportunity_id')
+      .notNull()
+      .references(() => opportunities.id, { onDelete: 'cascade' }),
+    siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+
+    status: siteStudyStatus('status').notNull().default('bozza'),
+    title: text('title').notNull().default('Studio tetto'),
+
+    /**
+     * Snapshot completo (analisi Solar, poligoni editati, layout moduli,
+     * consumi/tariffe). Le colonne sotto sono promozioni per elenchi e PDF.
+     */
+    payload: jsonb('payload').notNull().default({}),
+
+    moduliCount: integer('moduli_count'),
+    powerKwp: numeric('power_kwp', { precision: 8, scale: 3 }),
+    produzioneKwh: numeric('produzione_kwh', { precision: 12, scale: 1 }),
+    consumoKwh: numeric('consumo_kwh', { precision: 12, scale: 1 }),
+    formattedAddress: text('formatted_address'),
+
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    index('site_studies_opportunity_idx').on(table.opportunityId),
+    index('site_studies_status_idx').on(table.status),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
 /*  Preventivi                                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -924,13 +970,23 @@ export const quotes = pgTable(
     opportunityId: uuid('opportunity_id')
       .notNull()
       .references(() => opportunities.id, { onDelete: 'cascade' }),
+    /**
+     * Studio tetto da cui nasce il preventivo (obbligatorio in creazione).
+     * onDelete restrict: non si cancella uno studio già usato in offerta.
+     */
+    siteStudyId: uuid('site_study_id').references(() => siteStudies.id, {
+      onDelete: 'restrict',
+    }),
     title: text('title').notNull(),
     /** Versione attualmente valida. Le altre restano consultabili. */
     currentVersionId: uuid('current_version_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   },
-  (table) => [index('quotes_opportunity_idx').on(table.opportunityId)],
+  (table) => [
+    index('quotes_opportunity_idx').on(table.opportunityId),
+    index('quotes_site_study_idx').on(table.siteStudyId),
+  ],
 )
 
 /**
@@ -1807,6 +1863,7 @@ export type Product = typeof products.$inferSelect
 export type SurveyTemplate = typeof surveyTemplates.$inferSelect
 export type Survey = typeof surveys.$inferSelect
 export type SurveyFile = typeof surveyFiles.$inferSelect
+export type SiteStudy = typeof siteStudies.$inferSelect
 export type Quote = typeof quotes.$inferSelect
 export type QuoteVersion = typeof quoteVersions.$inferSelect
 export type QuoteLine = typeof quoteLines.$inferSelect

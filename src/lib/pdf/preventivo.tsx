@@ -93,6 +93,38 @@ const stili = StyleSheet.create({
     color: '#475569',
     lineHeight: 1.35,
   },
+  kpiRiga: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  kpiBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 164, 65, 0.45)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    backgroundColor: C.abisso,
+  },
+  kpiEtichetta: {
+    fontSize: 7,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    color: C.oro,
+    marginBottom: 4,
+    fontFamily: 'Helvetica-Bold',
+  },
+  kpiValore: {
+    fontSize: 13,
+    color: '#f8fafc',
+    fontFamily: 'Helvetica-Bold',
+  },
+  kpiUnita: {
+    fontSize: 8,
+    color: C.testoTenue,
+    marginTop: 2,
+  },
   sezioneTitolo: {
     fontSize: 8,
     letterSpacing: 1.3,
@@ -335,6 +367,32 @@ export function DocumentoPreventivo({
               ) : null}
             </View>
           </View>
+
+          {dati.copertinaKpi ? (
+            <View style={stili.kpiRiga}>
+              <View style={stili.kpiBox}>
+                <Text style={stili.kpiEtichetta}>Moduli FV</Text>
+                <Text style={stili.kpiValore}>
+                  {dati.copertinaKpi.moduli}/{dati.copertinaKpi.moduli}
+                </Text>
+              </View>
+              <View style={stili.kpiBox}>
+                <Text style={stili.kpiEtichetta}>Potenza CC</Text>
+                <Text style={stili.kpiValore}>{dati.copertinaKpi.kWp} kWp</Text>
+              </View>
+              <View style={stili.kpiBox}>
+                <Text style={stili.kpiEtichetta}>Produzione / cons. annua</Text>
+                <Text style={stili.kpiValore}>
+                  {dati.copertinaKpi.produzioneMwh}
+                  {dati.copertinaKpi.consumoMwh
+                    ? ` / ${dati.copertinaKpi.consumoMwh}`
+                    : ''}{' '}
+                  MWh
+                </Text>
+                <Text style={stili.kpiUnita}>Stima da studio tetto</Text>
+              </View>
+            </View>
+          ) : null}
 
           <Text style={stili.sezioneTitolo}>Dettaglio economico</Text>
           <View style={stili.tabella}>

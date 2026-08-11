@@ -61,6 +61,7 @@ async function prossimoCodicePreventivo(db: Esecutore, anno: number): Promise<st
 
 const creaSchema = z.object({
   opportunityId: z.uuid(),
+  siteStudyId: z.uuid('Seleziona uno studio tetto completo.'),
   title: z.string().trim().min(1, 'Indicare un titolo').max(160),
 })
 
@@ -72,6 +73,21 @@ export async function createQuote(
   const parsed = creaSchema.safeParse(input)
   if (!parsed.success) return { ok: false, errors: errori(parsed.error.issues) }
 
+  const { getStudioCompletoPerLead } = await import('@/lib/queries/site-studies')
+  const studio = await getStudioCompletoPerLead(
+    parsed.data.opportunityId,
+    parsed.data.siteStudyId,
+  )
+  if (!studio) {
+    return {
+      ok: false,
+      errors: {
+        siteStudyId:
+          'Serve uno studio tetto completo sullo stesso lead. Aprilo da Sviluppo e salvalo come completo.',
+      },
+    }
+  }
+
   const risultato = await getDb().transaction(async (tx) => {
     const code = await prossimoCodicePreventivo(tx, new Date().getFullYear())
 
@@ -80,6 +96,7 @@ export async function createQuote(
       .values({
         code,
         opportunityId: parsed.data.opportunityId,
+        siteStudyId: parsed.data.siteStudyId,
         title: parsed.data.title,
         createdBy: utente.id,
       })

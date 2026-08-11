@@ -394,12 +394,12 @@ disattiva e i FU restano gestibili solo in app.
 
 ## D-016 — Sezione Sviluppo: laboratorio Google Solar (step 1)
 
-**Data:** 10 agosto 2026 · **Decisore:** Federico Leporati · **Stato:** attiva
+**Data:** 10 agosto 2026 · **Decisore:** Federico Leporati · **Stato:** attiva,
+estesa da D-020 (11 agosto 2026)
 
 Si introduce la sezione **Sviluppo** (`/sviluppo`) per il dimensionamento
-impianto. **Step 1:** laboratorio isolato (nessun legame a lead/sito) che
-geocodifica un indirizzo e chiama Google Solar `buildingInsights` per mostrare
-falde (inclinazione, esposizione, area).
+impianto. **Step 1:** laboratorio che geocodifica un indirizzo e chiama Google
+Solar `buildingInsights` per mostrare falde (inclinazione, esposizione, area).
 
 **Accesso:** ruoli `amministratore` e `commerciale` (resource `sviluppo` in
 policy). Chiave `GOOGLE_MAPS_API_KEY` solo server-side; senza chiave la UI
@@ -408,7 +408,7 @@ spiega che Solar non è configurato.
 **Editor falda (lab):** dopo l’analisi, ogni falda Solar si può selezionare e
 regolare come poligono editabile sulla mappa satellitare; i metri sui lati e
 l’area editata sono calcolo locale sul perimetro disegnato. Pitch/azimuth
-restano stime Solar. Nessuna persistenza (solo sessione UI).
+restano stime Solar.
 
 **DSM / sezione / 3D:** dopo l’analisi si scarica Solar `dataLayers` (DSM +
 mask, server-side, cache processo). Sulla falda selezionata: profilo sezione
@@ -416,6 +416,10 @@ lungo l’azimuth e mesh 3D orbitabile dalle quote DSM. Billable; non è un
 rilievo di cantiere. Poligoni falda restano quelli editati (non estratti
 automaticamente dal solo DSM).
 
-**Fuori scope step 1:** salvataggio su CRM, Places Autocomplete, motore calcoli
-EcoSolare (foglio), flux/shade orari, export CAD.
+**D-020 — Studio tetto persistito e obbligatorio per il preventivo** (11 agosto
+2026): lo studio si salva su `site_studies` collegato al lead; stato `completo`
+richiede analisi + layout moduli + produzione stimata. `createQuote` richiede
+`siteStudyId` completo sullo stesso lead. Il PDF mostra i KPI di copertina
+(moduli, kWp, produzione/consumo). Motore economico completo e dossier PDF
+parità commerciale = fasi successive.
 

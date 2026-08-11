@@ -22,6 +22,16 @@ export interface RipartizioneIvaPdf {
   readonly imposta: string
 }
 
+/** KPI copertina allineati ai preventivi commerciali EcoSolare. */
+export interface CopertinaKpiPdf {
+  readonly moduli: number
+  readonly kWp: string
+  /** Produzione annua in MWh (es. "7,89"). */
+  readonly produzioneMwh: string
+  /** Consumo annuo in MWh, o null se non rilevante. */
+  readonly consumoMwh: string | null
+}
+
 export interface DatiPdfPreventivo {
   readonly codice: string
   readonly titolo: string
@@ -32,6 +42,7 @@ export interface DatiPdfPreventivo {
   readonly aziendaCliente: string | null
   readonly immobileEtichetta: string | null
   readonly immobileIndirizzo: string | null
+  readonly copertinaKpi: CopertinaKpiPdf | null
   readonly righe: readonly RigaPdfPreventivo[]
   readonly scontoGlobalePct: string | null
   readonly imponibile: string

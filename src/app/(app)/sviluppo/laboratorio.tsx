@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
 import { Badge, Card, Vuoto } from '@/components/ui'
+import { salvaStudioTetto } from '@/lib/actions/site-studies'
 import { analizzaTetto, analizzaTettoAlPunto, caricaDsmEdificio } from '@/lib/actions/sviluppo'
+import { stimaProduzioneAnnuakWh } from '@/lib/domain/studio-tetto'
 import {
   areaPoligonoMetri2,
   etichettaAzimuth,
@@ -20,7 +22,7 @@ import {
   type GrigliaDsm,
 } from '@/lib/solar'
 import { useAzioneServer } from '@/lib/use-azione-server'
-import { EditorModuli } from './editor-moduli'
+import { EditorModuli, type LayoutModuliCorrente } from './editor-moduli'
 import { CampoIndirizzo } from './campo-indirizzo'
 import { MappaTetto } from './mappa-tetto'
 import { SezioneFalda } from './sezione-falda'
@@ -38,19 +40,54 @@ function poligoniDaAnalisi(
   return out
 }
 
-export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
+export type ContestoCrmStudio = {
+  readonly opportunityId: string
+  readonly studyId?: string
+  readonly indirizzoProposto?: string
+  readonly titoloLead?: string
+  readonly snapshotIniziale?: import('@/lib/domain/studio-tetto').SnapshotStudioTetto
+}
+
+export function LaboratorioSolar({
+  configurato,
+  contestoCrm,
+}: {
+  configurato: boolean
+  contestoCrm?: ContestoCrmStudio | null
+}) {
   const avvisa = useAvvisi()
   const { inCorso, esegui } = useAzioneServer()
-  const [indirizzo, setIndirizzo] = useState('')
+  const iniziale = contestoCrm?.snapshotIniziale
+  const [indirizzo, setIndirizzo] = useState(
+    iniziale?.analisi.formattedAddress ?? contestoCrm?.indirizzoProposto ?? '',
+  )
   const [errore, setErrore] = useState<string | null>(null)
-  const [analisi, setAnalisi] = useState<AnalisiTetto | null>(null)
-  const [poligoni, setPoligoni] = useState<Record<number, Coordinate[]>>({})
-  const [faldaSelezionata, setFaldaSelezionata] = useState<number | null>(null)
+  const [analisi, setAnalisi] = useState<AnalisiTetto | null>(
+    iniziale?.analisi ?? null,
+  )
+  const [poligoni, setPoligoni] = useState<Record<number, Coordinate[]>>(() => {
+    if (!iniziale?.poligoni) return {}
+    const out: Record<number, Coordinate[]> = {}
+    for (const [k, v] of Object.entries(iniziale.poligoni)) {
+      out[Number(k)] = [...v]
+    }
+    return out
+  })
+  const [faldaSelezionata, setFaldaSelezionata] = useState<number | null>(
+    iniziale?.layout?.faldaIndice ?? null,
+  )
   /** Indici Solar esclusi dall’editor (solo sessione UI). */
   const [faldeRimosse, setFaldeRimosse] = useState<ReadonlySet<number>>(
-    () => new Set(),
+    () => new Set(iniziale?.faldeRimosse ?? []),
   )
   const [scegliTetto, setScegliTetto] = useState(false)
+  const [layoutModuli, setLayoutModuli] = useState<LayoutModuliCorrente | null>(
+    null,
+  )
+  const [consumoAnnuoKwh, setConsumoAnnuoKwh] = useState(
+    iniziale ? String(iniziale.consumoAnnuoKwh) : '8000',
+  )
+  const [studyId, setStudyId] = useState<string | undefined>(contestoCrm?.studyId)
 
   if (!configurato) {
     return (
@@ -63,8 +100,94 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
     )
   }
 
+  const salvaStudio = (completa: boolean) => {
+    if (!contestoCrm?.opportunityId || !analisi) return
+    setErrore(null)
+    esegui(async () => {
+      const consumo = Number.parseFloat(consumoAnnuoKwh.replace(',', '.'))
+      if (!Number.isFinite(consumo) || consumo < 0) {
+        setErrore('Indica il consumo annuo in kWh (0 se impianto aggiuntivo).')
+        return
+      }
+      const poligoniJson: Record<string, Coordinate[]> = {}
+      for (const [k, v] of Object.entries(poligoni)) {
+        if (!faldeRimosse.has(Number(k))) poligoniJson[k] = v
+      }
+      const layout = layoutModuli
+        ? {
+            faldaIndice: layoutModuli.faldaIndice,
+            formatoId: layoutModuli.formatoId,
+            wattPicco: layoutModuli.wattPicco,
+            quantitaRichiesta: layoutModuli.quantitaRichiesta,
+            landscape: layoutModuli.landscape,
+            moduli: layoutModuli.moduli.map((m) => ({
+              angoli: [
+                m.angoli[0],
+                m.angoli[1],
+                m.angoli[2],
+                m.angoli[3],
+              ] as [
+                (typeof m.angoli)[0],
+                (typeof m.angoli)[1],
+                (typeof m.angoli)[2],
+                (typeof m.angoli)[3],
+              ],
+              centro: m.centro,
+              rotazioneDegrees: m.rotazioneDegrees,
+            })),
+          }
+        : null
+      const produzione = stimaProduzioneAnnuakWh(layoutModuli?.kWp ?? 0)
+      const esito = await salvaStudioTetto({
+        studyId,
+        opportunityId: contestoCrm.opportunityId,
+        title: contestoCrm.titoloLead
+          ? `Studio — ${contestoCrm.titoloLead}`
+          : 'Studio tetto',
+        completa,
+        snapshot: {
+          analisi,
+          poligoni: poligoniJson,
+          faldeRimosse: [...faldeRimosse],
+          layout,
+          consumoAnnuoKwh: consumo,
+          produzioneAnnuakWh: produzione,
+          tariffaImportEurKwh: 0.3,
+          tariffaExportEurKwh: 0.1,
+        },
+      })
+      if (!esito.ok) {
+        setErrore(esito.errors._ ?? 'Salvataggio non riuscito.')
+        return
+      }
+      setStudyId(esito.data.studyId)
+      avvisa(
+        esito.data.status === 'completo'
+          ? 'Studio completo: puoi creare il preventivo dal lead.'
+          : 'Bozza studio salvata.',
+      )
+    })
+  }
+
   return (
     <div className="space-y-6">
+      {contestoCrm ? (
+        <Card>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
+            Studio collegato al lead
+            {contestoCrm.titoloLead ? (
+              <>
+                {' '}
+                <strong style={{ color: 'var(--testo)' }}>{contestoCrm.titoloLead}</strong>
+              </>
+            ) : null}
+            . Analizza il tetto, posiziona i moduli e salva come{' '}
+            <strong style={{ color: 'var(--testo)' }}>completo</strong> per
+            sbloccare il preventivo.
+          </p>
+        </Card>
+      ) : null}
+
       <Card>
         <form
           className="space-y-4"
@@ -82,12 +205,14 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
                 setPoligoni({})
                 setFaldaSelezionata(null)
                 setFaldeRimosse(new Set())
+                setLayoutModuli(null)
                 return
               }
               setAnalisi(esito.data)
               setPoligoni(poligoniDaAnalisi(esito.data.falde))
               setFaldaSelezionata(null)
               setFaldeRimosse(new Set())
+              setLayoutModuli(null)
               setScegliTetto(false)
               avvisa('Tetto analizzato. Preparazione quote in corso…')
             })
@@ -123,6 +248,78 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
         </form>
       </Card>
 
+      {analisi && contestoCrm ? (
+        <Card title="Salva studio per il preventivo">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <label className="block min-w-[12rem] flex-1">
+              <span
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: 'var(--testo-fioco)' }}
+              >
+                Consumo annuo stimato (kWh)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={consumoAnnuoKwh}
+                onChange={(e) => setConsumoAnnuoKwh(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: 'rgba(5,10,20,0.55)',
+                  borderColor: 'var(--bordo)',
+                }}
+              />
+              <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+                Usa 0 se l’impianto è aggiuntivo (tutta l’energia in rete).
+              </span>
+            </label>
+            <div className="text-sm tabular-nums" style={{ color: 'var(--testo-tenue)' }}>
+              {layoutModuli ? (
+                <>
+                  {layoutModuli.moduli.length} moduli ·{' '}
+                  {layoutModuli.kWp.toFixed(2)} kWp · ~{' '}
+                  {stimaProduzioneAnnuakWh(layoutModuli.kWp).toLocaleString('it-IT')}{' '}
+                  kWh/anno
+                </>
+              ) : (
+                'Posiziona i moduli sulla falda per stimare kWp e produzione.'
+              )}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={inCorso || !analisi}
+              onClick={() => salvaStudio(false)}
+              className="rounded-lg border px-3 py-2 text-xs font-medium disabled:opacity-50"
+              style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
+            >
+              Salva bozza
+            </button>
+            <button
+              type="button"
+              disabled={inCorso || !analisi || !layoutModuli}
+              onClick={() => salvaStudio(true)}
+              className="bottone-oro rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50"
+              style={{
+                background: 'linear-gradient(135deg, #e8c765 0%, #d9a441 100%)',
+                color: '#050a14',
+              }}
+            >
+              Salva studio completo
+            </button>
+            {studyId ? (
+              <a
+                href={`/lead/${contestoCrm.opportunityId}`}
+                className="self-center text-xs text-eco-blue-300 hover:underline"
+              >
+                Torna al lead →
+              </a>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
+
       {analisi ? (
         <Risultato
           analisi={analisi}
@@ -131,6 +328,7 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
           faldeRimosse={faldeRimosse}
           scegliTetto={scegliTetto}
           ripresaInCorso={inCorso}
+          onLayoutChange={setLayoutModuli}
           onSeleziona={setFaldaSelezionata}
           onScegliTettoChange={setScegliTetto}
           onPuntoTetto={(punto) => {
@@ -204,6 +402,7 @@ function Risultato({
   faldeRimosse,
   scegliTetto,
   ripresaInCorso,
+  onLayoutChange,
   onSeleziona,
   onScegliTettoChange,
   onPuntoTetto,
@@ -218,6 +417,7 @@ function Risultato({
   faldeRimosse: ReadonlySet<number>
   scegliTetto: boolean
   ripresaInCorso: boolean
+  onLayoutChange?: (layout: LayoutModuliCorrente | null) => void
   onSeleziona: (indice: number | null) => void
   onScegliTettoChange: (attivo: boolean) => void
   onPuntoTetto: (punto: Coordinate) => void
@@ -361,6 +561,7 @@ function Risultato({
                 key={falda?.indice ?? 'nessuna'}
                 falda={falda}
                 poligono={verticiSelezionati}
+                onLayoutChange={onLayoutChange}
               />
             </div>
           )}

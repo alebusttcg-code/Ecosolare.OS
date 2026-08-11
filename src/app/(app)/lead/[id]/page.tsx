@@ -26,6 +26,7 @@ import {
 import { listFollowUpLead } from '@/lib/queries/follow-up'
 import { getStages } from '@/lib/queries/pipeline'
 import { getQuotesForOpportunity } from '@/lib/queries/quotes'
+import { getStudiTettoPerLead } from '@/lib/queries/site-studies'
 import { correggiDefinizioneQuestionario } from '@/lib/domain/etichette-ui'
 import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnaire'
 import { unoAllaVolta } from '@/lib/uno-alla-volta'
@@ -97,6 +98,7 @@ export default async function DettaglioLeadPage({
     followUp,
     templatePrequalifica,
     commessa,
+    studiTetto,
   ] = await unoAllaVolta([
     () => getStages(),
     () =>
@@ -143,7 +145,10 @@ export default async function DettaglioLeadPage({
         .where(and(eq(contracts.opportunityId, id), isNull(projects.deletedAt)))
         .limit(1)
         .then((rows) => rows[0]),
+    () => getStudiTettoPerLead(id),
   ])
+
+  const studiCompleti = studiTetto.filter((s) => s.status === 'completo')
 
   const opp = riga.opp
   const definizionePrequalifica = templatePrequalifica
@@ -361,9 +366,64 @@ export default async function DettaglioLeadPage({
           </Card>
 
           <Card
+            title="Studi tetto"
+            action={
+              <Link
+                href={`/sviluppo?lead=${opp.id}`}
+                className="text-xs text-eco-blue-300 hover:underline collega"
+              >
+                + Nuovo studio
+              </Link>
+            }
+          >
+            {studiTetto.length === 0 ? (
+              <Vuoto messaggio="Nessuno studio tetto. Serve per creare un preventivo." />
+            ) : (
+              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
+                {studiTetto.map((s) => (
+                  <li
+                    key={s.id}
+                    className="riga flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0">
+                      <Link
+                        href={`/sviluppo?lead=${opp.id}&studio=${s.id}`}
+                        className="text-sm font-medium text-eco-blue-300 hover:underline collega"
+                      >
+                        {s.title}
+                      </Link>
+                      <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
+                        {s.powerKwp
+                          ? `${Number.parseFloat(s.powerKwp).toFixed(2)} kWp`
+                          : 'kWp —'}
+                        {s.moduliCount != null ? ` · ${s.moduliCount} moduli` : ''}
+                        {s.produzioneKwh
+                          ? ` · ${Number.parseFloat(s.produzioneKwh).toLocaleString('it-IT')} kWh`
+                          : ''}
+                      </div>
+                    </div>
+                    <Badge tone={s.status === 'completo' ? 'positivo' : 'neutro'}>
+                      {s.status === 'completo' ? 'completo' : 'bozza'}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card
             title="Preventivi"
             action={
-              <NuovoPreventivo opportunityId={opp.id} titoloProposto={opp.title} />
+              <NuovoPreventivo
+                opportunityId={opp.id}
+                titoloProposto={opp.title}
+                studiCompleti={studiCompleti.map((s) => ({
+                  id: s.id,
+                  title: s.title,
+                  moduliCount: s.moduliCount,
+                  powerKwp: s.powerKwp,
+                }))}
+              />
             }
           >
             {preventivi.length === 0 ? (

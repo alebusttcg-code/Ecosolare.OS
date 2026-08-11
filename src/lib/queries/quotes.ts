@@ -9,6 +9,7 @@ import {
   quoteLines,
   quoteVersions,
   quotes,
+  siteStudies,
   sites,
 } from '@/db/schema'
 import {
@@ -131,6 +132,11 @@ export async function getQuoteVersionPerPdf(
       immobileCitta: sites.city,
       immobileProvincia: sites.province,
       immobileCap: sites.postalCode,
+      studioModuli: siteStudies.moduliCount,
+      studioKwp: siteStudies.powerKwp,
+      studioProduzione: siteStudies.produzioneKwh,
+      studioConsumo: siteStudies.consumoKwh,
+      studioIndirizzo: siteStudies.formattedAddress,
     })
     .from(quoteVersions)
     .innerJoin(quotes, eq(quotes.id, quoteVersions.quoteId))
@@ -138,6 +144,7 @@ export async function getQuoteVersionPerPdf(
     .innerJoin(contacts, eq(contacts.id, opportunities.contactId))
     .leftJoin(companies, eq(companies.id, contacts.companyId))
     .leftJoin(sites, eq(sites.id, opportunities.siteId))
+    .leftJoin(siteStudies, eq(siteStudies.id, quotes.siteStudyId))
     .where(eq(quoteVersions.id, versionId))
     .limit(1)
 
@@ -177,6 +184,37 @@ export async function getQuoteVersionPerPdf(
 
   const dataRiferimento = riga.sentAt ?? riga.createdAt
 
+  const kWpNum = riga.studioKwp != null ? Number.parseFloat(riga.studioKwp) : NaN
+  const prodNum =
+    riga.studioProduzione != null ? Number.parseFloat(riga.studioProduzione) : NaN
+  const consNum =
+    riga.studioConsumo != null ? Number.parseFloat(riga.studioConsumo) : NaN
+  const copertinaKpi =
+    riga.studioModuli != null &&
+    Number.isFinite(kWpNum) &&
+    kWpNum > 0 &&
+    Number.isFinite(prodNum) &&
+    prodNum > 0
+      ? {
+          moduli: riga.studioModuli,
+          kWp: kWpNum.toLocaleString('it-IT', {
+            maximumFractionDigits: 2,
+          }),
+          produzioneMwh: (prodNum / 1000).toLocaleString('it-IT', {
+            maximumFractionDigits: 2,
+          }),
+          consumoMwh:
+            Number.isFinite(consNum) && consNum > 0
+              ? (consNum / 1000).toLocaleString('it-IT', {
+                  maximumFractionDigits: 2,
+                })
+              : null,
+        }
+      : null
+
+  const indirizzoDaStudio =
+    !indirizzoImmobile && riga.studioIndirizzo ? riga.studioIndirizzo : null
+
   return {
     codice: riga.quoteCode,
     titolo: riga.quoteTitle,
@@ -186,7 +224,8 @@ export async function getQuoteVersionPerPdf(
     clienteNome: [riga.clienteNome, riga.clienteCognome].filter(Boolean).join(' '),
     aziendaCliente: riga.aziendaNome,
     immobileEtichetta: riga.immobileEtichetta,
-    immobileIndirizzo: indirizzoImmobile,
+    immobileIndirizzo: indirizzoImmobile ?? indirizzoDaStudio,
+    copertinaKpi,
     righe: righeDb.map((r) => {
       const sconto = Number.parseFloat(r.discountPct)
       return {

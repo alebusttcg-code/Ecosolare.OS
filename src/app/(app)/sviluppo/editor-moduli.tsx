@@ -75,12 +75,24 @@ type DragMode =
       pan0: { x: number; y: number }
     }
 
+export type LayoutModuliCorrente = {
+  readonly faldaIndice: number
+  readonly formatoId: string
+  readonly wattPicco: number
+  readonly quantitaRichiesta: number
+  readonly landscape: boolean
+  readonly moduli: readonly RettangoloModulo[]
+  readonly kWp: number
+}
+
 export function EditorModuli({
   falda,
   poligono,
+  onLayoutChange,
 }: {
   falda: FaldaTetto | null
   poligono: readonly Coordinate[] | null
+  onLayoutChange?: (layout: LayoutModuliCorrente | null) => void
 }) {
   const [formatoId, setFormatoId] = useState(FORMATI_MODULO_FV[0]!.id)
   const [quantita, setQuantita] = useState(12)
@@ -171,6 +183,32 @@ export function EditorModuli({
   }
 
   const kWp = (moduli.length * formato.wattPicco) / 1000
+
+  useEffect(() => {
+    if (!onLayoutChange) return
+    if (!falda || moduli.length === 0) {
+      onLayoutChange(null)
+      return
+    }
+    onLayoutChange({
+      faldaIndice: falda.indice,
+      formatoId,
+      wattPicco: formato.wattPicco,
+      quantitaRichiesta: quantita,
+      landscape,
+      moduli,
+      kWp,
+    })
+  }, [
+    onLayoutChange,
+    falda,
+    moduli,
+    formatoId,
+    formato.wattPicco,
+    quantita,
+    landscape,
+    kWp,
+  ])
 
   const urlStatica = centro
     ? `/api/sviluppo/mappa?lat=${centro.latitude}&lng=${centro.longitude}&zoom=${ZOOM}&marker=0`
