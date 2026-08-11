@@ -14,7 +14,7 @@ export default async function SviluppoPage() {
       <Intestazione
         eyebrow="Laboratorio"
         titolo="Sviluppo"
-        sottotitolo="Analisi tetto da indirizzo (Google Solar) — primo passo verso il dimensionamento impianto"
+        sottotitolo="Analisi del tetto da indirizzo e anteprima disposizione moduli"
       />
       <LaboratorioSolar configurato={configurato} />
     </div>

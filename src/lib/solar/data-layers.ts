@@ -115,7 +115,7 @@ export async function caricaGrigliaDsm(opzioni: {
       errore: {
         codice: 'non_configurato',
         messaggio:
-          'Solar non configurato: manca GOOGLE_MAPS_API_KEY (Data Layers).',
+          'Analisi tetto non configurata su questo ambiente.',
       },
     }
   }
@@ -155,7 +155,7 @@ export async function caricaGrigliaDsm(opzioni: {
           errore: {
             codice: 'edificio_non_trovato',
             messaggio:
-              'Nessun DSM Solar disponibile per questa zona (copertura insufficiente).',
+              'Quote del tetto non disponibili per questa zona.',
           },
         }
       }
@@ -164,7 +164,7 @@ export async function caricaGrigliaDsm(opzioni: {
           ok: false,
           errore: {
             codice: 'quota',
-            messaggio: 'Quota Solar Data Layers esaurita. Riprova più tardi.',
+            messaggio: 'Servizio temporaneamente saturo. Riprova più tardi.',
           },
         }
       }
@@ -172,8 +172,7 @@ export async function caricaGrigliaDsm(opzioni: {
         ok: false,
         errore: {
           codice: 'sconosciuto',
-          messaggio:
-            meta.error?.message ?? `Data Layers: errore ${res.status}.`,
+          messaggio: `Quote del tetto non disponibili (errore ${res.status}).`,
         },
       }
     }
@@ -182,7 +181,7 @@ export async function caricaGrigliaDsm(opzioni: {
       ok: false,
       errore: {
         codice: 'rete',
-        messaggio: 'Impossibile contattare Solar Data Layers.',
+        messaggio: 'Impossibile scaricare le quote del tetto.',
       },
     }
   }
@@ -219,7 +218,7 @@ export async function caricaGrigliaDsm(opzioni: {
       ok: false,
       errore: {
         codice: 'sconosciuto',
-        messaggio: 'Impossibile leggere il GeoTIFF DSM Solar.',
+        messaggio: 'Impossibile leggere le quote del tetto.',
       },
     }
   }

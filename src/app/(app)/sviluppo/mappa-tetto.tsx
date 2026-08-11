@@ -567,7 +567,7 @@ export function MappaTetto({
         if (!annullato) {
           setVista3d(false)
           setErrore(
-            'Vista 3D non disponibile in questo browser o con questa chiave API.',
+            'Vista 3D non disponibile in questo browser.',
           )
         }
       }
@@ -723,7 +723,7 @@ export function MappaTetto({
               color: 'var(--color-eco-blue-300)',
             }}
           >
-            Apri in Google Maps
+            Apri mappa esterna
             <span aria-hidden>→</span>
           </a>
         </div>
@@ -935,8 +935,8 @@ export function MappaTetto({
             }}
           >
             {ripresaInCorso
-              ? 'Ricerca edificio Solar…'
-              : 'Clicca sul tetto corretto (entro ~200 m).'}
+              ? 'Ricerca edificio…'
+              : 'Clicca sul tetto corretto (entro circa 200 m).'}
           </div>
         ) : null}
 
@@ -960,18 +960,18 @@ export function MappaTetto({
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-        Oro tenue = edificio Solar. Blu = falde. La falda selezionata (oro) è
-        editabile: i metri sui lati sono il rilievo del poligono, non il bbox
-        Solar. Inclinazione ed esposizione restano stime Google.
+        Oro tenue = edificio. Blu = falde. La falda selezionata (oro) è
+        editabile: i metri sui lati sono il rilievo del poligono. Inclinazione
+        ed esposizione sono stime.
         {modo === 'interattiva'
-          ? ' «Cambia tetto» (in 2D) ripunta Solar entro ~200 m. La vista 3D è fotorealistica Google: i poligoni falda restano visibili; per spostarli torna a 2D.'
+          ? ' «Cambia tetto» (in 2D) ripunta un altro edificio entro circa 200 m. In vista 3D i poligoni restano visibili; per spostarli torna a 2D.'
           : null}
       </p>
 
       {errore && modo === 'statica' ? (
         <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-          {errore} Abilita <strong>Maps JavaScript API</strong> (e Maps Static API per il
-          fallback) sulla stessa chiave Google.
+          {errore} Mappa interattiva non disponibile: usa la vista statica o
+          riprova più tardi.
         </p>
       ) : null}
     </div>

@@ -18,6 +18,27 @@ import {
 
 const ZOOM = 20
 const SCALE = 2
+const ZOOM_VISTA_MIN = 1
+const ZOOM_VISTA_MAX = 5
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n))
+}
+
+function clampPan(
+  w: number,
+  h: number,
+  dw: number,
+  dh: number,
+  pan: { x: number; y: number },
+) {
+  const maxX = Math.max(0, (dw - w) / 2 + 48)
+  const maxY = Math.max(0, (dh - h) / 2 + 48)
+  return {
+    x: clamp(pan.x, -maxX, maxX),
+    y: clamp(pan.y, -maxY, maxY),
+  }
+}
 
 function centroide(vertici: readonly Coordinate[]): Coordinate {
   const n = vertici.length || 1
@@ -47,6 +68,12 @@ type DragMode =
       x1: number
       y1: number
     }
+  | {
+      tipo: 'pan'
+      x0: number
+      y0: number
+      pan0: { x: number; y: number }
+    }
 
 export function EditorModuli({
   falda,
@@ -66,6 +93,7 @@ export function EditorModuli({
     () => new Set(),
   )
   const [schermoIntero, setSchermoIntero] = useState(false)
+  const [zoomVista, setZoomVista] = useState(1)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgRef = useRef<HTMLImageElement | null>(null)
@@ -79,6 +107,15 @@ export function EditorModuli({
   } | null>(null)
   const disegnaRef = useRef<() => void>(() => {})
   const pendingCommitRef = useRef<RettangoloModulo[] | null>(null)
+  const zoomVistaRef = useRef(1)
+  const panRef = useRef({ x: 0, y: 0 })
+  const zoomAtRef = useRef<
+    ((clientX: number, clientY: number, nuovoZoom: number) => void) | null
+  >(null)
+
+  useEffect(() => {
+    zoomVistaRef.current = zoomVista
+  }, [zoomVista])
 
   const centro = useMemo(
     () =>
@@ -158,11 +195,21 @@ export function EditorModuli({
     canvas.height = Math.floor(h * dpr)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight)
+    const base = Math.max(w / img.naturalWidth, h / img.naturalHeight)
+    const z = zoomVistaRef.current
+    const scale = base * z
+    let pan = panRef.current
     const dw = img.naturalWidth * scale
     const dh = img.naturalHeight * scale
-    const ox = (w - dw) / 2
-    const oy = (h - dh) / 2
+    if (z <= 1.001) {
+      pan = { x: 0, y: 0 }
+      panRef.current = pan
+    } else {
+      pan = clampPan(w, h, dw, dh, pan)
+      panRef.current = pan
+    }
+    const ox = (w - dw) / 2 + pan.x
+    const oy = (h - dh) / 2 + pan.y
     const mapW = img.naturalWidth
     const mapH = img.naturalHeight
 
@@ -279,7 +326,7 @@ export function EditorModuli({
 
   useEffect(() => {
     disegna()
-  }, [moduli, selezionati, disegna])
+  }, [moduli, selezionati, zoomVista, disegna])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -314,6 +361,51 @@ export function EditorModuli({
       )
     }
 
+    const applicaZoomSuPunto = (
+      clientX: number,
+      clientY: number,
+      nuovoZoom: number,
+    ) => {
+      const img = imgRef.current
+      if (!img?.complete) {
+        const z = clamp(nuovoZoom, ZOOM_VISTA_MIN, ZOOM_VISTA_MAX)
+        zoomVistaRef.current = z
+        setZoomVista(z)
+        if (z <= 1.001) panRef.current = { x: 0, y: 0 }
+        return
+      }
+      const rect = canvas.getBoundingClientRect()
+      const x = clientX - rect.left
+      const y = clientY - rect.top
+      const w = canvas.clientWidth || 400
+      const h = canvas.clientHeight || 320
+      const base = Math.max(w / img.naturalWidth, h / img.naturalHeight)
+      const z0 = zoomVistaRef.current
+      const z1 = clamp(nuovoZoom, ZOOM_VISTA_MIN, ZOOM_VISTA_MAX)
+      if (Math.abs(z1 - z0) < 1e-6) return
+
+      const pan0 = panRef.current
+      const dw0 = img.naturalWidth * base * z0
+      const dh0 = img.naturalHeight * base * z0
+      const ox0 = (w - dw0) / 2 + pan0.x
+      const oy0 = (h - dh0) / 2 + pan0.y
+      const mx = (x - ox0) / (base * z0)
+      const my = (y - oy0) / (base * z0)
+      const dw1 = img.naturalWidth * base * z1
+      const dh1 = img.naturalHeight * base * z1
+      let pan1 =
+        z1 <= 1.001
+          ? { x: 0, y: 0 }
+          : {
+              x: x - (w - dw1) / 2 - mx * base * z1,
+              y: y - (h - dh1) / 2 - my * base * z1,
+            }
+      if (z1 > 1.001) pan1 = clampPan(w, h, dw1, dh1, pan1)
+      panRef.current = pan1
+      zoomVistaRef.current = z1
+      setZoomVista(z1)
+    }
+
     const onDown = (e: PointerEvent) => {
       e.preventDefault()
       const { x, y } = coordsLocale(e)
@@ -324,6 +416,18 @@ export function EditorModuli({
         if (!toggle) {
           setSelezionati(new Set())
           selezionatiRef.current = new Set()
+        }
+        // Con zoom: trascina vuoto = pan; Shift = marquee.
+        if (zoomVistaRef.current > 1.01 && !toggle) {
+          dragRef.current = {
+            tipo: 'pan',
+            x0: x,
+            y0: y,
+            pan0: { ...panRef.current },
+          }
+          canvas.setPointerCapture(e.pointerId)
+          canvas.style.cursor = 'grabbing'
+          return
         }
         dragRef.current = { tipo: 'marquee', x0: x, y0: y, x1: x, y1: y }
         marqueeRef.current = { x0: x, y0: y, x1: x, y1: y }
@@ -370,6 +474,27 @@ export function EditorModuli({
       e.preventDefault()
       const { x, y } = coordsLocale(e)
 
+      if (drag.tipo === 'pan') {
+        const img = imgRef.current
+        const w = canvas.clientWidth || 400
+        const h = canvas.clientHeight || 320
+        const z = zoomVistaRef.current
+        const next = {
+          x: drag.pan0.x + (x - drag.x0),
+          y: drag.pan0.y + (y - drag.y0),
+        }
+        if (img?.complete) {
+          const base = Math.max(w / img.naturalWidth, h / img.naturalHeight)
+          const dw = img.naturalWidth * base * z
+          const dh = img.naturalHeight * base * z
+          panRef.current = clampPan(w, h, dw, dh, next)
+        } else {
+          panRef.current = next
+        }
+        disegnaRef.current()
+        return
+      }
+
       if (drag.tipo === 'marquee') {
         drag.x1 = x
         drag.y1 = y
@@ -400,7 +525,6 @@ export function EditorModuli({
         )
       })
 
-      // Calamita rispetto ai moduli non trascinati (corpo rigido sulla selezione).
       const selezionatiDrag = new Set(drag.indici)
       const fissi = next.filter((_, i) => !selezionatiDrag.has(i))
       const leaderIdx = drag.indici[0]!
@@ -433,7 +557,6 @@ export function EditorModuli({
         }
       }
 
-      // Nessun setState durante il drag: evita freeze su mobile.
       moduliRef.current = next
       pendingCommitRef.current = next
       disegnaRef.current()
@@ -442,7 +565,7 @@ export function EditorModuli({
     const onUp = (e: PointerEvent) => {
       const drag = dragRef.current
       dragRef.current = null
-      canvas.style.cursor = 'grab'
+      canvas.style.cursor = zoomVistaRef.current > 1.01 ? 'grab' : 'grab'
       marqueeRef.current = null
 
       if (pendingCommitRef.current) {
@@ -476,38 +599,80 @@ export function EditorModuli({
       }
     }
 
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const factor = e.deltaY < 0 ? 1.14 : 1 / 1.14
+      applicaZoomSuPunto(e.clientX, e.clientY, zoomVistaRef.current * factor)
+    }
+
     canvas.addEventListener('pointerdown', onDown)
     canvas.addEventListener('pointermove', onMove)
     canvas.addEventListener('pointerup', onUp)
     canvas.addEventListener('pointercancel', onUp)
+    canvas.addEventListener('wheel', onWheel, { passive: false })
     canvas.style.cursor = 'grab'
+    zoomAtRef.current = applicaZoomSuPunto
 
     return () => {
       canvas.removeEventListener('pointerdown', onDown)
       canvas.removeEventListener('pointermove', onMove)
       canvas.removeEventListener('pointerup', onUp)
       canvas.removeEventListener('pointercancel', onUp)
+      canvas.removeEventListener('wheel', onWheel)
+      zoomAtRef.current = null
     }
   }, [falda, poligono, centro, formatoId, landscape, aggiornaModuli])
 
-  const ruotaSelezione = (delta: number) => {
-    if (!falda || !centro || selezionati.size === 0) return
-    const fmt = formatoModuloById(formatoId)
-    aggiornaModuli((prev) =>
-      prev.map((m, i) =>
-        selezionati.has(i)
-          ? ruotaModulo(
-              m,
-              delta,
-              fmt,
-              falda.azimuthDegrees,
-              landscape,
-              centro,
-            )
-          : m,
-      ),
+  const zoomRelativo = (delta: number) => {
+    const canvas = canvasRef.current
+    const factor = delta > 0 ? 1.25 : 0.8
+    if (canvas && zoomAtRef.current) {
+      const rect = canvas.getBoundingClientRect()
+      zoomAtRef.current(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+        zoomVistaRef.current * factor,
+      )
+      return
+    }
+    const z = clamp(
+      zoomVistaRef.current * factor,
+      ZOOM_VISTA_MIN,
+      ZOOM_VISTA_MAX,
     )
+    zoomVistaRef.current = z
+    if (z <= 1.001) panRef.current = { x: 0, y: 0 }
+    setZoomVista(z)
   }
+
+  const resetZoom = () => {
+    zoomVistaRef.current = 1
+    panRef.current = { x: 0, y: 0 }
+    setZoomVista(1)
+  }
+
+  const ruotaSelezione = useCallback(
+    (delta: number) => {
+      if (!falda || !centro || selezionatiRef.current.size === 0) return
+      const sel = selezionatiRef.current
+      const fmt = formatoModuloById(formatoId)
+      aggiornaModuli((prev) =>
+        prev.map((m, i) =>
+          sel.has(i)
+            ? ruotaModulo(
+                m,
+                delta,
+                fmt,
+                falda.azimuthDegrees,
+                landscape,
+                centro,
+              )
+            : m,
+        ),
+      )
+    },
+    [falda, centro, formatoId, landscape, aggiornaModuli],
+  )
 
   const eliminaSelezionati = () => {
     if (selezionati.size === 0) return
@@ -534,6 +699,31 @@ export function EditorModuli({
       window.clearTimeout(t)
     }
   }, [schermoIntero, disegna])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'SELECT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.isContentEditable)
+      ) {
+        return
+      }
+      if (selezionatiRef.current.size === 0) return
+      if (e.key === '[' || e.key === ',') {
+        e.preventDefault()
+        ruotaSelezione(e.shiftKey ? -5 : -1)
+      } else if (e.key === ']' || e.key === '.') {
+        e.preventDefault()
+        ruotaSelezione(e.shiftKey ? 5 : 1)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [ruotaSelezione])
 
   if (!falda || !poligono || poligono.length < 3) {
     return (
@@ -570,8 +760,8 @@ export function EditorModuli({
         <div>
           <h3 className="text-sm font-medium">Anteprima moduli</h3>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-            Falda {falda.indice + 1} · trascina (calamita sui vicini) · Shift/⌘
-            o riquadro per gruppo
+            Falda {falda.indice + 1} · zoom rotella/± · trascina (calamita) ·
+            Shift/⌘ o riquadro
             {schermoIntero ? ' · Esc per uscire' : null}
           </p>
         </div>
@@ -648,7 +838,13 @@ export function EditorModuli({
         </label>
         <span className="tabular-nums" style={{ color: '#e8c765' }}>
           {moduli.length} pannelli · {kWp.toFixed(2)} kWp
-          {selezionati.size > 0 ? ` · ${selezionati.size} sel.` : ''}
+          {selezionati.size > 0
+            ? ` · ${selezionati.size} sel. · rot. ${(() => {
+                const i = [...selezionati][0]!
+                const r = moduli[i]?.rotazioneDegrees ?? 0
+                return `${r.toFixed(0)}°`
+              })()}`
+            : ''}
         </span>
       </div>
 
@@ -672,23 +868,43 @@ export function EditorModuli({
         </button>
         <button
           type="button"
-          onClick={() => ruotaSelezione(-15)}
+          onClick={() => ruotaSelezione(-1)}
           disabled={selezionati.size === 0}
           className="rounded-lg border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
           style={{ borderColor: 'var(--bordo)', color: 'var(--testo)' }}
-          title="Ruota −15°"
+          title="Ruota −1° (fine)"
         >
-          ↺ 15°
+          −1°
         </button>
         <button
           type="button"
-          onClick={() => ruotaSelezione(15)}
+          onClick={() => ruotaSelezione(1)}
           disabled={selezionati.size === 0}
           className="rounded-lg border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
           style={{ borderColor: 'var(--bordo)', color: 'var(--testo)' }}
-          title="Ruota +15°"
+          title="Ruota +1° (fine)"
         >
-          ↻ 15°
+          +1°
+        </button>
+        <button
+          type="button"
+          onClick={() => ruotaSelezione(-5)}
+          disabled={selezionati.size === 0}
+          className="rounded-lg border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+          style={{ borderColor: 'var(--bordo)', color: 'var(--testo)' }}
+          title="Ruota −5°"
+        >
+          −5°
+        </button>
+        <button
+          type="button"
+          onClick={() => ruotaSelezione(5)}
+          disabled={selezionati.size === 0}
+          className="rounded-lg border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+          style={{ borderColor: 'var(--bordo)', color: 'var(--testo)' }}
+          title="Ruota +5°"
+        >
+          +5°
         </button>
         <button
           type="button"
@@ -698,7 +914,7 @@ export function EditorModuli({
           style={{ borderColor: 'var(--bordo)', color: 'var(--testo)' }}
           title="Ruota 90°"
         >
-          ↻ 90°
+          +90°
         </button>
         <button
           type="button"
@@ -714,25 +930,80 @@ export function EditorModuli({
         </button>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        className={
-          schermoIntero
-            ? 'min-h-[50dvh] w-full flex-1 touch-none rounded-xl border'
-            : 'h-[240px] w-full touch-none rounded-xl border sm:h-[320px]'
-        }
-        style={{
-          borderColor: 'var(--bordo)',
-          background: '#050a14',
-          touchAction: 'none',
-        }}
-      />
+      <div className="relative min-h-0 flex-1">
+        <canvas
+          ref={canvasRef}
+          className={
+            schermoIntero
+              ? 'min-h-[50dvh] w-full flex-1 touch-none rounded-xl border'
+              : 'h-[240px] w-full touch-none rounded-xl border sm:h-[320px]'
+          }
+          style={{
+            borderColor: 'var(--bordo)',
+            background: '#050a14',
+            touchAction: 'none',
+          }}
+        />
+        <div
+          className="pointer-events-none absolute right-2 bottom-2 z-[1] flex flex-col gap-1.5"
+        >
+          <div
+            className="pointer-events-auto flex flex-col gap-0.5 rounded-xl border p-1"
+            style={{
+              borderColor: 'rgba(30, 51, 80, 0.95)',
+              background: 'rgba(5, 10, 20, 0.82)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => zoomRelativo(1)}
+              disabled={zoomVista >= ZOOM_VISTA_MAX - 1e-6}
+              title="Zoom avanti"
+              aria-label="Zoom avanti"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition hover:text-[#e8c765] disabled:opacity-35"
+              style={{ color: 'var(--testo-tenue)' }}
+            >
+              +
+            </button>
+            <button
+              type="button"
+              onClick={() => zoomRelativo(-1)}
+              disabled={zoomVista <= ZOOM_VISTA_MIN + 1e-6}
+              title="Zoom indietro"
+              aria-label="Zoom indietro"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition hover:text-[#e8c765] disabled:opacity-35"
+              style={{ color: 'var(--testo-tenue)' }}
+            >
+              −
+            </button>
+          </div>
+          {zoomVista > 1.01 ? (
+            <button
+              type="button"
+              onClick={resetZoom}
+              title="Reimposta zoom"
+              className="pointer-events-auto rounded-xl border px-2 py-1 text-[10px] font-medium tabular-nums"
+              style={{
+                borderColor: 'rgba(30, 51, 80, 0.95)',
+                background: 'rgba(5, 10, 20, 0.82)',
+                color: '#e8c765',
+                backdropFilter: 'blur(12px)',
+              }}
+            >
+              {Math.round(zoomVista * 100)}%
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       {!schermoIntero ? (
         <p className="text-[11px] leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-          Vicini entro ~30 cm si attaccano da soli (bordo a bordo e
-          allineamento). Shift/⌘+click o riquadro per un gruppo. «Tutto
-          schermo» per lavorare più a largo. Anteprima non contrattuale.
+          Rotella o ± per zoom; con zoom attivo trascina lo sfondo per
+          spostare la vista (Shift+trascina = riquadro). Rotazione fine ±1° /
+          ±5° (tasti [ ] , anche Shift). Vicini entro ~30 cm si attaccano.
+          Anteprima indicativa.
         </p>
       ) : null}
     </div>

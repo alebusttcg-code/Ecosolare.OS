@@ -56,10 +56,8 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
     return (
       <Card>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
-          Solar non configurato su questo ambiente. Imposta{' '}
-          <code className="text-xs">GOOGLE_MAPS_API_KEY</code> con Geocoding API,
-          Solar API, Maps JavaScript API, Maps Static API, Map Tiles API e Places
-          API (New) abilitate (vedi collaudo E2E).
+          Analisi tetto non disponibile su questo ambiente. Contatta
+          l’amministratore di sistema.
         </p>
       </Card>
     )
@@ -91,7 +89,7 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
               setFaldaSelezionata(null)
               setFaldeRimosse(new Set())
               setScegliTetto(false)
-              avvisa('Tetto analizzato. Caricamento DSM in corso…')
+              avvisa('Tetto analizzato. Preparazione quote in corso…')
             })
           }}
         >
@@ -105,8 +103,7 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
               disabled={inCorso}
             />
             <span className="mt-1.5 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
-              Suggerimenti Google Places (Italia). Puoi anche scrivere l’indirizzo
-              a mano.
+              Suggerimenti mentre digiti; puoi anche scrivere l’indirizzo a mano.
             </span>
           </label>
 
@@ -156,7 +153,7 @@ export function LaboratorioSolar({ configurato }: { configurato: boolean }) {
               setPoligoni(poligoniDaAnalisi(esito.data.falde))
               setFaldaSelezionata(null)
               setFaldeRimosse(new Set())
-              avvisa('Tetto aggiornato. Caricamento DSM in corso…')
+              avvisa('Tetto aggiornato. Preparazione quote in corso…')
             })
           }}
           onPoligonoCambiato={(indice, vertici) => {
@@ -275,7 +272,7 @@ function Risultato({
           chiave: dsmChiave,
           stato: 'errore',
           griglia: null,
-          errore: esito.errors._ ?? 'DSM non disponibile.',
+          errore: esito.errors._ ?? 'Quote non disponibili.',
         })
         return
       }
@@ -360,21 +357,21 @@ function Risultato({
           )}
           {mostraModuli && (
             <div className="min-w-0">
-              <EditorModuli falda={falda} poligono={verticiSelezionati} />
+              <EditorModuli
+                key={falda?.indice ?? 'nessuna'}
+                falda={falda}
+                poligono={verticiSelezionati}
+              />
             </div>
           )}
         </div>
         <p className="mt-3 text-xs" style={{ color: 'var(--testo-fioco)' }}>
           {dsmStato === 'caricamento'
-            ? 'Caricamento DSM Solar (Data Layers)…'
+            ? 'Preparazione quote del tetto…'
             : dsmStato === 'ok' && grigliaDsm
-              ? `DSM pronto (${grigliaDsm.width}×${grigliaDsm.height}${
-                  grigliaDsm.imageryQuality
-                    ? ` · ${grigliaDsm.imageryQuality}`
-                    : ''
-                }) — sezione e 3D sulla falda selezionata.`
+              ? 'Quote pronte: sezione e vista 3D disponibili sulla falda selezionata.'
               : dsmStato === 'errore'
-                ? `DSM non caricato: ${dsmErrore}`
+                ? `Quote non disponibili: ${dsmErrore}`
                 : null}
         </p>
       </Card>
@@ -393,7 +390,7 @@ function Risultato({
         <Card>
           <p className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
             Seleziona una falda dalla mappa o dalla tabella per regolarne il
-            perimetro, vedere sezione/3D da DSM e leggere le misure lato per
+            perimetro, vedere sezione e vista 3D e leggere le misure lato per
             lato. Puoi eliminare le falde che non ti interessano.
           </p>
         </Card>
@@ -403,7 +400,7 @@ function Risultato({
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div className="sm:col-span-2">
             <dt className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
-              Indirizzo geocodificato
+              Indirizzo riconosciuto
             </dt>
             <dd className="mt-0.5 font-medium">{analisi.formattedAddress}</dd>
           </div>
@@ -455,7 +452,7 @@ function Risultato({
           </div>
           <div>
             <dt className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
-              Max moduli (stima Google)
+              Max moduli (stima)
             </dt>
             <dd className="mt-0.5 tabular-nums">
               {analisi.maxArrayPanelsCount ?? '—'}
@@ -489,7 +486,7 @@ function Risultato({
                   <th className="pb-2 pr-3 font-medium">#</th>
                   <th className="pb-2 pr-3 font-medium">Inclinazione</th>
                   <th className="pb-2 pr-3 font-medium">Esposizione</th>
-                  <th className="pb-2 pr-3 text-right font-medium">Area Solar</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Area rilevata</th>
                   <th className="pb-2 pr-3 text-right font-medium">Area editata</th>
                   <th className="pb-2 pr-3 text-right font-medium">Sole (rel.)</th>
                   <th className="pb-2 text-right font-medium"> </th>
@@ -605,10 +602,9 @@ function Risultato({
           </div>
         ) : null}
         <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-          Dati da Google Solar API. Inclinazione = pitch; esposizione = azimuth (0° =
-          Nord). Area editata = poligono regolato in mappa (proiezione a terra).
-          Eliminare una falda la toglie solo da questa sessione di lavoro. I calcoli
-          EcoSolare (moduli, kWp, benefici) arriveranno negli step successivi.
+          Inclinazione ed esposizione sono stime sul tetto rilevato. L’area
+          editata è quella del poligono regolato in mappa. Eliminare una falda
+          la toglie solo da questa sessione di lavoro.
         </p>
       </Card>
     </div>
@@ -662,7 +658,7 @@ function PannelloFalda({
         <dl className="grid flex-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
-              Inclinazione (Solar)
+              Inclinazione
             </dt>
             <dd className="mt-0.5 tabular-nums font-medium">
               {falda.pitchDegrees.toFixed(1)}°
@@ -670,7 +666,7 @@ function PannelloFalda({
           </div>
           <div>
             <dt className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
-              Esposizione (Solar)
+              Esposizione
             </dt>
             <dd className="mt-0.5">
               <span className="font-medium">
@@ -686,7 +682,7 @@ function PannelloFalda({
           </div>
           <div>
             <dt className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
-              Area Solar
+              Area rilevata
             </dt>
             <dd className="mt-0.5 tabular-nums">
               {falda.areaMeters2.toFixed(1)} m²
@@ -729,7 +725,7 @@ function PannelloFalda({
             className="rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-40"
             style={{ borderColor: 'var(--bordo)', color: 'var(--testo)' }}
           >
-            Ripristina bbox Solar
+            Ripristina perimetro iniziale
           </button>
           <button
             type="button"
@@ -795,10 +791,10 @@ function PannelloFalda({
               style={{ color: 'var(--testo-fioco)' }}
             >
               {dsmStato === 'caricamento'
-                ? 'DSM in caricamento…'
+                ? 'Quote in preparazione…'
                 : dsmStato === 'errore'
-                  ? 'DSM non disponibile'
-                  : 'Da DSM Solar — apri solo se ti serve'}
+                  ? 'Quote non disponibili'
+                  : 'Profilo e modello 3D della falda'}
             </span>
           </span>
           <span
@@ -816,7 +812,7 @@ function PannelloFalda({
                 className="text-xs lg:col-span-2"
                 style={{ color: 'var(--testo-tenue)' }}
               >
-                Attendere il DSM Solar per sezione e vista 3D…
+                Attendere le quote del tetto per sezione e vista 3D…
               </p>
             ) : (
               <>
@@ -831,9 +827,9 @@ function PannelloFalda({
         ) : null}
       </div>
       <p className="mt-3 text-xs leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-        Quote da DSM Solar (Data Layers), non rilievo di cantiere.
+        Le quote sono indicative e non sostituiscono un rilievo di cantiere.
         {falda.planeHeightAtCenterMeters != null
-          ? ` Piano Solar al centro: ${falda.planeHeightAtCenterMeters.toFixed(1)} m s.l.m.`
+          ? ` Quota stimata al centro: ${falda.planeHeightAtCenterMeters.toFixed(1)} m s.l.m.`
           : null}
       </p>
     </Card>

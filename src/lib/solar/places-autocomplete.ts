@@ -50,7 +50,7 @@ export async function suggerisciIndirizziPlaces(
 > {
   const chiave = env().GOOGLE_MAPS_API_KEY?.trim()
   if (!chiave) {
-    return { ok: false, messaggio: 'Places non configurato.' }
+    return { ok: false, messaggio: 'Suggerimenti indirizzo non disponibili.' }
   }
 
   const testo = input.trim()
@@ -77,12 +77,12 @@ export async function suggerisciIndirizziPlaces(
     })
     json = await res.json()
   } catch {
-    return { ok: false, messaggio: 'Impossibile contattare Places API.' }
+    return { ok: false, messaggio: 'Impossibile contattare i suggerimenti indirizzo.' }
   }
 
   const parsed = suggestionSchema.safeParse(json)
   if (!parsed.success) {
-    return { ok: false, messaggio: 'Risposta Places non valida.' }
+    return { ok: false, messaggio: 'Risposta suggerimenti non valida.' }
   }
 
   if (parsed.data.error || !res.ok) {
@@ -91,13 +91,12 @@ export async function suggerisciIndirizziPlaces(
       return {
         ok: false,
         messaggio:
-          'Places API (New) non autorizzata: abilitala sul progetto GCP.',
+          'Suggerimenti indirizzo non autorizzati su questo ambiente.',
       }
     }
     return {
       ok: false,
-      messaggio:
-        parsed.data.error?.message ?? `Places API: errore ${res.status}.`,
+      messaggio: 'Suggerimenti indirizzo non disponibili. Riprova più tardi.',
     }
   }
 

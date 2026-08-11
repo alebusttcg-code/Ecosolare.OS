@@ -36,7 +36,7 @@ export async function geocodeIndirizzo(indirizzo: string): Promise<EsitoGeocode>
       errore: {
         codice: 'non_configurato',
         messaggio:
-          'Solar non configurato: manca GOOGLE_MAPS_API_KEY (Geocoding + Solar API).',
+          'Analisi tetto non configurata su questo ambiente.',
       },
     }
   }
@@ -56,7 +56,7 @@ export async function geocodeIndirizzo(indirizzo: string): Promise<EsitoGeocode>
       ok: false,
       errore: {
         codice: 'rete',
-        messaggio: 'Impossibile contattare il servizio di geocoding.',
+        messaggio: 'Impossibile contattare il servizio di geolocalizzazione.',
       },
     }
   }
@@ -65,11 +65,11 @@ export async function geocodeIndirizzo(indirizzo: string): Promise<EsitoGeocode>
   if (!parsed.success) {
     return {
       ok: false,
-      errore: { codice: 'sconosciuto', messaggio: 'Risposta geocoding non valida.' },
+      errore: { codice: 'sconosciuto', messaggio: 'Risposta geolocalizzazione non valida.' },
     }
   }
 
-  const { status, results, error_message: msg } = parsed.data
+  const { status, results } = parsed.data
   if (status === 'ZERO_RESULTS' || results.length === 0) {
     return {
       ok: false,
@@ -84,7 +84,7 @@ export async function geocodeIndirizzo(indirizzo: string): Promise<EsitoGeocode>
       ok: false,
       errore: {
         codice: 'quota',
-        messaggio: msg ?? 'Geocoding rifiutato (quota o restrizioni della chiave).',
+        messaggio: 'Servizio di geolocalizzazione non disponibile. Riprova più tardi.',
       },
     }
   }
@@ -93,7 +93,7 @@ export async function geocodeIndirizzo(indirizzo: string): Promise<EsitoGeocode>
       ok: false,
       errore: {
         codice: 'geocode',
-        messaggio: msg ?? `Geocoding non riuscito (${status}).`,
+        messaggio: 'Geolocalizzazione non riuscita. Controlla l’indirizzo e riprova.',
       },
     }
   }

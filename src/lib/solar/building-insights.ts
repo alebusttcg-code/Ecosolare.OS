@@ -8,7 +8,7 @@ import type { AnalisiTetto, Coordinate, ErroreSolar, FaldaTetto } from './tipi'
 export const RAGGIO_MAX_EDIFICIO_SOLAR_M = 200
 
 const MSG_EDIFICIO_NON_TROVATO =
-  'Nessun edificio Solar entro circa 200 m da questo punto. Clicca più vicino al tetto o verifica la copertura nella zona.'
+  'Nessun edificio entro circa 200 m da questo punto. Clicca più vicino al tetto o verifica la copertura nella zona.'
 
 const latLng = z.object({
   latitude: z.number(),
@@ -99,7 +99,7 @@ export async function buildingInsights(
       errore: {
         codice: 'non_configurato',
         messaggio:
-          'Solar non configurato: manca GOOGLE_MAPS_API_KEY (Geocoding + Solar API).',
+          'Analisi tetto non configurata su questo ambiente.',
       },
     }
   }
@@ -123,7 +123,7 @@ export async function buildingInsights(
       ok: false,
       errore: {
         codice: 'rete',
-        messaggio: 'Impossibile contattare la Solar API.',
+        messaggio: 'Impossibile contattare il servizio di analisi tetto.',
       },
     }
   }
@@ -132,13 +132,12 @@ export async function buildingInsights(
   if (!parsed.success) {
     return {
       ok: false,
-      errore: { codice: 'sconosciuto', messaggio: 'Risposta Solar non valida.' },
+      errore: { codice: 'sconosciuto', messaggio: 'Risposta analisi tetto non valida.' },
     }
   }
 
   const body = parsed.data
   const erroreApi = body.error
-  const messaggioApi = erroreApi?.message
   const statusApi = erroreApi?.status ?? ''
 
   if (erroreApi || !res.ok) {
@@ -156,7 +155,7 @@ export async function buildingInsights(
         ok: false,
         errore: {
           codice: 'quota',
-          messaggio: 'Quota Solar esaurita. Riprova più tardi.',
+          messaggio: 'Servizio temporaneamente saturo. Riprova più tardi.',
         },
       }
     }
@@ -166,8 +165,7 @@ export async function buildingInsights(
         errore: {
           codice: 'quota',
           messaggio:
-            messaggioApi ??
-            'Solar API non autorizzata: abilita Solar API e controlla la chiave.',
+            'Analisi tetto non autorizzata su questo ambiente. Contatta l’amministratore.',
         },
       }
     }
@@ -175,7 +173,7 @@ export async function buildingInsights(
       ok: false,
       errore: {
         codice: 'sconosciuto',
-        messaggio: messaggioApi ?? `Solar API: errore ${res.status}.`,
+        messaggio: `Analisi tetto non riuscita (errore ${res.status}).`,
       },
     }
   }

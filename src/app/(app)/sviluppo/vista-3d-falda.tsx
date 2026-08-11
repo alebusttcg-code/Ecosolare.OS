@@ -188,7 +188,8 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
   if (!mesh || mesh.vertici.length < 3) {
     return (
       <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-        Mesh 3D non disponibile: regola il poligono sulla falda o attendi il DSM.
+        Vista 3D non disponibile: regola il poligono sulla falda o attendi le
+        quote.
       </p>
     )
   }
@@ -196,7 +197,7 @@ export function Vista3dFalda({ mesh }: { mesh: MeshFalda | null }) {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="text-sm font-medium">Vista 3D (DSM)</h4>
+        <h4 className="text-sm font-medium">Vista 3D</h4>
         <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
           Trascina per orbitare
         </p>

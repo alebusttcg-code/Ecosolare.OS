@@ -143,7 +143,7 @@ export async function chiaveMapsPerMappa(): Promise<ActionResult<{ apiKey: strin
   if (!apiKey) {
     return {
       ok: false,
-      errors: { _: 'Solar non configurato: manca GOOGLE_MAPS_API_KEY.' },
+      errors: { _: 'Analisi tetto non configurata su questo ambiente.' },
     }
   }
   return { ok: true, data: { apiKey } }
@@ -160,7 +160,7 @@ export async function caricaDsmEdificio(
 
   const parsed = schemaDsm.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, errors: { _: 'Coordinate non valide per il DSM.' } }
+    return { ok: false, errors: { _: 'Coordinate non valide per le quote.' } }
   }
 
   const location = {

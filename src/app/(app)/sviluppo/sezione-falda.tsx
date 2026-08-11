@@ -39,7 +39,7 @@ export function SezioneFalda({
   if (!profilo || !svg) {
     return (
       <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-        Sezione DSM non disponibile per questo poligono (fuori copertura o quote
+        Sezione non disponibile per questo poligono (fuori copertura o quote
         mancanti).
       </p>
     )
@@ -48,13 +48,13 @@ export function SezioneFalda({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="text-sm font-medium">Sezione (DSM)</h4>
+        <h4 className="text-sm font-medium">Sezione</h4>
         <p className="text-xs tabular-nums" style={{ color: 'var(--testo-tenue)' }}>
           Δz {(profilo.quotaMaxM - profilo.quotaMinM).toFixed(1)} m
           {profilo.pitchMedioDegrees != null
-            ? ` · pitch profilo ~${profilo.pitchMedioDegrees.toFixed(1)}°`
+            ? ` · inclinazione profilo ~${profilo.pitchMedioDegrees.toFixed(1)}°`
             : null}
-          {' · '}Solar {pitchSolar.toFixed(1)}°
+          {' · '}stima {pitchSolar.toFixed(1)}°
         </p>
       </div>
       <svg
@@ -65,7 +65,7 @@ export function SezioneFalda({
           background: 'rgba(5,10,20,0.55)',
         }}
         role="img"
-        aria-label="Profilo sezione falda da DSM"
+        aria-label="Profilo sezione falda"
       >
         <line
           x1={svg.pad.l}
