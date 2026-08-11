@@ -1,14 +1,29 @@
 import { asc } from 'drizzle-orm'
-import { Card, Intestazione, Vuoto } from '@/components/ui'
+import { Card, Intestazione, Vuoto, formattaData } from '@/components/ui'
 import { getDb } from '@/db'
 import { appSettings, pipelineStages } from '@/db/schema'
 import { can } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
+import {
+  descriviTipoEvento,
+  getCestino,
+  getEventiFalliti,
+  getPesoCestino,
+} from '@/lib/queries/manutenzione'
 import { listWorkers } from '@/lib/queries/schedule'
 import { ElencoRegoleSistema } from './modifica'
+import { PannelloManutenzione } from './manutenzione'
 import { GestionePersonale } from './personale'
 
 export const metadata = { title: 'Impostazioni — EcoSolare OS' }
+
+/** Dimensione leggibile: chi legge vuole sapere se sono megabyte o gigabyte. */
+function formattaDimensione(byte: number): string {
+  if (byte < 1024) return `${byte} B`
+  if (byte < 1024 * 1024) return `${Math.round(byte / 1024)} kB`
+  if (byte < 1024 * 1024 * 1024) return `${(byte / (1024 * 1024)).toFixed(1)} MB`
+  return `${(byte / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
 
 export default async function ImpostazioniPage() {
   const utente = await guard('read', 'settings')
@@ -20,6 +35,12 @@ export default async function ImpostazioniPage() {
     listWorkers(),
   ])
   const puoScriverePersonale = can(utente, 'update', 'settings')
+
+  const [eventiFalliti, cestino, pesoCestino] = [
+    await getEventiFalliti(),
+    await getCestino(),
+    await getPesoCestino(),
+  ]
 
   return (
     <div className="space-y-8">
@@ -36,7 +57,29 @@ export default async function ImpostazioniPage() {
         />
       </Card>
 
-      <Card id="regole" title="Regole di sistema" accento="blu" indice={1}>
+      <Card id="manutenzione" title="Manutenzione e cestino" accento="oro" indice={1}>
+        <PannelloManutenzione
+          eventi={eventiFalliti.map((e) => ({
+            id: e.id,
+            descrizione: descriviTipoEvento(e.tipo),
+            tentativi: e.tentativi,
+            errore: e.errore,
+            creatoIl: formattaData(e.creatoIl),
+          }))}
+          cestino={cestino.map((c) => ({
+            id: c.id,
+            genere: c.genere,
+            nome: c.nome,
+            contesto: c.contesto,
+            eliminatoIl: formattaData(c.eliminatoIl),
+            eliminatoDa: c.eliminatoDa,
+            dimensione: formattaDimensione(c.dimensione),
+          }))}
+          pesoCestino={formattaDimensione(pesoCestino)}
+        />
+      </Card>
+
+      <Card id="regole" title="Regole di sistema" accento="blu" indice={2}>
         {voci.length === 0 ? (
           <Vuoto messaggio="Nessuna configurazione. Eseguire npm run db:seed." />
         ) : (
@@ -56,7 +99,7 @@ export default async function ImpostazioniPage() {
         )}
       </Card>
 
-      <Card title="Stati della pipeline" indice={2}>
+      <Card title="Stati della pipeline" indice={3}>
         <p className="mb-4 text-sm leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
           Ordine degli stati commerciali. Oggi in sola lettura: le modifiche passano
           dalla tabella <code className="text-xs">pipeline_stages</code>.

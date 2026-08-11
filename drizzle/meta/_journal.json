@@ -113,6 +113,27 @@
       "when": 1786311803975,
       "tag": "0015_long_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786443073495,
+      "tag": "0016_cestino_documenti",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786454389404,
+      "tag": "0017_verifica_due_passaggi",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786455199371,
+      "tag": "0018_link_cliente",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { Intestazione } from '@/components/ui'
 import { homeDopoAccesso } from '@/lib/auth/home'
 import { getCurrentUser, guard } from '@/lib/auth/session'
+import { FasciaSalute } from './dashboard/fascia-salute'
 import { SezioneEconomia } from './dashboard/sezione-economia'
 import { SezioneOggi } from './dashboard/sezione-oggi'
 import { SezionePerformance } from './dashboard/sezione-performance'
@@ -66,6 +67,8 @@ export default async function DashboardPage({
         titoloOro
         sottotitolo={`${dataEstesa()} · economia, performance commerciale e operatività`}
       />
+
+      <FasciaSalute />
 
       <SezioneEconomia
         canViewCosts={utente.canViewCosts}

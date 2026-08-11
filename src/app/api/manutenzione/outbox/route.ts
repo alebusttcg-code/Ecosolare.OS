@@ -52,8 +52,8 @@ async function elabora(request: Request): Promise<NextResponse> {
 
   // Ripristino falliti una sola volta; poi Drive e Telegram in sequenza.
   await riprovaFalliti()
-  const drive = await smaltisciCodaDrive({ ripristinaFalliti: false })
-  const telegram = await smaltisciCodaTelegram({ ripristinaFalliti: false })
+  const drive = await smaltisciCodaDrive({ ripristinaFalliti: false, recuperaMancanti: true })
+  const telegram = await smaltisciCodaTelegram({ ripristinaFalliti: false, controllaSalute: true })
   return NextResponse.json({ drive, telegram })
 }
 

@@ -77,9 +77,21 @@ DATABASE_URL=postgresql://postgres.xxx:PASSWORD@aws-0-eu-central-1.pooler.supaba
 INTAKE_TOKEN=...
 ```
 
-Non serve altro. L'accesso avviene con email e password, e il token di sessione è
-un valore casuale confrontato con il database, non un token firmato: non c'è alcun
-segreto di autenticazione da configurare.
+Serve inoltre la chiave della verifica in due passaggi:
+
+```bash
+# openssl rand -hex 32
+MFA_SECRET_KEY=...
+```
+
+Cifra il segreto TOTP, così una copia del database non contiene anche il secondo
+fattore di tutti. **Senza, amministratori e contabilità non riescono a entrare**,
+perché per il loro ruolo la verifica è obbligatoria
+([ADR-013](adr/013-verifica-in-due-passaggi.md)). Se la chiave si perde si entra
+con i codici di recupero e si riconfigura l'app.
+
+Il token di sessione, invece, è un valore casuale confrontato con il database e
+non un token firmato: lì non c'è nessun segreto da configurare.
 
 **Una riga da cancellare:** `DB_POOL_MAX=1` serviva al database locale, che accetta
 una connessione sola. Con Supabase **va tolta** — il valore predefinito è più adatto.
@@ -254,7 +266,33 @@ In locale la coda va smaltita a mano:
 npm run outbox
 ```
 
-In produzione ci pensa il cron in `vercel.json` (1× al giorno su Hobby: 07:00 UTC). Serve:
+In produzione lo smaltimento parte da solo **dopo ogni firma e ogni
+caricamento** (`after()`, a risposta già inviata all'utente): è il meccanismo
+principale, e non dipende da alcun cron.
+
+Il cron in `vercel.json` gira **una volta al giorno alle 07:00 UTC** ed è la rete
+di sicurezza: rimette in coda le operazioni fallite, recupera i file rimasti
+senza copia e manda l'avviso se qualcosa si è fermato. Una volta al giorno
+perché **il piano Hobby di Vercel non accetta frequenze maggiori**: mettere
+`*/5` in `vercel.json` fa fallire il deploy.
+
+> L'orario non è casuale. I promemoria di follow-up partono solo dalle 08:00
+> italiane in poi: alle 07:00 UTC a Roma sono le 09:00 d'estate e le 08:00
+> d'inverno. Anticipare il cron significa non far partire i promemoria.
+
+**Per avere lo smaltimento ogni cinque minuti senza passare al piano Pro**,
+basta un pinger esterno gratuito:
+
+1. Su [cron-job.org](https://cron-job.org): registrati → *Create cronjob*.
+2. URL: `https://<il-tuo-dominio>/api/manutenzione/outbox`
+3. Frequenza: ogni 5 minuti.
+4. In *Advanced* → *Headers*: `x-maintenance-token: <MAINTENANCE_TOKEN>`
+
+L'endpoint risponde sia a GET sia a POST ed è sicuro da chiamare in parallelo:
+gli eventi si prendono con `skip locked`, quindi due esecuzioni sovrapposte non
+elaborano mai la stessa riga.
+
+Serve in ogni caso:
 
 ```bash
 MAINTENANCE_TOKEN=<openssl rand -hex 32>
@@ -270,22 +308,64 @@ Vercel invia quando lancia il cron.
 | `storage quota exceeded` | cartella di Il mio Drive con solo service account: usa OAuth (`drive:autorizza`) o un Drive condiviso |
 | `File not found: <id>` | il service account non è membro del Drive condiviso, oppure lo è come semplice lettore |
 | `invalid_grant` | la chiave privata ha perso gli a capo: devono essere scritti come `\n` |
-| L'evento resta «in attesa» | nessuno chiama la coda: `npm run outbox` in locale, cron in produzione |
+| L'evento resta «in attesa» | nessuno chiama la coda: `npm run outbox` in locale, cron o pinger in produzione |
 | La cartella non compare mai | guarda `last_error` nella tabella `outbox_events`: il motivo è scritto lì |
 
 ---
 
-## 9. Cosa resta fuori, per ora
+## 9. Copia di sicurezza dei documenti
+
+Nessun file viene mai cancellato dal sistema
+([ADR-012](adr/012-nessuna-cancellazione-dei-file.md)): eliminare mette nel
+cestino, e **il cestino non ha scadenza**. Si ripristina da *Impostazioni →
+Manutenzione e cestino*, anche a mesi di distanza.
+
+Sopra a questo, ogni file esiste in **due copie automatiche** — l'archivio su
+Supabase e lo specchio su Google Drive — che sono due fornitori e due account
+diversi. La terza copia la fai tu, e sta su un disco che possiedi:
+
+```bash
+npm run backup:documenti -- ~/Backup-EcoSolare
+```
+
+Scarica tutti i file (compresi quelli nel cestino) in cartelle e con nomi
+leggibili, verifica ognuno contro il checksum registrato al caricamento e scrive
+un `inventario.csv` apribile con qualunque foglio di calcolo. È **incrementale**:
+rilanciarlo ogni sera costa pochi secondi, perché ciò che è già lì e integro non
+viene riscaricato.
+
+Per controllare l'integrità senza scrivere niente:
+
+```bash
+npm run backup:verifica
+```
+
+Segnala due situazioni, entrambe da prendere sul serio:
+
+| Segnalazione | Significato |
+|---|---|
+| `File mancanti dall'archivio` | il database elenca il file ma nello Storage non c'è. Se hai una copia precedente di questo backup, **non cancellarla**: quei file sono lì |
+| `File alterati` | il contenuto non corrisponde al checksum del caricamento. La copia locale precedente **non** viene sovrascritta |
+
+Consiglio pratico: un disco esterno e il comando lanciato il venerdì. Basta
+finché non si attiva una copia automatica verso un secondo fornitore di object
+storage, che è il passo successivo previsto.
+
+---
+
+## 10. Cosa resta fuori, per ora
 
 - **La verifica in due passaggi non c'è.** Era delegata a Google Workspace e con
   l'accesso a password è venuta meno ([D-003a-bis](01-registro-decisioni.md)).
-- **Un evento che fallisce definitivamente non avvisa nessuno**: resta `fallito`
-  in `outbox_events` e va cercato.
+- **La verifica dell'integrità dell'archivio è manuale**: `npm run backup:verifica`
+  va lanciato da una persona, nessuno lo fa al posto tuo.
+- **La copia locale non è automatica**: finché non c'è un secondo fornitore di
+  object storage configurato, il comando di backup lo lanci tu.
 - **Vercel** — vedi [08-deploy-staging-vercel.md](08-deploy-staging-vercel.md) per il deploy staging in `fra1`.
 
 ---
 
-## 10. Prima di inserire dati di clienti veri
+## 11. Prima di inserire dati di clienti veri
 
 Nel momento in cui entra la prima anagrafica reale, questo smette di essere un
 ambiente di prova. Servono quattro adempimenti, tutti fattibili senza consulente

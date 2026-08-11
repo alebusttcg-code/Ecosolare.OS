@@ -1,6 +1,6 @@
 'use server'
 
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb } from '@/db'
@@ -9,7 +9,7 @@ import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
 import { TIPO_COPIA_DOCUMENTO } from '@/lib/drive/gestori'
 import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
-import { eliminaFile as eliminaFileDrive } from '@/lib/drive/client'
+import { cestinaFile } from '@/lib/drive/client'
 import { accoda } from '@/lib/outbox'
 import { ripulisciNome, validaFile } from '@/lib/domain/upload'
 import { getArchivio } from '@/lib/storage'
@@ -69,6 +69,9 @@ export async function uploadDocument(
     cartella: `commesse/${requisito.projectId}`,
   })
 
+  // Deliberatamente SENZA filtro sul cestino: i numeri di versione devono
+  // crescere sempre. Riusare il numero di una versione cestinata farebbe
+  // fallire il ripristino contro l'indice univoco (requisito, versione).
   const [ultima] = await db
     .select({ versionNo: documentFiles.versionNo })
     .from(documentFiles)
@@ -130,6 +133,18 @@ export async function uploadDocument(
 }
 
 /** Elimina l'ultima versione caricata, riportando il requisito a «richiesto». */
+/**
+ * Elimina un documento — cioè lo mette nel cestino (D-017).
+ *
+ * **Non cancella niente.** La riga resta con `deleted_at`, il file resta in
+ * archivio, la copia su Drive va nel cestino di Drive per non restare visibile
+ * in una cartella dove non dovrebbe più stare.
+ *
+ * Il motivo è asimmetrico e vale la pena dirlo: tenere un file che nessuno
+ * voleva costa qualche centesimo di spazio; perdere una bolletta che il cliente
+ * aveva mandato una volta sola costa una telefonata, una settimana di attesa e
+ * la fiducia di chi la sta chiedendo per la seconda volta.
+ */
 export async function deleteDocumentFile(fileId: string): Promise<ActionResult> {
   const utente = await guard('delete', 'document')
 
@@ -139,7 +154,7 @@ export async function deleteDocumentFile(fileId: string): Promise<ActionResult> 
 
   const db = getDb()
   const file = await db.query.documentFiles.findFirst({
-    where: eq(documentFiles.id, fileId),
+    where: and(eq(documentFiles.id, fileId), isNull(documentFiles.deletedAt)),
   })
   if (!file) return { ok: false, errors: { _: 'File non trovato.' } }
 
@@ -147,11 +162,18 @@ export async function deleteDocumentFile(fileId: string): Promise<ActionResult> 
     where: eq(documentRequirements.id, file.requirementId),
   })
 
+  await db
+    .update(documentFiles)
+    .set({ deletedAt: new Date(), deletedBy: utente.id })
+    .where(eq(documentFiles.id, fileId))
+
   if (file.driveFileId) {
     try {
-      await eliminaFileDrive(file.driveFileId)
+      await cestinaFile(file.driveFileId)
     } catch (errore) {
-      console.warn('[drive] eliminazione documento non riuscita', {
+      // Drive irraggiungibile non deve impedire l'eliminazione: la verità è la
+      // riga, e la copia su Drive si riallinea al prossimo passaggio.
+      console.warn('[drive] spostamento nel cestino non riuscito', {
         fileId,
         driveFileId: file.driveFileId,
         errore: errore instanceof Error ? errore.message : errore,
@@ -159,13 +181,15 @@ export async function deleteDocumentFile(fileId: string): Promise<ActionResult> 
     }
   }
 
-  await getArchivio().elimina(file.storageKey)
-  await db.delete(documentFiles).where(eq(documentFiles.id, fileId))
-
   const [rimasto] = await db
     .select({ id: documentFiles.id })
     .from(documentFiles)
-    .where(eq(documentFiles.requirementId, file.requirementId))
+    .where(
+      and(
+        eq(documentFiles.requirementId, file.requirementId),
+        isNull(documentFiles.deletedAt),
+      ),
+    )
     .limit(1)
 
   if (!rimasto) {
@@ -189,3 +213,4 @@ export async function deleteDocumentFile(fileId: string): Promise<ActionResult> 
   }
   return { ok: true, data: undefined }
 }
+

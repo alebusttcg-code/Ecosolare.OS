@@ -143,6 +143,8 @@ ${c.fioco('Quello che scrivi resta in .env.local, che non entra mai nel reposito
 
   /* 2. Segreti generati ---------------------------------------------------- */
   const intakeToken = esistente.INTAKE_TOKEN || randomBytes(32).toString('hex')
+  const manutenzione = esistente.MAINTENANCE_TOKEN || randomBytes(32).toString('hex')
+  const chiaveMfa = esistente.MFA_SECRET_KEY || randomBytes(32).toString('hex')
 
   const contenuto = `# Generato da: npm run configura
 # Non versionare mai questo file.
@@ -151,6 +153,13 @@ DATABASE_URL=${database}
 
 # Segreto condiviso con i form del sito per l'endpoint /api/intake
 INTAKE_TOKEN=${intakeToken}
+
+# Protegge /api/manutenzione/* (cron e pinger esterno)
+MAINTENANCE_TOKEN=${manutenzione}
+
+# Cifra il segreto della verifica in due passaggi. Se la perdi, chi ha gia'
+# attivato l'MFA entra con i codici di recupero e riconfigura l'app.
+MFA_SECRET_KEY=${chiaveMfa}
 `
 
   writeFileSync(PERCORSO, contenuto, { mode: 0o600 })

@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { activities, contacts, opportunities, users } from '@/db/schema'
 import { etichettaFase } from '@/lib/domain/follow-up'
@@ -7,6 +7,7 @@ import { env } from '@/env'
 import { inviaMessaggioTelegram, telegramConfigurato } from './client'
 
 export const TIPO_FU_REMINDER = 'telegram.fu_reminder'
+export const TIPO_AVVISO_SALUTE = 'telegram.avviso_salute'
 
 function baseUrlApp(): string {
   const daEnv = env().APP_BASE_URL
@@ -76,9 +77,57 @@ async function reminderFollowUp(payload: Record<string, unknown>): Promise<void>
     .where(eq(activities.id, activityId))
 }
 
+/**
+ * Avvisa gli amministratori che qualcosa in coda si è fermato.
+ *
+ * Il messaggio è deliberatamente breve e senza dettagli tecnici: chi lo riceve
+ * la domenica sera deve capire in tre secondi se deve alzarsi dal divano.
+ * Il dettaglio sta nella dashboard, il cui link è l'ultima riga.
+ */
+const avvisoSalute: Gestore = async (payload) => {
+  const problemi = Array.isArray(payload.problemi)
+    ? payload.problemi.filter((r): r is string => typeof r === 'string')
+    : []
+  if (problemi.length === 0) return
+
+  const db = getDb()
+  const destinatari = await db
+    .select({ chatId: users.telegramChatId })
+    .from(users)
+    .where(
+      and(
+        eq(users.role, 'amministratore'),
+        eq(users.isActive, true),
+        isNotNull(users.telegramChatId),
+      ),
+    )
+
+  // Nessun amministratore collegato a Telegram: non è un guasto da ritentare
+  // all'infinito, è una configurazione mancante. La dashboard mostra comunque
+  // tutto a chi entra.
+  if (destinatari.length === 0) {
+    console.warn('[salute] nessun amministratore collegato a Telegram')
+    return
+  }
+
+  const testo = [
+    'Qualcosa non sta funzionando da solo',
+    '',
+    ...problemi.map((r) => `· ${r}`),
+    '',
+    `Dettagli: ${baseUrlApp()}/`,
+  ].join('\n')
+
+  for (const destinatario of destinatari) {
+    if (!destinatario.chatId) continue
+    await inviaMessaggioTelegram({ chatId: destinatario.chatId, testo })
+  }
+}
+
 export function gestoriTelegram(): Record<string, Gestore> {
   if (!telegramConfigurato()) return {}
   return {
     [TIPO_FU_REMINDER]: reminderFollowUp,
+    [TIPO_AVVISO_SALUTE]: avvisoSalute,
   }
 }

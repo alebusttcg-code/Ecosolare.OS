@@ -1,10 +1,13 @@
 import { elaboraOutbox, riprovaFalliti, type EsitoElaborazione } from '@/lib/outbox'
+import { accodaAvvisoSalute } from './accoda-avviso'
 import { accodaReminderFollowUpScaduti } from './accoda-reminder'
 import { gestoriTelegram } from './gestori'
 import { telegramConfigurato } from './client'
 
 export interface OpzioniSmaltimentoTelegram {
   readonly ripristinaFalliti?: boolean
+  /** Controlla lo stato di salute e avvisa gli amministratori. Solo dal cron. */
+  readonly controllaSalute?: boolean
 }
 
 /**
@@ -22,6 +25,14 @@ export async function smaltisciCodaTelegram(
   }
 
   const accodati = await accodaReminderFollowUpScaduti()
+
+  // L'avviso si accoda PRIMA di elaborare, così parte nello stesso giro invece
+  // di aspettare il passaggio successivo — che con un cron giornaliero
+  // significherebbe saperlo domani.
+  if (opzioni.controllaSalute) {
+    await accodaAvvisoSalute()
+  }
+
   const esito = await elaboraOutbox(gestoriTelegram())
   return { ...esito, accodati }
 }

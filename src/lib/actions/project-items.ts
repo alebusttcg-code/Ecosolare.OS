@@ -13,6 +13,7 @@ import {
   projects,
 } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
+import { can } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
 import type { ActionResult } from './opportunities'
 import { ricalcolaReadiness } from '@/lib/readiness'
@@ -137,6 +138,16 @@ export async function setMaterialStatus(
   })
   if (!materiale) return { ok: false, errors: { _: 'Materiale non trovato.' } }
 
+  // Scrivere un costo che non si è autorizzati a leggere non ha senso e non è
+  // innocuo: permetterebbe di alterare il margine consuntivo senza mai poterlo
+  // vedere, cioè senza rendersi conto dell'effetto.
+  if (dati.actualUnitCost !== undefined && !can(utente, 'read', 'material_cost')) {
+    return {
+      ok: false,
+      errors: { actualUnitCost: 'Non sei abilitato a registrare i costi di acquisto.' },
+    }
+  }
+
   await db
     .update(projectMaterials)
     .set({
@@ -159,8 +170,21 @@ export async function setMaterialStatus(
     action: 'update',
     entityType: 'project_material',
     entityId: dati.materialId,
-    before: { status: materiale.status, critical: materiale.critical },
-    after: { status: dati.status, critical: dati.critical ?? materiale.critical },
+    // Il costo reale entra nel diff: ADR-008 vuole che nessun consuntivo
+    // economico venga sovrascritto senza lasciare traccia di prima e dopo.
+    before: {
+      status: materiale.status,
+      critical: materiale.critical,
+      actualUnitCost: materiale.actualUnitCost,
+    },
+    after: {
+      status: dati.status,
+      critical: dati.critical ?? materiale.critical,
+      actualUnitCost:
+        dati.actualUnitCost !== undefined
+          ? dati.actualUnitCost.toFixed(4)
+          : materiale.actualUnitCost,
+    },
   })
 
   await aggiornaEDRicalcola(materiale.projectId)

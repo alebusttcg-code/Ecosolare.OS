@@ -20,6 +20,7 @@ export default async function UtentiPage() {
       isFieldOnly: users.isFieldOnly,
       isActive: users.isActive,
       telegramCollegato: users.telegramChatId,
+      totpEnabledAt: users.totpEnabledAt,
     })
     .from(users)
     .orderBy(asc(users.email))
@@ -36,6 +37,7 @@ export default async function UtentiPage() {
         utenti={elenco.map((u) => ({
           ...u,
           telegramCollegato: Boolean(u.telegramCollegato),
+          mfaAttiva: u.totpEnabledAt !== null,
         }))}
         utenteCorrenteId={utente.id}
       />

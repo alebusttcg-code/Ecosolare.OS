@@ -20,6 +20,9 @@ ricostruire il ragionamento a memoria.
 | [009](009-migrazioni-versionate.md) | Migrazioni versionate, mai modifiche manuali al database | Accettata |
 | [010](010-pglite-per-i-test.md) | PGlite per i test, PostgreSQL gestito per tutto il resto | Accettata |
 | [011](011-drive-specchio-non-archivio.md) | Google Drive è uno specchio, non l'archivio | Accettata |
+| [012](012-nessuna-cancellazione-dei-file.md) | Nessun file viene mai cancellato | Accettata |
+| [013](013-verifica-in-due-passaggi.md) | Verifica in due passaggi con TOTP | Accettata |
+| [014](014-pagina-pubblica-stato-cliente.md) | Pagina di stato per il cliente, senza account | Accettata |
 
 Riferimento esteso: [§8.3 del blueprint](../00-discovery-blueprint-v1.md).
 Decisioni di prodotto e di processo (non architetturali): [registro decisioni](../01-registro-decisioni.md).

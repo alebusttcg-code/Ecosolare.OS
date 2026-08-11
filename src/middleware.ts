@@ -20,6 +20,8 @@ function percorsoPubblico(pathname: string): boolean {
   return (
     pathname === '/accedi' ||
     pathname.startsWith('/accedi/') ||
+    // Pagina di stato per il cliente: il collegamento è la credenziale (D-019).
+    pathname.startsWith('/stato/') ||
     pathname.startsWith('/api/intake') ||
     pathname.startsWith('/api/manutenzione') ||
     pathname.startsWith('/api/telegram/')

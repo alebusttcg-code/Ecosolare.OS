@@ -11,6 +11,8 @@
     "prova:metriche": "tsx --env-file-if-exists=.env.local scripts/prova-metriche.ts",
     "prova:metriche:pulisci": "tsx --env-file-if-exists=.env.local scripts/pulisci-prova-metriche.ts",
     "outbox": "tsx --env-file-if-exists=.env.local scripts/outbox.ts",
+    "backup:documenti": "tsx --env-file-if-exists=.env.local scripts/backup-documenti.ts",
+    "backup:verifica": "tsx --env-file-if-exists=.env.local scripts/backup-documenti.ts -- --verifica",
     "drive:autorizza": "tsx --env-file-if-exists=.env.local scripts/autorizza-drive.ts",
     "drive:verifica": "tsx --env-file-if-exists=.env.local scripts/verifica-drive.ts",
     "build": "next build",

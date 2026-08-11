@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { getDb } from '@/db'
 import { paymentMilestones, paymentReceipts } from '@/db/schema'
@@ -22,8 +22,9 @@ export async function GET(
   try {
     const utente = await guard('read', 'invoice')
 
+    // Nel cestino significa eliminata: non si serve (D-017).
     const file = await getDb().query.paymentReceipts.findFirst({
-      where: eq(paymentReceipts.id, id),
+      where: and(eq(paymentReceipts.id, id), isNull(paymentReceipts.deletedAt)),
     })
     if (!file) {
       return NextResponse.json({ errore: 'Contabile non trovata.' }, { status: 404 })

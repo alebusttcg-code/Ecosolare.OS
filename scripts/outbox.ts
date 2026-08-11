@@ -22,7 +22,7 @@ async function main(): Promise<void> {
   }
 
   if (driveConfigurato()) {
-    const esito = await smaltisciCodaDrive({ ripristinaFalliti: true })
+    const esito = await smaltisciCodaDrive({ ripristinaFalliti: true, recuperaMancanti: true })
     console.log(
       `Drive — elaborati ${esito.elaborati}: ${esito.completati} completati, ` +
         `${esito.rimandati} rimandati, ${esito.falliti} falliti.`,
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   }
 
   if (telegramConfigurato()) {
-    const esito = await smaltisciCodaTelegram({ ripristinaFalliti: true })
+    const esito = await smaltisciCodaTelegram({ ripristinaFalliti: true, controllaSalute: true })
     console.log(
       `Telegram — accodati ${esito.accodati}, elaborati ${esito.elaborati}: ` +
         `${esito.completati} completati, ${esito.rimandati} rimandati, ${esito.falliti} falliti.`,

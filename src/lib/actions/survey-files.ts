@@ -13,6 +13,9 @@ import {
   type DefinizioneQuestionario,
   type Risposte,
 } from '@/lib/domain/questionnaire'
+import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
+import { TIPO_COPIA_FOTO_SOPRALLUOGO } from '@/lib/drive/gestori'
+import { accoda } from '@/lib/outbox'
 import { getArchivio } from '@/lib/storage'
 import type { ActionResult } from './opportunities'
 
@@ -122,6 +125,15 @@ export async function uploadSurveyPhoto(
       })
       .where(eq(surveys.id, surveyId))
 
+    // Copia su Drive nella stessa transazione dell'inserimento (ADR-005):
+    // una copia accodata per una foto che poi non esiste sarebbe un errore
+    // ricorrente e inspiegabile.
+    await accoda(tx, {
+      type: TIPO_COPIA_FOTO_SOPRALLUOGO,
+      payload: { surveyFileId: riga!.id },
+      dedupKey: `${TIPO_COPIA_FOTO_SOPRALLUOGO}:${riga!.id}`,
+    })
+
     return riga!
   })
 
@@ -133,6 +145,7 @@ export async function uploadSurveyPhoto(
     entityId: salvato.id,
   })
 
+  avviaSmaltimentoOutbox()
   revalidatePath(`/agenda/${surveyId}`)
   return { ok: true, data: { fileId: salvato.id, nome, fieldCode } }
 }
@@ -162,10 +175,13 @@ export async function deleteSurveyPhoto(fileId: string): Promise<ActionResult> {
   const risposteAttuali = (sopralluogo.answers ?? {}) as Risposte
   const ids = idsCampo(risposteAttuali, file.fieldCode).filter((id) => id !== fileId)
 
-  await getArchivio().elimina(file.storageKey)
-
+  // Cestino, non cancellazione (D-017). Una foto di sopralluogo si rifà solo
+  // tornando sul tetto: è il file meno ricostruibile di tutto il sistema.
   await db.transaction(async (tx) => {
-    await tx.delete(surveyFiles).where(eq(surveyFiles.id, fileId))
+    await tx
+      .update(surveyFiles)
+      .set({ deletedAt: new Date(), deletedBy: utente.id })
+      .where(eq(surveyFiles.id, fileId))
     await tx
       .update(surveys)
       .set({

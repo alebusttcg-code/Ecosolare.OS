@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { scopeFor } from '@/lib/auth/policy'
 import {
@@ -123,10 +123,20 @@ export async function listProjects(
   })
 }
 
+/**
+ * Scheda completa di una commessa.
+ *
+ * **I dati di costo non entrano nel risultato** se l'utente non ha
+ * `canViewCosts` (§11.4 regola 7). Nasconderli nel componente non basta: il
+ * payload di un Server Component finisce comunque nel browser appena un valore
+ * viene passato a un componente client, e nessuno se ne accorge finché non è
+ * troppo tardi. Filtrare qui rende impossibile l'errore, invece che improbabile.
+ */
 export async function getProjectDetail(utente: UtenteConId, id: string) {
   if (!(await commessaVisibile(utente, id))) return null
 
   const db = getDb()
+  const mostraCosti = utente.canViewCosts
 
   const [riga] = await db
     .select({
@@ -178,11 +188,38 @@ export async function getProjectDetail(utente: UtenteConId, id: string) {
             documentRequirements,
             eq(documentRequirements.id, documentFiles.requirementId),
           )
-          .where(eq(documentRequirements.projectId, id))
+          .where(
+            and(
+              eq(documentRequirements.projectId, id),
+              isNull(documentFiles.deletedAt),
+            ),
+          )
           .orderBy(desc(documentFiles.versionNo)),
       () =>
         db
-          .select()
+          .select({
+            id: projectMaterials.id,
+            projectId: projectMaterials.projectId,
+            productId: projectMaterials.productId,
+            description: projectMaterials.description,
+            unit: projectMaterials.unit,
+            quantityPlanned: projectMaterials.quantityPlanned,
+            quantityOrdered: projectMaterials.quantityOrdered,
+            status: projectMaterials.status,
+            statusSince: projectMaterials.statusSince,
+            critical: projectMaterials.critical,
+            supplierId: projectMaterials.supplierId,
+            expectedAt: projectMaterials.expectedAt,
+            notes: projectMaterials.notes,
+            // I due prezzi escono solo con la capacità: senza, la colonna non
+            // viene nemmeno selezionata.
+            estimatedUnitCost: mostraCosti
+              ? projectMaterials.estimatedUnitCost
+              : sql<null>`null`,
+            actualUnitCost: mostraCosti
+              ? projectMaterials.actualUnitCost
+              : sql<null>`null`,
+          })
           .from(projectMaterials)
           .where(eq(projectMaterials.projectId, id))
           .orderBy(asc(projectMaterials.description)),
@@ -218,7 +255,9 @@ export async function getProjectDetail(utente: UtenteConId, id: string) {
             paymentMilestones,
             eq(paymentMilestones.id, paymentReceipts.milestoneId),
           )
-          .where(eq(paymentMilestones.projectId, id))
+          .where(
+            and(eq(paymentMilestones.projectId, id), isNull(paymentReceipts.deletedAt)),
+          )
           .orderBy(desc(paymentReceipts.uploadedAt)),
       () =>
         db
@@ -247,8 +286,15 @@ export async function getProjectDetail(utente: UtenteConId, id: string) {
     filePerRequisito.set(f.requirementId, [...(filePerRequisito.get(f.requirementId) ?? []), f])
   }
 
+  // `projects` porta con sé costo e margine previsti: vanno tolti dall'oggetto,
+  // non solo dalla schermata.
+  const commessa = mostraCosti
+    ? riga.commessa
+    : { ...riga.commessa, estimatedCost: null, estimatedMargin: null }
+
   return {
     ...riga,
+    commessa,
     giorniDiBlocco,
     documenti: documenti.map((d) => ({ ...d, files: filePerRequisito.get(d.id) ?? [] })),
     materiali,

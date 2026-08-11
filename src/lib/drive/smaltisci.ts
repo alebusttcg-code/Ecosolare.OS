@@ -1,6 +1,6 @@
-import { isNull } from 'drizzle-orm'
+import { and, asc, isNull } from 'drizzle-orm'
 import { getDb } from '@/db'
-import { documentFiles, paymentReceipts } from '@/db/schema'
+import { documentFiles, paymentReceipts, surveyFiles } from '@/db/schema'
 import {
   elaboraOutbox,
   accoda,
@@ -12,11 +12,14 @@ import {
   gestoriDrive,
   TIPO_COPIA_CONTABILE,
   TIPO_COPIA_DOCUMENTO,
+  TIPO_COPIA_FOTO_SOPRALLUOGO,
 } from './gestori'
 
 export interface OpzioniSmaltimento {
   /** Rimette in coda gli eventi `fallito` (cron / manutenzione, non dopo ogni upload). */
   readonly ripristinaFalliti?: boolean
+  /** Ripassa l'archivio in cerca di file senza copia su Drive. Solo dal cron. */
+  readonly recuperaMancanti?: boolean
 }
 
 /**
@@ -35,13 +38,26 @@ export async function smaltisciCodaDrive(
   if (opzioni.ripristinaFalliti) {
     await riprovaFalliti()
   }
-  await accodaCopieDriveMancanti()
+
+  // Il recupero delle copie mancanti scansiona tre tabelle intere: ha senso dal
+  // cron, non dopo ogni singolo caricamento — lì l'evento è già stato accodato
+  // dalla transazione che ha creato la riga.
+  if (opzioni.recuperaMancanti) {
+    await accodaCopieDriveMancanti()
+  }
+
   return elaboraOutbox(gestoriDrive())
 }
 
 /**
- * Documenti e contabili già in archivio ma senza `drive_file_id`: li rimette
- * in coda (upload precedenti all’accodamento, o eventi mai creati).
+ * File in archivio senza copia su Drive: li rimette in coda.
+ *
+ * `order by` sulla data di caricamento non è un vezzo: con `limit` e senza
+ * ordinamento PostgreSQL è libero di restituire sempre lo stesso insieme, e con
+ * un arretrato di più di cento file i rimanenti non partirebbero mai.
+ *
+ * I cestinati sono esclusi: portare su Drive un file che qualcuno ha eliminato
+ * lo farebbe ricomparire nella cartella del cliente.
  */
 export async function accodaCopieDriveMancanti(): Promise<number> {
   const db = getDb()
@@ -50,7 +66,8 @@ export async function accodaCopieDriveMancanti(): Promise<number> {
   const documenti = await db
     .select({ id: documentFiles.id })
     .from(documentFiles)
-    .where(isNull(documentFiles.driveFileId))
+    .where(and(isNull(documentFiles.driveFileId), isNull(documentFiles.deletedAt)))
+    .orderBy(asc(documentFiles.uploadedAt))
     .limit(100)
 
   for (const riga of documenti) {
@@ -65,7 +82,8 @@ export async function accodaCopieDriveMancanti(): Promise<number> {
   const contabili = await db
     .select({ id: paymentReceipts.id })
     .from(paymentReceipts)
-    .where(isNull(paymentReceipts.driveFileId))
+    .where(and(isNull(paymentReceipts.driveFileId), isNull(paymentReceipts.deletedAt)))
+    .orderBy(asc(paymentReceipts.uploadedAt))
     .limit(100)
 
   for (const riga of contabili) {
@@ -73,6 +91,22 @@ export async function accodaCopieDriveMancanti(): Promise<number> {
       type: TIPO_COPIA_CONTABILE,
       payload: { paymentReceiptId: riga.id },
       dedupKey: `${TIPO_COPIA_CONTABILE}:${riga.id}`,
+    })
+    considerati += 1
+  }
+
+  const foto = await db
+    .select({ id: surveyFiles.id })
+    .from(surveyFiles)
+    .where(and(isNull(surveyFiles.driveFileId), isNull(surveyFiles.deletedAt)))
+    .orderBy(asc(surveyFiles.uploadedAt))
+    .limit(100)
+
+  for (const riga of foto) {
+    await accoda(db, {
+      type: TIPO_COPIA_FOTO_SOPRALLUOGO,
+      payload: { surveyFileId: riga.id },
+      dedupKey: `${TIPO_COPIA_FOTO_SOPRALLUOGO}:${riga.id}`,
     })
     considerati += 1
   }

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { getDb } from '@/db'
 import { documentFiles } from '@/db/schema'
@@ -37,8 +37,10 @@ export async function GET(
     throw errore
   }
 
+  // Un documento nel cestino non si serve: per l'utente è eliminato, e
+  // ripristinarlo è un'azione consapevole che passa dall'amministratore.
   const file = await getDb().query.documentFiles.findFirst({
-    where: eq(documentFiles.id, id),
+    where: and(eq(documentFiles.id, id), isNull(documentFiles.deletedAt)),
   })
   if (!file) {
     return NextResponse.json({ errore: 'Documento non trovato.' }, { status: 404 })

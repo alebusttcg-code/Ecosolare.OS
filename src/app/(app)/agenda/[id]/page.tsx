@@ -56,7 +56,7 @@ export default async function SopralluogoPage({
       sortOrder: surveyFiles.sortOrder,
     })
     .from(surveyFiles)
-    .where(eq(surveyFiles.surveyId, id))
+    .where(and(eq(surveyFiles.surveyId, id), isNull(surveyFiles.deletedAt)))
     .orderBy(asc(surveyFiles.fieldCode), asc(surveyFiles.sortOrder))
 
   const fotoPerCampo: Record<string, FotoSopralluogo[]> = {}

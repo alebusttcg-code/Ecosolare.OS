@@ -271,7 +271,16 @@ export async function caricaFile(params: {
  *
  * Idempotente: se il file non c’è più (già cestinato o eliminato) non solleva.
  */
-export async function eliminaFile(fileId: string): Promise<void> {
+/**
+ * Sposta un file nel cestino di Drive, o ce lo riporta fuori.
+ *
+ * Il cestino di Drive non e' il nostro meccanismo di sicurezza — quello e' la
+ * riga con `deleted_at` in archivio, che non scade mai (D-017). Qui si tratta
+ * solo di togliere il file dalla cartella che le persone sfogliano: lasciarcelo
+ * dopo che qualcuno l'ha eliminato dal gestionale renderebbe le due viste
+ * incoerenti, ed e' la cartella su Drive quella di cui ci si fida a colpo d'occhio.
+ */
+async function impostaCestino(fileId: string, nelCestino: boolean): Promise<void> {
   if (!driveConfigurato()) return
   const risposta = await fetch(
     `${API}/files/${encodeURIComponent(fileId)}?supportsAllDrives=true`,
@@ -281,10 +290,19 @@ export async function eliminaFile(fileId: string): Promise<void> {
         authorization: `Bearer ${await tokenDiAccesso()}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ trashed: true }),
+      body: JSON.stringify({ trashed: nelCestino }),
     },
   )
+  // 404 significa che il file non c'e' piu': lo stato voluto e' gia' quello.
   if (risposta.ok || risposta.status === 404) return
   const testo = await risposta.text()
-  throw new Error(`Drive: eliminazione fallita (${risposta.status}): ${testo}`)
+  throw new Error(`Drive: aggiornamento cestino fallito (${risposta.status}): ${testo}`)
+}
+
+export function cestinaFile(fileId: string): Promise<void> {
+  return impostaCestino(fileId, true)
+}
+
+export function ripristinaFile(fileId: string): Promise<void> {
+  return impostaCestino(fileId, false)
 }

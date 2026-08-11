@@ -18,7 +18,7 @@ import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
 import { TIPO_COPIA_CONTABILE } from '@/lib/drive/gestori'
 import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
-import { eliminaFile as eliminaFileDrive } from '@/lib/drive/client'
+import { cestinaFile } from '@/lib/drive/client'
 import { leggiCsv } from '@/lib/domain/estratto-conto'
 import { importoAStringa, importoDaEuro } from '@/lib/domain/money'
 import { riconcilia, type PagamentoAtteso } from '@/lib/domain/riconciliazione'
@@ -67,7 +67,14 @@ export async function concediOkAmministrativo(
   const [contabile] = await db
     .select({ id: paymentReceipts.id })
     .from(paymentReceipts)
-    .where(eq(paymentReceipts.milestoneId, parsed.data.milestoneId))
+    // Una contabile nel cestino non vale come contabile presente: altrimenti
+    // il via libera amministrativo si fonderebbe su un documento eliminato.
+    .where(
+      and(
+        eq(paymentReceipts.milestoneId, parsed.data.milestoneId),
+        isNull(paymentReceipts.deletedAt),
+      ),
+    )
     .limit(1)
 
   if (!contabile) {
@@ -242,22 +249,25 @@ export async function deleteContabile(receiptId: string): Promise<ActionResult> 
     }
   }
 
+  // Cestino, non cancellazione (D-017): una contabile è la prova di un
+  // incasso, ed è il file che meno di tutti si può ricostruire a posteriori.
+  await db
+    .update(paymentReceipts)
+    .set({ deletedAt: new Date(), deletedBy: utente.id })
+    .where(eq(paymentReceipts.id, receiptId))
+
   if (file.driveFileId) {
     try {
-      await eliminaFileDrive(file.driveFileId)
+      await cestinaFile(file.driveFileId)
     } catch (errore) {
-      // Non bloccare l’eliminazione locale se Drive è momentaneamente giù:
-      // la riga e l’archivio devono comunque sparire dalla scheda.
-      console.warn('[drive] eliminazione contabile non riuscita', {
+      // Drive giù non blocca: la verità è la riga, la copia si riallinea dopo.
+      console.warn('[drive] spostamento contabile nel cestino non riuscito', {
         receiptId,
         driveFileId: file.driveFileId,
         errore: errore instanceof Error ? errore.message : errore,
       })
     }
   }
-
-  await getArchivio().elimina(file.storageKey)
-  await db.delete(paymentReceipts).where(eq(paymentReceipts.id, receiptId))
 
   await recordEntityChange({
     actorId: utente.id,

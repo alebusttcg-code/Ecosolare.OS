@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { getDb } from '@/db'
 import { surveyFiles } from '@/db/schema'
@@ -29,8 +29,9 @@ export async function GET(
     throw errore
   }
 
+  // Nel cestino significa eliminata: non si serve (D-017).
   const file = await getDb().query.surveyFiles.findFirst({
-    where: eq(surveyFiles.id, id),
+    where: and(eq(surveyFiles.id, id), isNull(surveyFiles.deletedAt)),
   })
   if (!file) {
     return NextResponse.json({ errore: 'Fotografia non trovata.' }, { status: 404 })

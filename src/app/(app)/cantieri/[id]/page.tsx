@@ -11,8 +11,10 @@ import {
   type StatoPianificabilita,
 } from '@/lib/domain/readiness'
 import { getProjectDetail } from '@/lib/queries/projects'
+import { getLinkCliente } from '@/lib/queries/stato-pubblico'
 import { getWorkOrderAttivo, listWorkers } from '@/lib/queries/schedule'
 import { CaricaDocumento } from './carica'
+import { PannelloLinkCliente } from './link-cliente'
 import { OkAmministrativo } from './ok-amministrativo'
 import { PannelloPianificazione } from './pianifica'
 import {
@@ -57,6 +59,7 @@ export default async function CommessaPage({
     getWorkOrderAttivo(id),
     can(utente, 'read', 'schedule') ? listWorkers() : Promise.resolve([]),
   ])
+  const linkCliente = await getLinkCliente(id)
 
   const c = dati.commessa
   const stato = PIANIFICABILITA[c.readinessState as StatoPianificabilita]
@@ -362,6 +365,19 @@ export default async function CommessaPage({
               </p>
             </Card>
           ) : null}
+
+          <Card title="Pagina per il cliente" indice={3}>
+            <PannelloLinkCliente
+              projectId={id}
+              attivi={linkCliente.map((l) => ({
+                id: l.id,
+                creatoIl: formattaData(l.creatoIl),
+                ultimaVisita: l.ultimaVisita ? formattaData(l.ultimaVisita) : null,
+                visite: l.visite,
+              }))}
+              puoScrivere={can(utente, 'update', 'project')}
+            />
+          </Card>
         </div>
       </div>
     </div>

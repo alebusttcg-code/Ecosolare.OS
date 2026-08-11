@@ -55,7 +55,23 @@ L'azienda usa Google Workspace. Ne discendono tre decisioni.
 
 *Motivo:* non tutte le persone che devono entrare hanno un account Workspace del dominio, e attendere che ne abbiano uno bloccherebbe l'avvio. Il codice per Google resta previsto e le tabelle restano in schema: si potrà affiancare senza migrazioni.
 
-*Conseguenza da tenere presente:* la verifica in due passaggi non è più delegata a Google, quindi **oggi non c'è MFA**. Il requisito del brief resta aperto e va ripreso prima di trattare dati di clienti veri in produzione.
+*Conseguenza risolta l'11 agosto 2026:* la verifica in due passaggi è stata reimplementata con TOTP — vedere D-018.
+
+**D-019 — Pagina di stato per il cliente, senza account**
+- Un collegamento firmato per commessa mostra al cliente a che punto è e quali documenti aspettiamo da lui.
+- Nessun importo e nessun dato economico: il collegamento è la credenziale, e può finire in mano a chiunque.
+- Dettagli: [ADR-014](adr/014-pagina-pubblica-stato-cliente.md).
+
+**D-018 — Verifica in due passaggi con TOTP** (chiude il requisito lasciato aperto da D-003a-bis)
+- Obbligatoria per `amministratore` e `contabilita`, disponibile per tutti.
+- Segreto cifrato a riposo con `MFA_SECRET_KEY`; dieci codici di recupero usa e getta.
+- Dettagli: [ADR-013](adr/013-verifica-in-due-passaggi.md).
+
+**D-017 — Nessun file viene mai cancellato**
+- Documenti, contabili e fotografie eliminati finiscono in un cestino senza scadenza, ripristinabile dall'amministratore.
+- Le fotografie di sopralluogo, prima in copia unica, vengono copiate su Drive come tutto il resto.
+- `npm run backup:documenti` produce una terza copia sul computer, verificata con i checksum.
+- Dettagli e motivazione: [ADR-012](adr/012-nessuna-cancellazione-dei-file.md).
 
 **D-011 — Cartella su Drive alla firma del contratto**
 - Alla firma nasce automaticamente `<Cliente> / <codice commessa — titolo>` in un Drive condiviso.

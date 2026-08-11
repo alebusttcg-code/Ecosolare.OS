@@ -70,6 +70,28 @@ export const users = pgTable(
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
 
     /**
+     * Verifica in due passaggi (D-018).
+     *
+     * Il segreto e' CIFRATO con `MFA_SECRET_KEY`, che sta nell'ambiente e non
+     * qui: a differenza di una password non puo' essere conservato come
+     * impronta — per verificare un codice va ricalcolato — quindi in chiaro
+     * renderebbe una copia del database sufficiente a produrre il secondo
+     * fattore di chiunque.
+     */
+    totpSecretEnc: text('totp_secret_enc'),
+    totpEnabledAt: timestamp('totp_enabled_at', { withTimezone: true }),
+    /**
+     * Ultimo passo temporale gia' consumato: un codice non si accetta due
+     * volte. Senza, chi lo legge sopra la spalla ha trenta secondi per usarlo.
+     */
+    totpLastStep: integer('totp_last_step'),
+    /**
+     * Impronte SHA-256 dei codici di recupero ancora validi. Si consumano uno
+     * alla volta; l'elenco vuoto significa che sono finiti e vanno rigenerati.
+     */
+    totpRecoveryHashes: jsonb('totp_recovery_hashes').$type<string[]>(),
+
+    /**
      * Capacita' (D-007). Sono flag sul singolo utente, non ruoli:
      * e' cio' che evita di moltiplicare i ruoli a ogni eccezione.
      */
@@ -870,6 +892,17 @@ export const surveyFiles = pgTable(
     sizeBytes: integer('size_bytes').notNull(),
     checksum: text('checksum'),
 
+    /**
+     * Copia su Drive (D-011, estesa in D-017). Le foto di sopralluogo erano
+     * l'unica categoria di file a esistere in una sola copia: irripetibili,
+     * perche' rifarle significa tornare sul tetto.
+     */
+    driveFileId: text('drive_file_id'),
+
+    /** Cestino (D-017): vedere `documentFiles.deletedAt`. */
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deletedBy: uuid('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+
     uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
     uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1322,6 +1355,17 @@ export const documentFiles = pgTable(
      */
     driveFileId: text('drive_file_id'),
 
+    /**
+     * Cestino (D-017). Eliminare un documento NON cancella niente: nasconde la
+     * riga e sposta la copia su Drive nel cestino. Il file resta in archivio.
+     *
+     * Il motivo e' che l'unica perdita davvero irreversibile in questo sistema
+     * e' un file: un importo sbagliato si ricalcola, una bolletta cancellata
+     * va richiesta di nuovo al cliente. Lo spazio costa meno di quella telefonata.
+     */
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deletedBy: uuid('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+
     /** Chi l'ha caricato: interno, cliente via link firmato, automazione. */
     source: text('source').notNull().default('interno'),
     uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
@@ -1524,6 +1568,10 @@ export const paymentReceipts = pgTable(
     /** Copia su Drive della cartella commessa (ADR-005 / D-011). */
     driveFileId: text('drive_file_id'),
 
+    /** Cestino (D-017): vedere `documentFiles.deletedAt`. */
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deletedBy: uuid('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+
     uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
     uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1633,6 +1681,46 @@ export const reconciliationChecks = pgTable(
  * cantiere in pianificazione. Disattivare invece di cancellare conserva lo
  * storico sulle assegnazioni già fatte.
  */
+/* -------------------------------------------------------------------------- */
+/*  Pagina pubblica di stato per il cliente — D-019                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Collegamento con cui un cliente vede lo stato della propria commessa senza
+ * account e senza password.
+ *
+ * Il problema che risolve: dopo la firma il cliente non ha piu' nessun modo di
+ * sapere a che punto e', quindi telefona. Ogni telefonata costa dieci minuti a
+ * una persona che dovrebbe vendere, e la risposta e' quasi sempre "stiamo
+ * aspettando un documento tuo".
+ *
+ * Nel database c'e' solo l'IMPRONTA del token, come per le sessioni: chi
+ * ottenesse una copia del database non potrebbe aprire le pagine dei clienti.
+ * Il collegamento e' revocabile e non scade da solo — una commessa dura mesi,
+ * e un collegamento scaduto e' una telefonata in piu', non in meno.
+ */
+export const clientLinks = pgTable(
+  'client_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+
+    /** SHA-256 del token che sta nell'indirizzo. */
+    tokenHash: text('token_hash').notNull().unique(),
+
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    /** Ultima apertura: dice se il cliente lo sta davvero usando. */
+    lastViewedAt: timestamp('last_viewed_at', { withTimezone: true }),
+    viewCount: integer('view_count').notNull().default(0),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [index('client_links_project_idx').on(table.projectId)],
+)
+
 export const workers = pgTable(
   'workers',
   {
@@ -1740,6 +1828,7 @@ export type PaymentReceipt = typeof paymentReceipts.$inferSelect
 export type BankStatement = typeof bankStatements.$inferSelect
 export type BankTransaction = typeof bankTransactions.$inferSelect
 export type ReconciliationCheck = typeof reconciliationChecks.$inferSelect
+export type ClientLink = typeof clientLinks.$inferSelect
 export type OutboxEvent = typeof outboxEvents.$inferSelect
 export type NewOutboxEvent = typeof outboxEvents.$inferInsert
 export type Worker = typeof workers.$inferSelect

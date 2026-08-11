@@ -15,7 +15,10 @@ import {
   validaPassword,
   verificaPassword,
 } from '@/lib/auth/password'
+import { decifra } from '@/lib/auth/cifratura'
+import { consumaCodiceRecupero } from '@/lib/auth/mfa'
 import { bloccoFinoA, minutiResidui } from '@/lib/auth/tentativi'
+import { normalizzaCodiceRecupero, verificaCodiceTotp } from '@/lib/auth/totp'
 import type { ActionResult } from './opportunities'
 
 /**
@@ -40,7 +43,11 @@ const CREDENZIALI_ERRATE = 'Email o password non corretti.'
 const accessoSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email(CREDENZIALI_ERRATE)),
   password: z.string().min(1, 'Inserire la password.'),
+  /** Codice a sei cifre o codice di recupero, al secondo passaggio. */
+  codice: z.string().trim().optional(),
 })
+
+const CODICE_ERRATO = 'Codice non valido. Controlla l’app e riprova.'
 
 async function contesto(): Promise<{ ipAddress?: string; userAgent?: string }> {
   const h = await headers()
@@ -61,10 +68,17 @@ async function contesto(): Promise<{ ipAddress?: string; userAgent?: string }> {
  */
 export async function accedi(
   input: z.input<typeof accessoSchema>,
-): Promise<ActionResult<{ deveCambiarePassword: boolean; destinazione: string }>> {
+): Promise<
+  ActionResult<{
+    /** Vero quando password e email sono giuste ma manca il secondo fattore. */
+    richiedeCodice?: boolean
+    deveCambiarePassword: boolean
+    destinazione: string
+  }>
+> {
   const parsed = accessoSchema.safeParse(input)
   if (!parsed.success) return { ok: false, errors: { _: CREDENZIALI_ERRATE } }
-  const { email, password } = parsed.data
+  const { email, password, codice } = parsed.data
 
   const db = getDb()
   const utente = await db.query.users.findFirst({
@@ -80,6 +94,10 @@ export async function accedi(
       role: true,
       canViewCosts: true,
       isFieldOnly: true,
+      totpSecretEnc: true,
+      totpEnabledAt: true,
+      totpLastStep: true,
+      totpRecoveryHashes: true,
     },
   })
 
@@ -120,6 +138,35 @@ export async function accedi(
     return { ok: false, errors: { _: CREDENZIALI_ERRATE } }
   }
 
+  /*
+   * Password giusta. Se la verifica in due passaggi è attiva, la sessione NON
+   * viene ancora aperta: si chiede il codice e si rifà tutto da capo con
+   * password e codice insieme. Costa una seconda verifica della password, e in
+   * cambio non esiste in nessun momento uno stato «mezzo autenticato» da
+   * proteggere — che è la parte in cui questi flussi sbagliano di solito.
+   */
+  if (utente.totpEnabledAt && utente.totpSecretEnc) {
+    if (!codice) {
+      return { ok: true, data: { richiedeCodice: true, deveCambiarePassword: false, destinazione: '' } }
+    }
+
+    const esito = await verificaSecondoFattore(utente, codice)
+
+    if (!esito.valido) {
+      // Un codice sbagliato conta come tentativo fallito: senza, il secondo
+      // fattore sarebbe attaccabile all'infinito conoscendo la password.
+      const tentativi = utente.failedLoginAttempts + 1
+      await db
+        .update(users)
+        .set({ failedLoginAttempts: tentativi, lockedUntil: bloccoFinoA(tentativi, adesso) })
+        .where(eq(users.id, utente.id))
+      await registraTentativo(utente.id, utente.email, 'codice_errato')
+      return { ok: false, errors: { codice: CODICE_ERRATO } }
+    }
+
+    await db.update(users).set(esito.aggiornamento).where(eq(users.id, utente.id))
+  }
+
   await db
     .update(users)
     .set({ failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: adesso })
@@ -151,6 +198,57 @@ export async function accedi(
       }),
     },
   }
+}
+
+/**
+ * Il secondo fattore: prima il codice dell'app, poi i codici di recupero.
+ *
+ * Restituisce anche cosa scrivere sull'utente, perché entrambe le strade
+ * consumano qualcosa — il passo temporale nel primo caso, il codice di
+ * recupero nel secondo — e dimenticarsene renderebbe il fattore riutilizzabile.
+ */
+async function verificaSecondoFattore(
+  utente: {
+    totpSecretEnc: string | null
+    totpLastStep: number | null
+    totpRecoveryHashes: string[] | null
+  },
+  codice: string,
+): Promise<{ valido: boolean; aggiornamento: Record<string, unknown> }> {
+  let segreto: string
+  try {
+    segreto = decifra(utente.totpSecretEnc!)
+  } catch {
+    // Chiave mancante o cambiata: il segreto non è più leggibile. Restano i
+    // codici di recupero, che non dipendono da MFA_SECRET_KEY apposta.
+    console.error('[mfa] segreto non decifrabile: serve MFA_SECRET_KEY corretta')
+    return verificaRecupero(utente, codice)
+  }
+
+  const esito = verificaCodiceTotp({
+    segretoBase32: segreto,
+    codice,
+    adesso: new Date(),
+    ultimoPassoUsato: utente.totpLastStep,
+  })
+
+  if (esito.valido) {
+    return { valido: true, aggiornamento: { totpLastStep: esito.passo } }
+  }
+
+  return verificaRecupero(utente, codice)
+}
+
+function verificaRecupero(
+  utente: { totpRecoveryHashes: string[] | null },
+  codice: string,
+): { valido: boolean; aggiornamento: Record<string, unknown> } {
+  const rimasti = consumaCodiceRecupero(
+    utente.totpRecoveryHashes ?? [],
+    normalizzaCodiceRecupero(codice),
+  )
+  if (rimasti === null) return { valido: false, aggiornamento: {} }
+  return { valido: true, aggiornamento: { totpRecoveryHashes: rimasti } }
 }
 
 async function registraTentativo(

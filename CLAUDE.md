@@ -15,6 +15,11 @@ Le decisioni di prodotto sono nel [registro decisioni](docs/01-registro-decision
   blueprint.** Se cambia una, deve cambiare l'altra.
 - **Nessun costo di acquisto nel payload servito** a chi non ha `can_view_costs`.
   Non basta non mostrarlo.
+- **Nessun file viene mai cancellato** (ADR-012). Eliminare valorizza `deleted_at`:
+  ogni lettura di `document_files`, `payment_receipts` e `survey_files` va filtrata.
+- **Niente dati economici nella pagina pubblica del cliente** (ADR-014). La query
+  in `src/lib/queries/stato-pubblico.ts` è una lista chiusa di campi: il
+  collegamento è la credenziale e può finire in mano a chiunque.
 - **Nessuna modifica manuale al database.** Schema in `src/db/schema.ts`,
   `npm run db:generate`, migrazione versionata (ADR-009).
 - **Importi calcolati server-side**, mai dal client. Costo stimato e costo reale
@@ -37,7 +42,7 @@ src/
   auth.ts         sessioni (cookie e tabella `sessions`)
   db/             schema, connessione, migrazioni, helper di test
   env.ts          variabili d'ambiente validate
-  lib/auth/       policy layer (puro), sessione, password
+  lib/auth/       policy layer (puro), sessione, password, TOTP
   lib/audit.ts    scrittura audit log
   lib/outbox/     coda degli effetti esterni (ADR-005)
   lib/drive/      client Google Drive e gestori della coda
@@ -54,6 +59,8 @@ npm run dev       # richiede DATABASE_URL
 npm run db:generate && npm run db:migrate
 npm run amministratore   # crea il primo utente e stampa la password
 npm run outbox           # smaltisce la coda: in locale non lo fa nessun altro
+npm run backup:documenti -- ~/Backup   # terza copia dei file, verificata
+npm run backup:verifica  # controlla l'integrità dell'archivio, senza scrivere
 ```
 
 ## Lingua

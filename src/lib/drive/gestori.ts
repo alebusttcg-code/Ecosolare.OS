@@ -6,9 +6,12 @@ import {
   contacts,
   documentFiles,
   documentRequirements,
+  opportunities,
   paymentMilestones,
   paymentReceipts,
   projects,
+  surveyFiles,
+  surveys,
 } from '@/db/schema'
 import type { Gestore } from '@/lib/outbox'
 import { getArchivio } from '@/lib/storage'
@@ -30,10 +33,22 @@ import { nomeCartellaCliente, nomeCartellaCommessa } from './nomi'
 export const TIPO_CARTELLA_CLIENTE = 'drive.cartella_cliente'
 export const TIPO_COPIA_DOCUMENTO = 'drive.copia_documento'
 export const TIPO_COPIA_CONTABILE = 'drive.copia_contabile'
+export const TIPO_COPIA_FOTO_SOPRALLUOGO = 'drive.copia_foto_sopralluogo'
+
+/**
+ * Cartella di primo livello per le fotografie dei sopralluoghi.
+ *
+ * Non stanno nella cartella del cliente perché il sopralluogo avviene PRIMA
+ * del contratto, e la cartella del cliente nasce alla firma: aspettarla
+ * lascerebbe senza seconda copia proprio i file meno ricostruibili del sistema
+ * — una foto di un tetto si rifà solo tornandoci sopra.
+ */
+const CARTELLA_SOPRALLUOGHI = 'Sopralluoghi'
 
 const cartellaSchema = z.object({ projectId: z.uuid() })
 const copiaSchema = z.object({ documentFileId: z.uuid() })
 const copiaContabileSchema = z.object({ paymentReceiptId: z.uuid() })
+const copiaFotoSchema = z.object({ surveyFileId: z.uuid() })
 
 /**
  * Crea la cartella del cliente e, dentro, quella della commessa.
@@ -217,6 +232,76 @@ const copiaContabile: Gestore = async (payload) => {
 }
 
 /**
+ * Copia su Drive una fotografia di sopralluogo.
+ *
+ * A differenza di documenti e contabili non dipende dalla commessa: crea al
+ * volo `Sopralluoghi / <codice opportunità> — <cliente>`, e `creaCartella`
+ * riusa quella esistente, quindi le foto dello stesso sopralluogo finiscono
+ * insieme senza bisogno di ricordare l'identificativo da nessuna parte.
+ */
+const copiaFotoSopralluogo: Gestore = async (payload) => {
+  const { surveyFileId } = copiaFotoSchema.parse(payload)
+  const db = getDb()
+
+  const [riga] = await db
+    .select({
+      storageKey: surveyFiles.storageKey,
+      filename: surveyFiles.filename,
+      mimeType: surveyFiles.mimeType,
+      fieldCode: surveyFiles.fieldCode,
+      sortOrder: surveyFiles.sortOrder,
+      driveFileId: surveyFiles.driveFileId,
+      deletedAt: surveyFiles.deletedAt,
+      opportunityCode: opportunities.code,
+      clienteNome: contacts.firstName,
+      clienteCognome: contacts.lastName,
+    })
+    .from(surveyFiles)
+    .innerJoin(surveys, eq(surveys.id, surveyFiles.surveyId))
+    .innerJoin(opportunities, eq(opportunities.id, surveys.opportunityId))
+    .innerJoin(contacts, eq(contacts.id, opportunities.contactId))
+    .where(eq(surveyFiles.id, surveyFileId))
+    .limit(1)
+
+  if (!riga) {
+    console.warn('[drive] fotografia inesistente, copia annullata', { surveyFileId })
+    return
+  }
+
+  if (riga.driveFileId) return
+  // Cestinata prima che la copia partisse: non ha senso portarla su Drive.
+  if (riga.deletedAt) return
+
+  const contenuto = await getArchivio().leggi(riga.storageKey)
+  if (!contenuto) {
+    throw new Error(`Fotografia non trovata in archivio: ${riga.storageKey}`)
+  }
+
+  const radice = await creaCartella({ nome: CARTELLA_SOPRALLUOGHI })
+  const cliente = nomeCartellaCliente({
+    firstName: riga.clienteNome,
+    lastName: riga.clienteCognome,
+  })
+  const cartellaId = await creaCartella({
+    nome: `${riga.opportunityCode} — ${cliente}`,
+    genitoreId: radice,
+  })
+
+  const nome = `${riga.fieldCode} ${riga.sortOrder + 1} — ${riga.filename}`
+  const driveFileId = await caricaFile({
+    nome,
+    mimeType: riga.mimeType,
+    contenuto,
+    cartellaId,
+  })
+
+  await db
+    .update(surveyFiles)
+    .set({ driveFileId })
+    .where(eq(surveyFiles.id, surveyFileId))
+}
+
+/**
  * I gestori attivi.
  *
  * Se Drive non è configurato la mappa è vuota: chi chiama deve astenersi da
@@ -229,5 +314,6 @@ export function gestoriDrive(): Record<string, Gestore> {
     [TIPO_CARTELLA_CLIENTE]: cartellaCliente,
     [TIPO_COPIA_DOCUMENTO]: copiaDocumento,
     [TIPO_COPIA_CONTABILE]: copiaContabile,
+    [TIPO_COPIA_FOTO_SOPRALLUOGO]: copiaFotoSopralluogo,
   }
 }
