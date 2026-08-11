@@ -24,11 +24,13 @@ function percorsoPubblico(pathname: string): boolean {
     pathname.startsWith('/stato/') ||
     pathname.startsWith('/api/intake') ||
     pathname.startsWith('/api/manutenzione') ||
-    pathname.startsWith('/api/telegram/')
+    pathname.startsWith('/api/telegram/') ||
+    (process.env.NODE_ENV !== 'production' &&
+      pathname.startsWith('/pdf-render/demo/'))
   )
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (percorsoPubblico(pathname)) {
@@ -47,6 +49,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|ttf|woff|woff2)$).*)',
   ],
 }

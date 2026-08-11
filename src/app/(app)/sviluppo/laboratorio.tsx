@@ -191,6 +191,12 @@ export function LaboratorioSolar({
       ? String(Math.round(iniziale.frazioneAutoconsumo * 100))
       : '40',
   )
+  const [focusTettoX, setFocusTettoX] = useState(
+    String(iniziale?.focusTettoXPct ?? 50),
+  )
+  const [focusTettoY, setFocusTettoY] = useState(
+    String(iniziale?.focusTettoYPct ?? 50),
+  )
   const [studyId, setStudyId] = useState<string | undefined>(contestoCrm?.studyId)
 
   const anteprimaEnergia = useMemo(() => {
@@ -262,6 +268,8 @@ export function LaboratorioSolar({
       const tImport = Number.parseFloat(tariffaImport.replace(',', '.'))
       const tExport = Number.parseFloat(tariffaExport.replace(',', '.'))
       const fPct = Number.parseFloat(autoconsumoPct.replace(',', '.'))
+      const focusX = Number.parseFloat(focusTettoX.replace(',', '.'))
+      const focusY = Number.parseFloat(focusTettoY.replace(',', '.'))
       if (!Number.isFinite(consumo) || consumo < 0) {
         setErrore('Indica il consumo annuo in kWh (0 se impianto aggiuntivo).')
         return
@@ -276,6 +284,10 @@ export function LaboratorioSolar({
       }
       if (!Number.isFinite(fPct) || fPct < 0 || fPct > 100) {
         setErrore('Autoconsumo atteso: indicare una percentuale tra 0 e 100.')
+        return
+      }
+      if (!Number.isFinite(focusX) || focusX < 0 || focusX > 100 || !Number.isFinite(focusY) || focusY < 0 || focusY > 100) {
+        setErrore('Punto focale del tetto: indicare valori tra 0 e 100.')
         return
       }
       const poligoniJson: Record<string, Coordinate[]> = {}
@@ -338,6 +350,8 @@ export function LaboratorioSolar({
           tariffaImportEurKwh: tImport,
           tariffaExportEurKwh: tExport,
           frazioneAutoconsumo: fPct / 100,
+          focusTettoXPct: focusX,
+          focusTettoYPct: focusY,
           // Campi facoltativi: si inviano solo se compilati, così un preventivo
           // senza pompa di calore non porta con sé uno zero che sembra un dato.
           ...(numeroOpzionale(consumoGasSmc) != null
@@ -580,6 +594,42 @@ export function LaboratorioSolar({
               />
               <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
                 Quota della produzione usata in casa (poi limitata dal consumo).
+              </span>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
+                Fuoco foto tetto orizzontale (%)
+              </span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={focusTettoX}
+                onChange={(e) => setFocusTettoX(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              />
+              <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+                0 = sinistra, 50 = centro, 100 = destra nel PDF.
+              </span>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--testo-fioco)' }}>
+                Fuoco foto tetto verticale (%)
+              </span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={focusTettoY}
+                onChange={(e) => setFocusTettoY(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              />
+              <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+                0 = alto, 50 = centro, 100 = basso nel PDF.
               </span>
             </label>
           </div>

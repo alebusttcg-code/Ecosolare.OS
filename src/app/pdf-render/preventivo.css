@@ -1,0 +1,412 @@
+@font-face {
+  font-family: 'Manrope';
+  src: url('/brand/fonts/Manrope-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/brand/fonts/Manrope-SemiBold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/brand/fonts/Manrope-Bold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Bodoni Moda';
+  src: url('/brand/fonts/BodoniModa-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Bodoni Moda';
+  src: url('/brand/fonts/BodoniModa-Bold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* Il CRM usa una grana SVG globale: in stampa rasterizzerebbe un A4 per pagina. */
+body:has(.pdf-document)::before {
+  content: none !important;
+  display: none !important;
+}
+
+.pdf-document,
+.pdf-document * {
+  box-sizing: border-box;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.pdf-document {
+  --navy: #071d3d;
+  --blue: #1f5fd6;
+  --blue-soft: #edf4ff;
+  --gold: #f4b800;
+  --green: #2f9f70;
+  --orange: #e47834;
+  --ink: #17243b;
+  --muted: #68758a;
+  --line: #d9e0ea;
+  --paper: #fffefa;
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: 'Manrope', sans-serif;
+  font-size: 9.2pt;
+  line-height: 1.5;
+}
+
+.pdf-page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+  background: var(--paper);
+}
+
+.pdf-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.page-header {
+  position: absolute;
+  z-index: 4;
+  top: 10.5mm;
+  left: 13mm;
+  width: 184mm;
+  height: 26mm;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: .25mm solid #738199;
+}
+
+.pdf-logo {
+  width: 49mm;
+  height: 17mm;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.header-meta {
+  display: flex;
+  align-items: flex-start;
+  gap: 7mm;
+}
+
+.header-meta > div {
+  min-width: 28mm;
+  display: flex;
+  flex-direction: column;
+}
+
+.header-meta span {
+  color: var(--muted);
+  font-size: 6.5pt;
+}
+
+.header-meta strong {
+  color: var(--navy);
+  font-size: 8pt;
+  font-weight: 600;
+}
+
+.page-header-design {
+  height: 17mm;
+  border-bottom-color: var(--blue);
+}
+
+.page-header-design .header-meta {
+  align-items: center;
+}
+
+.page-header-design .pdf-logo {
+  width: 30mm;
+  height: 10mm;
+}
+
+.page-header-design .header-meta > div:last-child {
+  display: none;
+}
+
+.design-brand {
+  color: var(--blue);
+  font-size: 13pt;
+  line-height: 1.15;
+}
+
+.design-kicker {
+  margin-top: 1mm;
+  color: #e6a324;
+  font-size: 6.5pt;
+  letter-spacing: .18em;
+}
+
+.page-content {
+  position: absolute;
+  z-index: 2;
+  top: 43mm;
+  left: 15mm;
+  width: 180mm;
+  height: 232mm;
+  overflow: hidden;
+}
+
+.pdf-page-design .page-content {
+  top: 34mm;
+  height: 241mm;
+}
+
+.page-footer {
+  position: absolute;
+  z-index: 4;
+  left: 13mm;
+  bottom: 8.5mm;
+  width: 184mm;
+  height: 10mm;
+  border-top: .25mm solid var(--navy);
+  display: flex;
+  align-items: flex-end;
+  gap: 4mm;
+  padding-top: 3mm;
+  color: #51627c;
+  font-size: 6.5pt;
+}
+
+.footer-dot-grid {
+  width: 8mm;
+  height: 6mm;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.1mm;
+}
+
+.footer-dot-grid i {
+  width: .65mm;
+  height: .65mm;
+  border-radius: 50%;
+  background: var(--blue);
+}
+
+.footer-copy { white-space: nowrap; }
+.footer-line { flex: 1; border-top: .25mm solid var(--blue); margin: 0 2mm 1.5mm 5mm; }
+.footer-number { color: var(--blue); font-family: 'Bodoni Moda', serif; font-size: 11pt; line-height: 1; }
+
+.bottom-band {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2.3mm;
+  display: flex;
+}
+
+.bottom-band i:nth-child(1) { flex: 5; background: var(--navy); }
+.bottom-band i:nth-child(2) { flex: 1.1; background: var(--blue); }
+.bottom-band i:nth-child(3) { flex: .7; background: var(--gold); }
+
+.page-title { margin-bottom: 8mm; }
+.page-eyebrow { color: var(--blue); font-size: 7pt; font-weight: 700; letter-spacing: .18em; }
+.page-title h1 { margin: 1.7mm 0 2.2mm; color: var(--navy); font-size: 24pt; line-height: 1.08; font-weight: 500; }
+.page-title > i { display: block; width: 18mm; border-top: .8mm solid var(--gold); }
+
+.pdf-page h2 { margin: 0 0 2.5mm; color: #2261ad; font-size: 10.5pt; font-weight: 500; text-transform: uppercase; }
+.pdf-page h3 { margin: 3mm 0 1mm; color: var(--navy); font-size: 9pt; }
+.pdf-page p { margin: 0 0 4mm; }
+.pdf-page b { font-weight: 700; color: var(--navy); }
+
+.two-columns { display: grid; grid-template-columns: 1.15fr .85fr; gap: 8mm; }
+.clean-list { margin: 0; padding: 0; list-style: none; }
+.clean-list li { position: relative; margin: 0 0 2.3mm; padding-left: 4mm; }
+.clean-list li::before { content: ''; position: absolute; left: 0; top: 2.1mm; width: 1.4mm; height: 1.4mm; border-radius: 50%; background: var(--gold); }
+
+/* Copertina */
+.pdf-page-cover .page-header { height: 30mm; }
+.pdf-page-cover .page-content { top: 49mm; height: 225mm; }
+.cover-grid { position: absolute; right: -15mm; top: -5mm; width: 53mm; height: 43mm; opacity: .4; background-image: linear-gradient(#91b7f0 .2mm, transparent .2mm), linear-gradient(90deg, #91b7f0 .2mm, transparent .2mm); background-size: 14mm 14mm; }
+.cover-kicker { position: relative; z-index: 2; color: var(--blue); font-size: 7.5pt; letter-spacing: .22em; font-weight: 600; }
+.cover-title { position: relative; z-index: 2; margin: 2.5mm 0 7mm; color: var(--navy); font-family: 'Bodoni Moda', serif; font-size: 40pt; line-height: 1; font-weight: 400; }
+.roof-image { display: block; width: 100%; object-fit: cover; object-position: var(--focus-x, 50%) var(--focus-y, 50%); }
+.cover-roof { height: 84.6mm; border-radius: 2.5mm; }
+.roof-svg-wrap { width: 100%; background: #eaf1fa; overflow: hidden; }
+.roof-svg-wrap svg { width: 100%; height: 100%; }
+.roof-polygon { fill: rgba(31, 95, 214, .08); stroke: #1f5fd6; stroke-width: 2; }
+.roof-module { fill: #102c57; stroke: #69a4ff; stroke-width: 1; }
+.roof-placeholder { display: grid; place-items: center; background: #eef3f8; color: var(--muted); }
+.cover-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-top: 5mm; }
+.cover-kpi { height: 43mm; border: .25mm solid #dcdedc; border-radius: 2.5mm; padding: 6mm 5mm; }
+.cover-kpi-icon { width: 9mm; height: 9mm; color: var(--blue); }
+.cover-kpi-icon svg { width: 100%; height: 100%; }
+.cover-kpi-label { margin-top: 2.5mm; color: var(--navy); font-size: 8pt; font-weight: 600; }
+.cover-kpi-rule { width: 10mm; border-top: .55mm solid var(--blue); margin: 2.5mm 0 3mm; }
+.cover-kpi-value { color: var(--gold); font-family: 'Bodoni Moda', serif; font-size: 27pt; line-height: 1; white-space: nowrap; }
+.cover-kpi-value small { margin-left: 2mm; color: var(--navy); font-family: 'Manrope', sans-serif; font-size: 8.5pt; }
+.cover-summary { height: 37mm; margin-top: 4mm; border: .25mm solid #cacdce; border-radius: 2.5mm; display: grid; grid-template-columns: 16mm 1fr .25mm 16mm 1.2fr; gap: 5mm; align-items: center; padding: 5mm 9mm; }
+.cover-summary > i { height: 25mm; background: #bdc2c9; }
+.summary-icon { width: 15mm; height: 15mm; padding: 2mm; border: .35mm dashed currentColor; border-radius: 50%; }
+.summary-icon svg { width: 100%; height: 100%; }
+.summary-icon.green { color: var(--green); }
+.summary-icon.blue { color: var(--blue); border: 0; border-radius: 0; }
+.cover-summary span { display: block; color: var(--navy); font-size: 8pt; }
+.cover-summary strong { display: block; margin-top: 2mm; color: var(--gold); font-family: 'Bodoni Moda', serif; font-size: 25pt; line-height: 1; font-weight: 400; white-space: nowrap; }
+.cover-summary small { color: var(--navy); font-family: 'Manrope', sans-serif; font-size: 8.5pt; }
+
+/* Pagine 2-4 */
+.intro-columns { margin-bottom: 7mm; }
+.detail-numbers { display: grid; gap: 3mm; }
+.detail-numbers > div { padding: 4mm; border-left: 1mm solid var(--gold); background: #f6f8fb; }
+.detail-numbers span { display: block; color: var(--muted); font-size: 7pt; }
+.detail-numbers strong { display: block; margin-top: 1mm; color: var(--navy); font-size: 14pt; }
+.detail-roof { height: 85mm; border: .25mm solid var(--line); }
+.roof-caption { margin-top: 2mm; text-align: center; color: var(--muted); font-size: 7pt; }
+.feature-layout { display: grid; grid-template-columns: 1.18fr .82fr; gap: 8mm; }
+.feature-section { margin-bottom: 7mm; }
+.included-box { min-height: 135mm; padding: 8mm; background: var(--navy); color: white; border-radius: 3mm; }
+.included-box h2 { color: #f8c941; }
+.included-box .clean-list li::before { background: #f8c941; }
+.included-number { color: rgba(255,255,255,.15); font-family: 'Bodoni Moda', serif; font-size: 52pt; line-height: 1; text-align: right; }
+.legal-columns > section { min-height: 140mm; padding: 8mm; border: .25mm solid var(--line); border-radius: 3mm; }
+.warranty-group { padding-top: 2mm; border-top: .25mm solid var(--line); }
+.legal-note { margin-top: 8mm; padding: 6mm 8mm; color: var(--navy); background: #f4f7fb; border-left: 1mm solid var(--gold); }
+
+/* Pagine marketing */
+.marketing-copy { max-width: 170mm; color: #53627a; font-size: 9.2pt; }
+.partner-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14mm 10mm; align-items: center; margin: 25mm 5mm 0; }
+.partner-grid img { width: 100%; height: 22mm; object-fit: contain; }
+.marketing-bottom { position: absolute; left: 0; right: 0; bottom: 8mm; }
+.certification-media { display: grid; grid-template-columns: 1.3fr .7fr; gap: 8mm; align-items: center; margin-top: 10mm; }
+.certification-media .cert-logo { grid-column: 1 / -1; width: 52mm; height: 14mm; object-fit: contain; justify-self: center; }
+.certification-media .cert-photo { width: 100%; height: 92mm; object-fit: contain; grid-column: 1 / -1; }
+.reviews-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin: 7mm 3mm 0; }
+.reviews-grid img { width: 100%; height: 77mm; object-fit: contain; border: .25mm solid var(--line); border-radius: 2mm; background: white; }
+.warranty-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; align-items: center; margin-top: 28mm; }
+.warranty-hero img { width: 100%; height: 100mm; object-fit: contain; }
+.warranty-hero > div > span { color: var(--muted); }
+.warranty-hero > div > p { margin-top: 9mm; color: var(--muted); }
+.warranty-hero > div > strong { display: block; color: #1559b6; font-size: 14pt; line-height: 1.25; }
+
+/* Economica */
+.pricing-table, .cashflow-table { width: 100%; border-collapse: collapse; font-size: 7.2pt; }
+.pricing-table th, .cashflow-table th { padding: 3mm 2mm; background: #2e65a7; color: white; font-size: 6.3pt; font-weight: 500; letter-spacing: .06em; text-align: right; text-transform: uppercase; }
+.pricing-table th:first-child, .pricing-table td:first-child, .cashflow-table th:first-child, .cashflow-table td:first-child { text-align: left; }
+.pricing-table th:first-child { width: 45%; }
+.pricing-table td, .cashflow-table td { padding: 3mm 2mm; border-bottom: .25mm solid var(--line); text-align: right; }
+.pricing-total { width: 80mm; height: 17mm; margin: 5mm 0 8mm auto; padding: 0 7mm; display: flex; align-items: center; justify-content: space-between; border-radius: 2mm; background: #2e65a7; color: white; }
+.pricing-total span { color: #f4c239; font-size: 6.5pt; text-transform: uppercase; }
+.pricing-total strong { font-size: 15pt; font-weight: 400; }
+.pricing-info { display: grid; grid-template-columns: 1.2fr .8fr; gap: 8mm; }
+.pricing-info section { padding: 5mm; background: #f7f9fc; }
+.pricing-info dl { margin: 0; }
+.pricing-info dl > div { display: flex; justify-content: space-between; gap: 4mm; padding: 1.8mm 0; border-bottom: .25mm solid var(--line); }
+.pricing-info dt, .pricing-info dd { margin: 0; }
+.pricing-info dd { color: var(--navy); font-weight: 700; white-space: nowrap; }
+.pricing-info .net-row { margin-top: 2mm; padding-top: 3mm; color: var(--green); }
+.signature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15mm; margin-top: 12mm; }
+.signature-row div { padding-top: 3mm; border-top: .4mm solid var(--blue); color: var(--muted); font-size: 7pt; }
+
+/* EcoSolare Design */
+.client-box { height: 18mm; padding: 4mm; display: flex; justify-content: space-between; background: #f5f8fc; border: .25mm solid #cdd8e7; border-radius: 2mm; }
+.client-box > div { display: flex; flex-direction: column; }
+.client-box > div:last-child { text-align: right; }
+.client-box strong { color: var(--navy); font-size: 9pt; text-transform: uppercase; }
+.client-box span { color: var(--muted); font-size: 7pt; }
+.design-section-title { margin: 9mm 0 3mm !important; }
+.design-section-title.compact { margin-top: 5mm !important; }
+.design-roof { height: 65mm; border: .25mm solid var(--line); }
+.finance-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+.finance-kpis > div, .indicator-grid > div { min-height: 25mm; padding: 5mm; border: .25mm solid #ced9e9; border-radius: 2mm; background: white; }
+.finance-kpis span, .indicator-grid span, .bill-kpis span, .finance-split span { display: block; color: var(--muted); font-size: 6.5pt; text-transform: uppercase; letter-spacing: .05em; }
+.finance-kpis strong, .indicator-grid strong, .bill-kpis strong, .finance-split strong { display: block; margin-top: 2mm; color: var(--navy); font-size: 15pt; font-weight: 500; }
+.finance-kpis .tone-beneficio strong { color: var(--green); }
+.finance-kpis .tone-costo strong { color: var(--orange); }
+.indicator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-top: 4mm; }
+.indicator-grid strong { font-size: 13pt; }
+.indicator-grid small { margin-left: 1mm; color: var(--muted); font-size: 6.5pt; }
+.energy-card, .chart-card { padding: 5mm; border: .25mm solid #cbd7e7; border-radius: 2mm; background: white; }
+.energy-card { margin-bottom: 4mm; }
+.energy-card > span, .chart-card > span { color: var(--muted); font-size: 6.5pt; text-transform: uppercase; letter-spacing: .08em; }
+.energia-barra { width: 100%; height: 5mm; display: flex; overflow: hidden; margin: 4mm 0 3mm; border-radius: 1.5mm; }
+.energia-barra span { height: 100%; }
+.energy-legend { display: inline-flex; align-items: center; margin-right: 8mm; color: #5c6b81; font-size: 7pt; }
+.energy-legend i { width: 2.3mm; height: 2.3mm; margin-right: 2mm; border-radius: 50%; }
+.module-row { display: grid; grid-template-columns: 2.4fr .6fr .6fr .8fr; background: white; border: .25mm solid var(--line); }
+.module-row > div { padding: 3mm; border-right: .25mm solid var(--line); }
+.module-row > div:last-child { border: 0; }
+.module-row span { display: block; color: var(--muted); font-size: 6pt; text-transform: uppercase; }
+.module-row strong { display: block; margin-top: 1mm; color: var(--navy); font-size: 8pt; }
+.bill-kpis { display: grid; grid-template-columns: repeat(3, 1fr); border: .25mm solid var(--line); }
+.bill-kpis > div { padding: 4mm; border-right: .25mm solid var(--line); }
+.bill-kpis > div:last-child { border: 0; }
+.bill-kpis > div:first-child strong { color: var(--orange); }
+.bill-kpis > div:last-child strong { color: var(--green); }
+.finance-kpis.large { margin-top: 5mm; }
+.finance-split { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 6mm; }
+.finance-split > div { min-height: 36mm; padding: 6mm; border: .25mm solid #cad7e7; border-radius: 2mm; background: #f6f9fc; }
+.finance-split > div:first-child strong { color: var(--orange); }
+.finance-split > div:last-child strong { color: var(--green); }
+.finance-split p { margin-top: 3mm; color: var(--muted); font-size: 7pt; }
+.method-box { margin-top: 6mm; padding: 7mm; border: .25mm solid #cad7e7; border-radius: 2mm; background: #f6f9fc; }
+.method-box dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+.method-box dl > div { padding: 3mm; background: white; }
+.method-box dt { color: var(--muted); font-size: 6.5pt; }
+.method-box dd { margin: 1mm 0 0; color: var(--navy); font-size: 12pt; }
+.fine-print { margin-top: 5mm !important; color: var(--muted); font-size: 6.5pt; }
+.chart-card { padding-bottom: 3mm; }
+.grafico-svg { display: block; width: 100%; height: auto; margin-top: 3mm; }
+.grafico-asse, .grafico-mese, .grafico-nota { fill: #64738a; font-family: 'Manrope', sans-serif; font-size: 12px; }
+.grafico-nota { fill: #1f5fd6; }
+.cashflow-table { margin-top: 5mm; font-size: 6.7pt; }
+.cashflow-table th, .cashflow-table td { padding: 1.65mm 2mm; }
+.chart-card.monthly { height: 105mm; }
+.chart-card.monthly .grafico-svg { height: 80mm; }
+.chart-card.monthly p { margin-top: -2mm; font-size: 7pt; }
+.monthly-roof { height: 73mm; border: .25mm solid var(--line); }
+.empty-box { padding: 12mm; color: var(--muted); background: #f5f7fa; }
+
+/* Allegati tecnici: il riquadro viene riempito vettorialmente dopo la stampa. */
+.technical-kicker { color: var(--blue); font-size: 7pt; font-weight: 700; letter-spacing: .18em; }
+.technical-page h1 { margin: 2mm 0 1mm; color: var(--navy); font-family: 'Bodoni Moda', serif; font-size: 23pt; line-height: 1.05; font-weight: 400; }
+.technical-version { color: var(--muted); font-size: 7pt; }
+.technical-slot { position: absolute; left: 0; top: 28mm; width: 180mm; height: 188mm; background: white; border: .25mm solid var(--line); }
+
+@media screen {
+  body:has(.pdf-document) { background: #dce3ec; }
+  .pdf-document { width: 210mm; margin: 0 auto; box-shadow: 0 0 18mm rgba(7, 29, 61, .16); }
+  .pdf-page { margin-bottom: 8mm; }
+}
+
+@media print {
+  .pdf-page { margin: 0; }
+}

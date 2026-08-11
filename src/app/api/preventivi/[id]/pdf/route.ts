@@ -5,6 +5,8 @@ import { nomeFilePreventivo } from '@/lib/pdf/dati-preventivo'
 import { generaPdfPreventivo } from '@/lib/pdf/genera-preventivo'
 import { getQuoteVersionPerPdf } from '@/lib/queries/quotes'
 
+export const runtime = 'nodejs'
+
 /**
  * Download del PDF cliente per una versione di preventivo.
  *
@@ -12,7 +14,7 @@ import { getQuoteVersionPerPdf } from '@/lib/queries/quotes'
  * I costi di acquisto non entrano mai nel documento.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const { id } = await params
@@ -35,7 +37,8 @@ export async function GET(
   }
 
   const pdf = await generaPdfPreventivo(bundle.dati, {
-    studio: bundle.studio,
+    renderUrl: new URL(`/pdf-render/preventivi/${id}`, request.url).toString(),
+    cookieHeader: request.headers.get('cookie'),
     documentiTecnici: bundle.documentiTecnici,
   })
   const nome = nomeFilePreventivo(bundle.dati.codice, bundle.dati.versione)

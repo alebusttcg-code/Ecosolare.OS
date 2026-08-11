@@ -155,14 +155,26 @@ export function AzioniPreventivo({
       ) : null}
 
       {haRighe ? (
-        <a
-          href={`/api/preventivi/${versionId}/pdf`}
-          className="bottone-fantasma flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-white/[0.04]"
-          style={{ borderColor: 'rgba(217,164,65,0.42)', color: 'var(--color-eco-gold-300)' }}
-        >
-          <span aria-hidden>↓</span>
-          Scarica PDF
-        </a>
+        <div className="grid gap-2">
+          <a
+            href={`/pdf-render/preventivi/${versionId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="bottone-fantasma flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-white/[0.04]"
+            style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
+          >
+            <span aria-hidden>◉</span>
+            Anteprima preventivo
+          </a>
+          <a
+            href={`/api/preventivi/${versionId}/pdf`}
+            className="bottone-fantasma flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-white/[0.04]"
+            style={{ borderColor: 'rgba(217,164,65,0.42)', color: 'var(--color-eco-gold-300)' }}
+          >
+            <span aria-hidden>↓</span>
+            Scarica PDF
+          </a>
+        </div>
       ) : (
         <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
           Aggiungi almeno una riga per scaricare il PDF.

@@ -436,10 +436,12 @@ moduli (ortofoto satellitare Static Maps + overlay moduli concordati; fallback
 schema SVG se Maps non disponibile) e blocco termico opzionale
 (`quote_versions.dossier`).
 
-**Redesign template commerciale PDF** (11 agosto 2026): base **carta chiara**
-blu/oro EcoSolare (niente hero/footer abisso), tipografia unica DM Sans con
-grassetti sui numeri, sezioni fisse identiche per tutti i preventivi, grafici
-SVG (produzione mensile, stacked energia, cashflow). Dopo le pagine marketing
+**Redesign template commerciale PDF** (11–12 agosto 2026): base **carta chiara**
+blu/oro EcoSolare (niente hero/footer abisso), font locali Manrope e Bodoni
+Moda verificati prima della stampa, sezioni fisse identiche per tutti i
+preventivi, grafici SVG (produzione mensile, stacked energia, cashflow). Il
+documento è HTML/CSS A4 e la stessa route alimenta anteprima CRM e stampa con
+Playwright Chromium bloccato alla versione `1.62.0` ([ADR-015](adr/015-preventivo-html-css-playwright.md)). Dopo le pagine marketing
 segue il blocco **EcoSolare Design** (ex “SolarEdge Design”): ortofoto con
 overlay moduli dallo studio tetto, KPI finanziari, energia, tabella moduli,
 cashflow ed energia mensile. Se lo studio ha `anteprimaModuliDataUri` (screenshot
@@ -454,6 +456,9 @@ nelle righe (moduli, inverter, accumulo, pompe di calore ecc.). Al momento
 dell’invio ID, versione, pagine, percorso e checksum delle schede vengono
 congelati nello snapshot della versione, così un aggiornamento del catalogo non
 modifica retroattivamente un’offerta già trasmessa.
+Le schede sono incorporate come pagine PDF vettoriali originali dentro wrapper
+HTML; non vengono convertite in immagini e il template non viene disegnato da
+`pdf-lib`.
 
 **Multi-falda** (11 agosto 2026): i moduli possono stare su più falde nello
 stesso studio (`layouts[]`); la produzione è la somma delle stime per falda.

@@ -60,6 +60,8 @@ const snapshotSchema = z.object({
     .max(800_000)
     .regex(/^data:image\/jpeg;base64,/)
     .optional(),
+  focusTettoXPct: z.number().min(0).max(100).optional(),
+  focusTettoYPct: z.number().min(0).max(100).optional(),
 })
 
 const salvaSchema = z.object({
@@ -109,6 +111,12 @@ function normalizzaSnapshot(
       : {}),
     ...(grezzo.anteprimaModuliDataUri
       ? { anteprimaModuliDataUri: grezzo.anteprimaModuliDataUri }
+      : {}),
+    ...(grezzo.focusTettoXPct != null
+      ? { focusTettoXPct: grezzo.focusTettoXPct }
+      : {}),
+    ...(grezzo.focusTettoYPct != null
+      ? { focusTettoYPct: grezzo.focusTettoYPct }
       : {}),
   }
 }

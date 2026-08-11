@@ -29,12 +29,12 @@
     "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
-    "@react-pdf/renderer": "^4.5.1",
     "drizzle-orm": "^0.45.2",
     "geotiff": "^3.0.5",
     "geotiff-geokeys-to-proj4": "^2024.4.13",
     "next": "16.3.0",
     "pdf-lib": "^1.17.1",
+    "playwright": "1.62.0",
     "postgres": "^3.4.7",
     "proj4": "^2.21.0",
     "react": "19.2.8",

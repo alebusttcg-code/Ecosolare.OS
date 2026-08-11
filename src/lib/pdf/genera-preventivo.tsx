@@ -1,137 +1,118 @@
-import { createHash } from 'node:crypto'
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
-import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
-import type { ReactElement } from 'react'
-import { env } from '@/env'
-import { ECOSOLARE } from '@/lib/brand/ecosolare'
-import type { SnapshotStudioTetto } from '@/lib/domain/studio-tetto'
+import { chromium } from 'playwright'
 import type { DatiPdfPreventivo } from '@/lib/pdf/dati-preventivo'
-import { registraFontiPreventivo } from '@/lib/pdf/fonti-preventivo'
-import { arricchisciPlanimetriaConOrtofoto } from '@/lib/pdf/ortofoto-moduli-pdf'
-import { DocumentoPreventivo } from '@/lib/pdf/preventivo'
 import {
   assemblaPreventivoConDocumentiTecnici,
-  type DocumentoTecnicoCaricato,
+  caricaDocumentiTecnici,
   type DocumentoTecnicoPreventivo,
 } from '@/lib/pdf/premium/documenti-tecnici'
-import { PAGINE_MARKETING } from '@/lib/pdf/testi-marketing'
-import { getArchivio } from '@/lib/storage'
 
-let logoCache: Buffer | null = null
-
-const marketingCache = new Map<string, string>()
-
-async function logoBuffer(): Promise<Buffer> {
-  if (logoCache) return logoCache
-  const percorso = path.join(process.cwd(), ECOSOLARE.logoRelativo)
-  logoCache = await readFile(percorso)
-  return logoCache
-}
-
-async function immagineDataUri(relativo: string): Promise<string | null> {
-  const cached = marketingCache.get(relativo)
-  if (cached) return cached
-  try {
-    const buf = await readFile(path.join(process.cwd(), relativo))
-    const mime = relativo.endsWith('.jpg') || relativo.endsWith('.jpeg')
-      ? 'image/jpeg'
-      : 'image/png'
-    const uri = `data:${mime};base64,${buf.toString('base64')}`
-    marketingCache.set(relativo, uri)
-    return uri
-  } catch {
-    return null
-  }
-}
+const PAGINE_BASE = 14
+const VIEWPORT = { width: 1400, height: 1980 } as const
+const A4_CSS = {
+  width: (210 / 25.4) * 96,
+  height: (297 / 25.4) * 96,
+} as const
 
 export type OpzioniGeneraPdf = {
-  readonly studio?: SnapshotStudioTetto | null
+  /** URL assoluto della stessa anteprima HTML mostrata nel CRM. */
+  readonly renderUrl: string
+  /** Sessione della richiesta corrente, inoltrata esclusivamente allo stesso origin. */
+  readonly cookieHeader?: string | null
   readonly documentiTecnici?: readonly DocumentoTecnicoPreventivo[]
 }
 
-/** Produce il PDF del preventivo come buffer, pronto per la risposta HTTP. */
-export async function generaPdfPreventivo(
-  dati: DatiPdfPreventivo,
-  opzioni?: OpzioniGeneraPdf,
-): Promise<Buffer> {
-  registraFontiPreventivo()
-
-  const logo = await logoBuffer()
-  const logoSrc = `data:image/png;base64,${logo.toString('base64')}`
-  /*
-   * Le immagini delle pagine marketing, risolte una volta sola e nell'ordine in
-   * cui il testo se le aspetta. Una che manca lascia il suo posto vuoto senza
-   * far saltare la generazione: un PDF senza un logo è consegnabile, un PDF che
-   * non esiste no.
-   */
-  const immaginiMarketing = await Promise.all(
-    PAGINE_MARKETING.map(async (pagina) =>
-      (
-        await Promise.all(
-          pagina.immagini.map((relativo) =>
-            immagineDataUri(path.join('public', relativo)),
-          ),
-        )
-      ).filter((u): u is string => !!u),
-    ),
-  )
-
-  let planimetria = dati.planimetria
-  // Anteprima Moduli già nello snapshot: non ricomporre ortofoto+SVG.
-  if (planimetria && opzioni?.studio && !planimetria.fotoDataUri) {
-    const chiave = env().GOOGLE_MAPS_API_KEY
-    planimetria = await arricchisciPlanimetriaConOrtofoto(
-      planimetria,
-      opzioni.studio,
-      chiave,
-    )
+function verificaUrlRender(renderUrl: string): URL {
+  const url = new URL(renderUrl)
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('La route HTML del preventivo deve usare HTTP o HTTPS.')
   }
+  return url
+}
 
-  const documento = (
-    <DocumentoPreventivo
-      dati={{ ...dati, planimetria }}
-      immaginiMarketing={immaginiMarketing}
-      logoSrc={logoSrc}
-      copertinaPremium={process.env.PREVENTIVO_PDF_PREMIUM_V2 === '1'}
-    />
-  ) as ReactElement<DocumentProps>
-  const corpo = await renderToBuffer(documento)
-  const documenti = opzioni?.documentiTecnici ?? []
-  if (documenti.length === 0) return corpo
-
-  const archivio = getArchivio()
-  const caricati: DocumentoTecnicoCaricato[] = []
-  for (const documentoTecnico of documenti) {
-    if (documentoTecnico.mimeType !== 'application/pdf') {
+/**
+ * Stampa la route HTML/CSS A4 con il Chromium distribuito dalla versione
+ * bloccata di Playwright. Font e immagini espongono un unico segnale di ready.
+ */
+async function stampaHtmlConChromium(
+  renderUrl: string,
+  cookieHeader?: string | null,
+): Promise<Buffer> {
+  const url = verificaUrlRender(renderUrl)
+  const browser = await chromium.launch({ headless: true })
+  try {
+    const context = await browser.newContext({
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: VIEWPORT,
+      deviceScaleFactor: 1,
+      colorScheme: 'light',
+      extraHTTPHeaders: {
+        'Accept-Language': 'it-IT,it;q=0.9',
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
+    })
+    const page = await context.newPage()
+    const risposta = await page.goto(url.toString(), { waitUntil: 'networkidle' })
+    if (!risposta?.ok()) {
       throw new Error(
-        `La scheda tecnica “${documentoTecnico.title}” non è un PDF.`,
+        `Anteprima HTML non disponibile (${risposta?.status() ?? 'nessuna risposta'}).`,
       )
     }
-    const bytes = await archivio.leggi(documentoTecnico.storageKey)
-    if (!bytes) {
-      throw new Error(
-        `Scheda tecnica non trovata in archivio: ${documentoTecnico.storageKey}`,
-      )
+    const destinazione = new URL(page.url())
+    if (destinazione.origin !== url.origin || destinazione.pathname !== url.pathname) {
+      throw new Error('La route HTML del preventivo ha reindirizzato la generazione PDF.')
     }
-    if (documentoTecnico.checksum) {
-      const checksum = createHash('sha256').update(bytes).digest('hex')
-      if (checksum !== documentoTecnico.checksum) {
-        throw new Error(
-          `Checksum non valido per la scheda tecnica “${documentoTecnico.title}”.`,
-        )
+
+    await page.waitForFunction(() => {
+      const body = document.body
+      return body.dataset.pdfReady === 'true' || Boolean(body.dataset.pdfError)
+    })
+    const erroreReady = await page.locator('body').getAttribute('data-pdf-error')
+    if (erroreReady) throw new Error(`Anteprima HTML non pronta: ${erroreReady}`)
+
+    const pagine = page.locator('.pdf-page')
+    const numeroPagine = await pagine.count()
+    if (numeroPagine < PAGINE_BASE) {
+      throw new Error(`Preventivo incompleto: trovate ${numeroPagine} pagine, attese almeno ${PAGINE_BASE}.`)
+    }
+    for (let indice = 0; indice < numeroPagine; indice += 1) {
+      const box = await pagine.nth(indice).boundingBox()
+      if (
+        !box ||
+        Math.abs(box.width - A4_CSS.width) > 1 ||
+        Math.abs(box.height - A4_CSS.height) > 1
+      ) {
+        throw new Error(`Pagina ${indice + 1} non conforme al formato A4 CSS.`)
       }
     }
-    caricati.push({ ...documentoTecnico, bytes })
+
+    await page.emulateMedia({ media: 'print' })
+    return await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: '0', right: '0', bottom: '0', left: '0' },
+    })
+  } finally {
+    await browser.close()
   }
+}
+
+/** Produce il PDF cliente dalla medesima route HTML usata per l’anteprima CRM. */
+export async function generaPdfPreventivo(
+  _dati: DatiPdfPreventivo,
+  opzioni: OpzioniGeneraPdf,
+): Promise<Buffer> {
+  const documenti = opzioni.documentiTecnici ?? []
+  const caricati = await caricaDocumentiTecnici(documenti)
+  const corpoConWrapper = await stampaHtmlConChromium(
+    opzioni.renderUrl,
+    opzioni.cookieHeader,
+  )
 
   return assemblaPreventivoConDocumentiTecnici({
-    corpo,
+    corpoConWrapper,
     documenti: caricati,
-    shell: {
-      codice: dati.codice,
-      dataDocumento: dati.dataDocumento,
-      logoPng: logo,
-    },
+    numeroPagineCorpo: PAGINE_BASE,
   })
 }

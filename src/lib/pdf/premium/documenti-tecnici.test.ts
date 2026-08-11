@@ -5,13 +5,6 @@ import {
   leggiDocumentiTecniciSnapshot,
 } from './documenti-tecnici'
 
-const PNG_1X1 = Uint8Array.from(
-  Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-    'base64',
-  ),
-)
-
 async function pdfConPagine(numero: number): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
   for (let indice = 0; indice < numero; indice += 1) {
@@ -56,7 +49,7 @@ describe('appendice tecnica del preventivo', () => {
 
   it('mantiene il corpo davanti e accoda solo le pagine selezionate', async () => {
     const output = await assemblaPreventivoConDocumentiTecnici({
-      corpo: await pdfConPagine(14),
+      corpoConWrapper: await pdfConPagine(15),
       documenti: [
         {
           id: 'doc-1',
@@ -71,11 +64,6 @@ describe('appendice tecnica del preventivo', () => {
           bytes: await pdfConPagine(3),
         },
       ],
-      shell: {
-        codice: 'T-2026-0167',
-        dataDocumento: '03/08/2026',
-        logoPng: PNG_1X1,
-      },
     })
 
     const pdf = await PDFDocument.load(output)
@@ -86,7 +74,7 @@ describe('appendice tecnica del preventivo', () => {
   it('blocca una selezione pagine non valida', async () => {
     await expect(
       assemblaPreventivoConDocumentiTecnici({
-        corpo: await pdfConPagine(1),
+        corpoConWrapper: await pdfConPagine(15),
         documenti: [
           {
             id: 'doc-1',
@@ -101,11 +89,6 @@ describe('appendice tecnica del preventivo', () => {
             bytes: await pdfConPagine(2),
           },
         ],
-        shell: {
-          codice: 'TEST',
-          dataDocumento: '01/01/2026',
-          logoPng: PNG_1X1,
-        },
       }),
     ).rejects.toThrow('Pagina tecnica 4 non valida')
   })

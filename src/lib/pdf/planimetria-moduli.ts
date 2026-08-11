@@ -25,6 +25,8 @@ export type PlanimetriaPdf = {
   readonly moduliPaths: readonly string[]
   readonly legenda: string
   readonly fotoDataUri: string | null
+  readonly focusXPct?: number
+  readonly focusYPct?: number
 }
 
 /** Proietta tutte le falde con moduli in coordinate locali per SVG PDF. */
@@ -45,6 +47,8 @@ export function planimetriaDaStudio(
       moduliPaths: [],
       legenda,
       fotoDataUri: anteprima,
+      focusXPct: snapshot.focusTettoXPct ?? 50,
+      focusYPct: snapshot.focusTettoYPct ?? 50,
     }
   }
 
@@ -111,5 +115,7 @@ export function planimetriaDaStudio(
     moduliPaths,
     legenda,
     fotoDataUri: null,
+    focusXPct: snapshot.focusTettoXPct ?? 50,
+    focusYPct: snapshot.focusTettoYPct ?? 50,
   }
 }

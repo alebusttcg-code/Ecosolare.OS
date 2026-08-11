@@ -185,6 +185,8 @@ export interface PlanimetriaPdfDto {
   readonly fotoDataUri: string | null
   readonly fotoPixelW?: number
   readonly fotoPixelH?: number
+  readonly focusXPct?: number
+  readonly focusYPct?: number
 }
 
 export interface MittentePdf {

@@ -1,10 +1,3 @@
-# Font dossier PDF (EcoSolare)
-
-- **Cormorant Garamond** (TTF) — titoli, SIL OFL (`OFL-CormorantGaramond.txt`)
-- **DM Sans** (TTF) — corpo e tabelle, SIL OFL (`OFL-DMSans.txt`)
-
-Usati solo da `@react-pdf/renderer`. Servono TTF statici (non variable/WOFF2)
-per il subsetting di fontkit.
 # Font del preventivo premium
 
 Il dossier cliente usa i font prescritti dal brief commerciale:
@@ -18,5 +11,6 @@ I pesi statici sono istanziati dai font variabili del repository ufficiale
 Google Fonts e sono distribuiti secondo SIL Open Font License 1.1. Le licenze sono incluse nei file
 `OFL-Manrope.txt` e `OFL-BodoniModa.txt`.
 
-I precedenti DM Sans e Cormorant Garamond restano nel repository per la
-compatibilità con artefatti storici, ma non sono il fallback del nuovo PDF.
+Il renderer HTML/CSS li carica esclusivamente in locale e attende tutti i pesi
+prima di esporre il segnale `data-pdf-ready` a Playwright. Non sono ammessi
+fallback nel PDF consegnato al cliente.

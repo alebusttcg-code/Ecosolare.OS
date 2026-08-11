@@ -1,11 +1,6 @@
-import {
-  PDFDocument,
-  StandardFonts,
-  rgb,
-  type PDFImage,
-  type PDFFont,
-  type PDFPage,
-} from 'pdf-lib'
+import { createHash } from 'node:crypto'
+import { PDFDocument } from 'pdf-lib'
+import { getArchivio } from '@/lib/storage'
 
 export interface DocumentoTecnicoPreventivo {
   readonly id: string
@@ -21,6 +16,11 @@ export interface DocumentoTecnicoPreventivo {
 
 export interface DocumentoTecnicoCaricato extends DocumentoTecnicoPreventivo {
   readonly bytes: Uint8Array
+}
+
+export interface PaginaTecnicaPreventivo {
+  readonly documento: DocumentoTecnicoPreventivo
+  readonly paginaDocumento: number
 }
 
 /**
@@ -50,18 +50,13 @@ export function leggiDocumentiTecniciSnapshot(
       typeof documento.mimeType !== 'string' ||
       (documento.checksum !== null && typeof documento.checksum !== 'string') ||
       typeof documento.sortOrder !== 'number'
-    ) {
-      return null
-    }
+    ) return null
 
     const pagine = documento.includedPages
     if (
       pagine !== null &&
-      (!Array.isArray(pagine) ||
-        !pagine.every((pagina) => Number.isInteger(pagina) && Number(pagina) > 0))
-    ) {
-      return null
-    }
+      (!Array.isArray(pagine) || !pagine.every((pagina) => Number.isInteger(pagina) && Number(pagina) > 0))
+    ) return null
 
     documenti.push({
       id: documento.id,
@@ -78,202 +73,106 @@ export function leggiDocumentiTecniciSnapshot(
   return documenti
 }
 
-export interface MetadatiShellTecnico {
-  readonly codice: string
-  readonly dataDocumento: string
-  readonly logoPng: Uint8Array
-}
-
-const A4 = { width: 595.28, height: 841.89 } as const
-const COLORE = {
-  carta: rgb(1, 254 / 255, 250 / 255),
-  navy: rgb(7 / 255, 29 / 255, 61 / 255),
-  blue: rgb(31 / 255, 95 / 255, 214 / 255),
-  gold: rgb(244 / 255, 197 / 255, 0),
-  slate: rgb(101 / 255, 113 / 255, 131 / 255),
-  border: rgb(220 / 255, 222 / 255, 220 / 255),
-} as const
-
-function pagineSelezionate(
-  totale: number,
-  selezione: readonly number[] | null,
-): readonly number[] {
-  const pagine = selezione?.length
-    ? [...new Set(selezione)]
-    : Array.from({ length: totale }, (_, indice) => indice + 1)
+function pagineSelezionate(totale: number, selezione: readonly number[] | null): readonly number[] {
+  const pagine = selezione?.length ? [...new Set(selezione)] : Array.from({ length: totale }, (_, indice) => indice + 1)
   for (const pagina of pagine) {
     if (!Number.isInteger(pagina) || pagina < 1 || pagina > totale) {
-      throw new Error(
-        `Pagina tecnica ${pagina} non valida: il documento contiene ${totale} pagine.`,
-      )
+      throw new Error(`Pagina tecnica ${pagina} non valida: il documento contiene ${totale} pagine.`)
     }
   }
   return pagine
 }
 
-function disegnaShell(params: {
-  readonly page: PDFPage
-  readonly logo: PDFImage
-  readonly regular: PDFFont
-  readonly bold: PDFFont
-  readonly titolo: string
-  readonly codice: string
-  readonly dataDocumento: string
-  readonly numero: number
-}) {
-  const { page, logo, regular, bold } = params
-  page.drawRectangle({ x: 0, y: 0, width: A4.width, height: A4.height, color: COLORE.carta })
-  const logoWidth = 150
-  const logoHeight = (logo.height / logo.width) * logoWidth
-  page.drawImage(logo, {
-    x: 34,
-    y: A4.height - 32 - logoHeight,
-    width: logoWidth,
-    height: logoHeight,
-  })
-  page.drawText('Proposta n.', {
-    x: 420,
-    y: A4.height - 48,
-    size: 7,
-    font: regular,
-    color: COLORE.slate,
-  })
-  page.drawText(params.codice, {
-    x: 420,
-    y: A4.height - 60,
-    size: 9,
-    font: bold,
-    color: COLORE.navy,
-  })
-  page.drawText(params.dataDocumento, {
-    x: 420,
-    y: A4.height - 82,
-    size: 8,
-    font: regular,
-    color: COLORE.navy,
-  })
-  page.drawLine({
-    start: { x: 34, y: A4.height - 105 },
-    end: { x: A4.width - 34, y: A4.height - 105 },
-    thickness: 0.7,
-    color: COLORE.slate,
-  })
-  page.drawText('DOCUMENTAZIONE TECNICA', {
-    x: 34,
-    y: A4.height - 127,
-    size: 7.5,
-    font: bold,
-    color: COLORE.blue,
-  })
-  page.drawText(params.titolo.slice(0, 86), {
-    x: 34,
-    y: A4.height - 148,
-    size: 12,
-    font: regular,
-    color: COLORE.navy,
-  })
-  page.drawLine({
-    start: { x: 34, y: 39 },
-    end: { x: A4.width - 34, y: 39 },
-    thickness: 0.7,
-    color: COLORE.navy,
-  })
-  page.drawText('EcoSolare • Con te verso il futuro', {
-    x: 34,
-    y: 23,
-    size: 7,
-    font: regular,
-    color: COLORE.slate,
-  })
-  page.drawText(String(params.numero).padStart(2, '0'), {
-    x: A4.width - 51,
-    y: 20,
-    size: 11,
-    font: regular,
-    color: COLORE.blue,
-  })
-  page.drawRectangle({ x: 0, y: 0, width: A4.width * 0.74, height: 6, color: COLORE.navy })
-  page.drawRectangle({ x: A4.width * 0.74, y: 0, width: A4.width * 0.16, height: 6, color: COLORE.blue })
-  page.drawRectangle({ x: A4.width * 0.9, y: 0, width: A4.width * 0.1, height: 6, color: COLORE.gold })
+export async function caricaDocumentiTecnici(
+  documenti: readonly DocumentoTecnicoPreventivo[],
+): Promise<readonly DocumentoTecnicoCaricato[]> {
+  if (documenti.length === 0) return []
+  const archivio = getArchivio()
+  const ordinati = [...documenti].sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'it'))
+  const caricati: DocumentoTecnicoCaricato[] = []
+
+  for (const documento of ordinati) {
+    if (documento.mimeType !== 'application/pdf') {
+      throw new Error(`La scheda tecnica “${documento.title}” non è un PDF.`)
+    }
+    const bytes = await archivio.leggi(documento.storageKey)
+    if (!bytes) throw new Error(`Scheda tecnica non trovata in archivio: ${documento.storageKey}`)
+    if (documento.checksum) {
+      const checksum = createHash('sha256').update(bytes).digest('hex')
+      if (checksum !== documento.checksum) {
+        throw new Error(`Checksum non valido per la scheda tecnica “${documento.title}”.`)
+      }
+    }
+    caricati.push({ ...documento, bytes })
+  }
+  return caricati
 }
 
-/**
- * Accoda le schede prodotto dopo le 14 pagine commerciali, senza permettere a
- * una scheda tecnica di modificare l'ordine del corpo principale.
- */
-export async function assemblaPreventivoConDocumentiTecnici(params: {
-  readonly corpo: Uint8Array
-  readonly documenti: readonly DocumentoTecnicoCaricato[]
-  readonly shell: MetadatiShellTecnico
-}): Promise<Buffer> {
-  if (params.documenti.length === 0) return Buffer.from(params.corpo)
-
-  const output = await PDFDocument.create()
-  const corpo = await PDFDocument.load(params.corpo)
-  const pagineCorpo = await output.copyPages(corpo, corpo.getPageIndices())
-  pagineCorpo.forEach((pagina) => output.addPage(pagina))
-
-  const documenti = [...params.documenti].sort(
-    (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'it'),
-  )
-  const sorgenti: Array<{
-    readonly documento: DocumentoTecnicoCaricato
-    readonly pdf: PDFDocument
-    readonly indici: readonly number[]
-  }> = []
+export async function espandiPagineTecniche(
+  documenti: readonly DocumentoTecnicoCaricato[],
+): Promise<readonly PaginaTecnicaPreventivo[]> {
+  const pagine: PaginaTecnicaPreventivo[] = []
   for (const documento of documenti) {
     const pdf = await PDFDocument.load(documento.bytes)
-    const pagine = pagineSelezionate(pdf.getPageCount(), documento.includedPages)
-    sorgenti.push({ documento, pdf, indici: pagine.map((pagina) => pagina - 1) })
-  }
-
-  const logo = await output.embedPng(params.shell.logoPng)
-  const regular = await output.embedFont(StandardFonts.Helvetica)
-  const bold = await output.embedFont(StandardFonts.HelveticaBold)
-
-  let numero = pagineCorpo.length
-  for (const sorgente of sorgenti) {
-    for (const indice of sorgente.indici) {
-      numero += 1
-      const [embedded] = await output.embedPdf(sorgente.pdf, [indice])
-      if (!embedded) throw new Error('Impossibile incorporare la pagina tecnica.')
-      const page = output.addPage([A4.width, A4.height])
-      disegnaShell({
-        page,
-        logo,
-        regular,
-        bold,
-        titolo: `${sorgente.documento.title} · ${sorgente.documento.versionLabel}`,
-        codice: params.shell.codice,
-        dataDocumento: params.shell.dataDocumento,
-        numero,
-      })
-
-      const area = { x: 34, y: 55, width: A4.width - 68, height: A4.height - 220 }
-      const scala = Math.min(area.width / embedded.width, area.height / embedded.height)
-      const width = embedded.width * scala
-      const height = embedded.height * scala
-      page.drawRectangle({
-        x: area.x - 1,
-        y: area.y - 1,
-        width: area.width + 2,
-        height: area.height + 2,
-        borderWidth: 0.6,
-        borderColor: COLORE.border,
-        color: rgb(1, 1, 1),
-      })
-      page.drawPage(embedded, {
-        x: area.x + (area.width - width) / 2,
-        y: area.y + (area.height - height) / 2,
-        xScale: scala,
-        yScale: scala,
-      })
+    for (const paginaDocumento of pagineSelezionate(pdf.getPageCount(), documento.includedPages)) {
+      pagine.push({ documento, paginaDocumento })
     }
   }
+  return pagine
+}
 
-  output.setTitle(`Preventivo ${params.shell.codice}`)
-  output.setAuthor('EcoSolare')
-  output.setSubject('Preventivo con documentazione tecnica prodotto')
-  output.setProducer('EcoSolare PDF Design System')
+const PUNTI_PER_MM = 72 / 25.4
+const A4_HEIGHT = 297 * PUNTI_PER_MM
+const SLOT = {
+  x: 15 * PUNTI_PER_MM,
+  y: A4_HEIGHT - (71 + 188) * PUNTI_PER_MM,
+  width: 180 * PUNTI_PER_MM,
+  height: 188 * PUNTI_PER_MM,
+} as const
+
+/**
+ * Il design del wrapper e' già nel PDF stampato da HTML. pdf-lib si limita a
+ * incorporare, scalare e posizionare la pagina vettoriale originale nel box.
+ */
+export async function assemblaPreventivoConDocumentiTecnici(params: {
+  readonly corpoConWrapper: Uint8Array
+  readonly documenti: readonly DocumentoTecnicoCaricato[]
+  readonly numeroPagineCorpo?: number
+}): Promise<Buffer> {
+  if (params.documenti.length === 0) return Buffer.from(params.corpoConWrapper)
+
+  const numeroPagineCorpo = params.numeroPagineCorpo ?? 14
+  const output = await PDFDocument.load(params.corpoConWrapper)
+  const pagineTecniche = await espandiPagineTecniche(params.documenti)
+  if (output.getPageCount() !== numeroPagineCorpo + pagineTecniche.length) {
+    throw new Error(
+      `Wrapper tecnici non coerenti: attese ${pagineTecniche.length} pagine dopo il corpo, trovate ${Math.max(0, output.getPageCount() - numeroPagineCorpo)}.`,
+    )
+  }
+
+  const sorgenti = new Map<string, PDFDocument>()
+  for (let indice = 0; indice < pagineTecniche.length; indice += 1) {
+    const paginaTecnica = pagineTecniche[indice]!
+    let sorgente = sorgenti.get(paginaTecnica.documento.id)
+    if (!sorgente) {
+      const caricato = params.documenti.find((d) => d.id === paginaTecnica.documento.id)
+      if (!caricato) throw new Error(`Documento tecnico non caricato: ${paginaTecnica.documento.id}`)
+      sorgente = await PDFDocument.load(caricato.bytes)
+      sorgenti.set(paginaTecnica.documento.id, sorgente)
+    }
+
+    const [embedded] = await output.embedPdf(sorgente, [paginaTecnica.paginaDocumento - 1])
+    if (!embedded) throw new Error('Impossibile incorporare la pagina tecnica.')
+    const scala = Math.min(SLOT.width / embedded.width, SLOT.height / embedded.height)
+    const width = embedded.width * scala
+    const height = embedded.height * scala
+    output.getPage(numeroPagineCorpo + indice).drawPage(embedded, {
+      x: SLOT.x + (SLOT.width - width) / 2,
+      y: SLOT.y + (SLOT.height - height) / 2,
+      xScale: scala,
+      yScale: scala,
+    })
+  }
+
   return Buffer.from(await output.save({ useObjectStreams: false }))
 }

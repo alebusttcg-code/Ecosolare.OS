@@ -1,5 +1,10 @@
 # Brief per Claude — Preventivo PDF EcoSolare OS
 
+> **Documento storico, superato per la tecnologia di rendering.** Dal 12 agosto
+> 2026 il vincolo attivo è [ADR-015](adr/015-preventivo-html-css-playwright.md):
+> HTML/CSS A4 + Playwright Chromium, non React-PDF. Restano valide la direzione
+> estetica e le regole di contenuto qui descritte.
+
 **Obiettivo:** portare il PDF del preventivo da “funzionante e riconoscibile” a **brochure commerciale premium**, chiaramente superiore all’attuale e all’altezza (o sopra) dei PDF di riferimento del commerciale EcoSolare (modello Riboldi / dossier SolarEdge Design), con brand **EcoSolare Design** al posto di SolarEdge.
 
 **Destinatario:** agente Claude che lavora nel repo EcoSolare OS (Next.js App Router, React-PDF, TypeScript).

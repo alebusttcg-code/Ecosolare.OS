@@ -64,7 +64,7 @@ export const PAGINE_MARKETING: readonly PaginaMarketing[] = [
     ],
     immagini: [
       'preventivo/assets/altroconsumo-logo.png',
-      'preventivo/assets/altroconsumo-foto.png',
+      'preventivo/assets/altroconsumo-foto.jpg',
     ],
     disposizione: 'foto',
   },
@@ -77,10 +77,10 @@ export const PAGINE_MARKETING: readonly PaginaMarketing[] = [
     apertura: [],
     chiusura: [],
     immagini: [
-      'preventivo/assets/recensione-1.png',
-      'preventivo/assets/recensione-2.png',
-      'preventivo/assets/recensione-3.png',
-      'preventivo/assets/recensione-4.png',
+      'preventivo/assets/recensione-1.jpg',
+      'preventivo/assets/recensione-2.jpg',
+      'preventivo/assets/recensione-3.jpg',
+      'preventivo/assets/recensione-4.jpg',
     ],
     disposizione: 'recensioni',
   },
@@ -92,7 +92,7 @@ export const PAGINE_MARKETING: readonly PaginaMarketing[] = [
     // paragrafi, o la composizione lo separa da ciò che introduce.
     apertura: [],
     chiusura: [],
-    immagini: ['preventivo/assets/certificato-garanzia.png'],
+    immagini: ['preventivo/assets/certificato-garanzia.jpg'],
     disposizione: 'certificato',
   },
 ]

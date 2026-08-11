@@ -175,5 +175,7 @@ export async function arricchisciPlanimetriaConOrtofoto(
     fotoDataUri,
     fotoPixelW: pixelW,
     fotoPixelH: pixelH,
+    focusXPct: base.focusXPct ?? snapshot.focusTettoXPct ?? 50,
+    focusYPct: base.focusYPct ?? snapshot.focusTettoYPct ?? 50,
   }
 }
