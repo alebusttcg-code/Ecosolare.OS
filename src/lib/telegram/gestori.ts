@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { activities, contacts, opportunities, users } from '@/db/schema'
 import { etichettaFase } from '@/lib/domain/follow-up'
@@ -78,37 +78,18 @@ async function reminderFollowUp(payload: Record<string, unknown>): Promise<void>
 }
 
 /**
- * Avvisa gli amministratori che qualcosa in coda si è fermato.
+ * Avvisa un amministratore che qualcosa in coda si è fermato.
  *
- * Il messaggio è deliberatamente breve e senza dettagli tecnici: chi lo riceve
- * la domenica sera deve capire in tre secondi se deve alzarsi dal divano.
- * Il dettaglio sta nella dashboard, il cui link è l'ultima riga.
+ * Un evento = un destinatario (accodato in `accodaAvvisoSalute`): così un
+ * fallimento a metà lista non reinoltra il messaggio a chi l’aveva già avuto.
+ * Il testo resta breve: il dettaglio sta nella dashboard.
  */
 const avvisoSalute: Gestore = async (payload) => {
+  const chatId = typeof payload.chatId === 'string' ? payload.chatId : ''
   const problemi = Array.isArray(payload.problemi)
     ? payload.problemi.filter((r): r is string => typeof r === 'string')
     : []
-  if (problemi.length === 0) return
-
-  const db = getDb()
-  const destinatari = await db
-    .select({ chatId: users.telegramChatId })
-    .from(users)
-    .where(
-      and(
-        eq(users.role, 'amministratore'),
-        eq(users.isActive, true),
-        isNotNull(users.telegramChatId),
-      ),
-    )
-
-  // Nessun amministratore collegato a Telegram: non è un guasto da ritentare
-  // all'infinito, è una configurazione mancante. La dashboard mostra comunque
-  // tutto a chi entra.
-  if (destinatari.length === 0) {
-    console.warn('[salute] nessun amministratore collegato a Telegram')
-    return
-  }
+  if (!chatId || problemi.length === 0) return
 
   const testo = [
     'Qualcosa non sta funzionando da solo',
@@ -118,10 +99,7 @@ const avvisoSalute: Gestore = async (payload) => {
     `Dettagli: ${baseUrlApp()}/`,
   ].join('\n')
 
-  for (const destinatario of destinatari) {
-    if (!destinatario.chatId) continue
-    await inviaMessaggioTelegram({ chatId: destinatario.chatId, testo })
-  }
+  await inviaMessaggioTelegram({ chatId, testo })
 }
 
 export function gestoriTelegram(): Record<string, Gestore> {

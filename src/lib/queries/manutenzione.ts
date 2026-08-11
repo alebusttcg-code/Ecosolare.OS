@@ -51,6 +51,8 @@ export function descriviTipoEvento(tipo: string): string {
     'drive.copia_documento': 'Copia di un documento su Drive',
     'drive.copia_contabile': 'Copia di una contabile su Drive',
     'drive.copia_foto_sopralluogo': 'Copia di una foto di sopralluogo su Drive',
+    'drive.cestina_file': 'Spostamento di un file nel cestino Drive',
+    'drive.ripristina_file': 'Ripristino di un file dal cestino Drive',
     'telegram.fu_reminder': 'Promemoria di follow-up su Telegram',
     'telegram.avviso_salute': 'Avviso di malfunzionamento su Telegram',
   }

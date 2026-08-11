@@ -274,27 +274,47 @@ function GiaAttiva({
           : ''}
       </p>
 
-      <div>
-        <button
-          type="button"
-          disabled={inCorso}
-          onClick={() => {
-            setErrore(null)
-            avvia(async () => {
-              const esito = await rigeneraCodiciRecupero()
-              if (esito.ok) onNuoviCodici(esito.data.codiciRecupero)
-              else setErrore(esito.errors._ ?? 'Non riuscito.')
+      <form
+        action={(formData) => {
+          setErrore(null)
+          avvia(async () => {
+            const esito = await rigeneraCodiciRecupero({
+              password: String(formData.get('password') ?? ''),
             })
-          }}
+            if (esito.ok) onNuoviCodici(esito.data.codiciRecupero)
+            else setErrore(esito.errors.password ?? esito.errors._ ?? 'Non riuscito.')
+          })
+        }}
+        className="space-y-2"
+      >
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">
+            Rigenera i codici di recupero
+          </span>
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="La tua password"
+            required
+            disabled={inCorso}
+            className={CAMPO}
+            style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={inCorso}
           className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
           style={{ borderColor: 'var(--bordo)' }}
         >
-          Rigenera i codici di recupero
+          Rigenera
         </button>
-        <p className="mt-1 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-          I precedenti smettono di funzionare. Da fare se non sai più dove sono.
+        <p className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
+          I precedenti smettono di funzionare. Serve la password perché i nuovi
+          codici valgono come un secondo fattore.
         </p>
-      </div>
+      </form>
 
       {!obbligatoria ? (
         <form

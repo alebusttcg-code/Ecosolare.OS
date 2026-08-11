@@ -1,4 +1,6 @@
+import { and, eq, isNotNull } from 'drizzle-orm'
 import { getDb } from '@/db'
+import { users } from '@/db/schema'
 import { accoda } from '@/lib/outbox'
 import { getStatoSalute, problemiLeggibili } from '@/lib/queries/salute'
 import { telegramConfigurato } from './client'
@@ -7,19 +9,15 @@ import { TIPO_AVVISO_SALUTE } from './gestori'
 /**
  * Accoda l'avviso agli amministratori, se c'è qualcosa da dire.
  *
- * **Al massimo uno al giorno**, garantito dalla chiave di deduplica che
- * contiene la data: un guasto che dura una settimana non deve produrre
- * duecento messaggi, perché al terzo si smette di leggerli e da lì in poi il
- * sistema di avvisi è peggio che inutile — dà l'impressione di essere
- * sorvegliati mentre nessuno guarda più.
+ * **Al massimo uno al giorno per destinatario**, garantito dalla chiave di
+ * deduplica che contiene data e chat: un guasto che dura una settimana non
+ * deve produrre duecento messaggi, perché al terzo si smette di leggerli.
  *
- * L'avviso passa dalla coda invece di essere inviato subito: così anche
- * l'avviso stesso viene ritentato se Telegram è irraggiungibile, e non si
- * perde proprio nel momento in cui serve.
+ * Un evento per chat (non uno per tutti): se Telegram fallisce a metà lista,
+ * il retry non reinoltra a chi aveva già ricevuto.
  *
  * Restituisce se c'era qualcosa da segnalare — non se è stato accodato davvero:
- * il secondo avviso dello stesso giorno viene scartato dalla deduplica, ed è
- * proprio quello che si vuole.
+ * il secondo avviso dello stesso giorno viene scartato dalla deduplica.
  */
 export async function accodaAvvisoSalute(adesso = new Date()): Promise<boolean> {
   if (!telegramConfigurato()) return false
@@ -28,17 +26,35 @@ export async function accodaAvvisoSalute(adesso = new Date()): Promise<boolean> 
   const problemi = problemiLeggibili(stato)
   if (problemi.length === 0) return false
 
-  // Data in fuso italiano: la chiave deve cambiare a mezzanotte di Roma, non
-  // di Londra, altrimenti il secondo avviso arriva a un'ora imprevedibile.
   const giorno = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Rome',
   }).format(adesso)
 
-  await accoda(getDb(), {
-    type: TIPO_AVVISO_SALUTE,
-    payload: { problemi },
-    dedupKey: `${TIPO_AVVISO_SALUTE}:${giorno}`,
-  })
+  const db = getDb()
+  const destinatari = await db
+    .select({ chatId: users.telegramChatId })
+    .from(users)
+    .where(
+      and(
+        eq(users.role, 'amministratore'),
+        eq(users.isActive, true),
+        isNotNull(users.telegramChatId),
+      ),
+    )
+
+  if (destinatari.length === 0) {
+    console.warn('[salute] nessun amministratore collegato a Telegram')
+    return true
+  }
+
+  for (const destinatario of destinatari) {
+    if (!destinatario.chatId) continue
+    await accoda(db, {
+      type: TIPO_AVVISO_SALUTE,
+      payload: { problemi, chatId: destinatario.chatId },
+      dedupKey: `${TIPO_AVVISO_SALUTE}:${giorno}:${destinatario.chatId}`,
+    })
+  }
 
   return true
 }

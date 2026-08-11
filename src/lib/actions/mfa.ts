@@ -24,9 +24,9 @@ import type { ActionResult } from './opportunities'
 /**
  * Attivazione e disattivazione della verifica in due passaggi.
  *
- * Nessuna di queste azioni passa da `guard`: riguardano il proprio account, e
- * un utente deve poterle compiere qualunque sia il suo ruolo — anzi, chi ha
- * l'MFA obbligatoria non può fare *nient'altro* finché non l'ha attivata.
+ * Enrollment (`prepara`/`attiva`) usa `requireUser({ consentitoSenzaMfa })`:
+ * `guard` e il `requireUser` normale bloccano admin/contabilità senza TOTP
+ * (D-018), ma senza questa eccezione non si potrebbe mai attivarlo.
  */
 
 /**
@@ -44,7 +44,7 @@ import type { ActionResult } from './opportunities'
 export async function preparaMfa(): Promise<
   ActionResult<{ segreto: string; segretoLeggibile: string; uri: string }>
 > {
-  const utente = await requireUser()
+  const utente = await requireUser({ consentitoSenzaMfa: true })
 
   if (!chiaveCifraturaConfigurata()) {
     return {
@@ -105,7 +105,7 @@ const confermaSchema = z.object({ codice: z.string().trim() })
 export async function attivaMfa(
   input: z.input<typeof confermaSchema>,
 ): Promise<ActionResult<{ codiciRecupero: string[] }>> {
-  const utente = await requireUser()
+  const utente = await requireUser({ consentitoSenzaMfa: true })
 
   const parsed = confermaSchema.safeParse(input)
   if (!parsed.success) return { ok: false, errors: { codice: 'Codice non valido.' } }
@@ -231,19 +231,32 @@ export async function disattivaMfa(
   return { ok: true, data: undefined }
 }
 
-/** Rigenera i codici di recupero, invalidando i precedenti. */
-export async function rigeneraCodiciRecupero(): Promise<
-  ActionResult<{ codiciRecupero: string[] }>
-> {
+/**
+ * Rigenera i codici di recupero, invalidando i precedenti.
+ *
+ * Chiede la password come la disattivazione: senza, una sessione rubata
+ * basterebbe a invalidare i foglietti di recupero e a sostituirli con altri
+ * noti solo a chi ha il computer aperto.
+ */
+export async function rigeneraCodiciRecupero(
+  input: z.input<typeof disattivaSchema>,
+): Promise<ActionResult<{ codiciRecupero: string[] }>> {
   const utente = await requireUser()
+
+  const parsed = disattivaSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, errors: { password: 'Inserire la password.' } }
 
   const db = getDb()
   const riga = await db.query.users.findFirst({
     where: eq(users.id, utente.id),
-    columns: { totpEnabledAt: true },
+    columns: { totpEnabledAt: true, passwordHash: true },
   })
   if (!riga?.totpEnabledAt) {
     return { ok: false, errors: { _: 'La verifica in due passaggi non è attiva.' } }
+  }
+  if (!riga.passwordHash) return { ok: false, errors: { _: 'Nessuna password impostata.' } }
+  if (!(await verificaPassword(parsed.data.password, riga.passwordHash))) {
+    return { ok: false, errors: { password: 'Password non corretta.' } }
   }
 
   const codiciRecupero = generaCodiciRecupero()
@@ -289,6 +302,14 @@ export async function azzeraMfaUtente(input: { userId: string }): Promise<Action
     columns: { id: true, email: true, totpEnabledAt: true },
   })
   if (!bersaglio) return { ok: false, errors: { _: 'Utente non trovato.' } }
+  if (bersaglio.id === amministratore.id) {
+    return {
+      ok: false,
+      errors: {
+        _: 'Non puoi azzerare la tua verifica in due passaggi: chiedi a un altro amministratore.',
+      },
+    }
+  }
 
   await db
     .update(users)

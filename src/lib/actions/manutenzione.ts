@@ -1,14 +1,14 @@
 'use server'
 
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull, ne } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb } from '@/db'
 import { documentFiles, documentRequirements, paymentReceipts, surveyFiles, surveys } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
+import { accodaAllineamentoCestinoDrive } from '@/lib/drive/accoda-cestino'
 import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
-import { ripristinaFile } from '@/lib/drive/client'
 import { riprovaFalliti } from '@/lib/outbox'
 import type { ActionResult } from './opportunities'
 
@@ -72,25 +72,57 @@ export async function ripristinaDalCestino(
 
   const db = getDb()
 
+  const ripristinatoIl = new Date()
+  let driveDaAllineare: string | null = null
+
   if (genere === 'documento') {
     const file = await db.query.documentFiles.findFirst({
       where: eq(documentFiles.id, id),
     })
     if (!file?.deletedAt) return { ok: false, errors: { _: 'Documento non nel cestino.' } }
 
-    await db
-      .update(documentFiles)
-      .set({ deletedAt: null, deletedBy: null })
-      .where(eq(documentFiles.id, id))
-    await fuoriDalCestinoDrive(file.driveFileId)
+    await db.transaction(async (tx) => {
+      await tx
+        .update(documentFiles)
+        .set({ deletedAt: null, deletedBy: null })
+        .where(eq(documentFiles.id, id))
 
-    // Il requisito era tornato «richiesto» quando era rimasto senza file:
-    // se questo è di nuovo l'unico, va rimesso in verifica.
-    await db
-      .update(documentRequirements)
-      .set({ status: 'da_verificare', statusSince: new Date() })
-      .where(eq(documentRequirements.id, file.requirementId))
+      if (file.driveFileId) {
+        await accodaAllineamentoCestinoDrive(tx, {
+          driveFileId: file.driveFileId,
+          azione: 'ripristina',
+          chiave: `documento:${id}:${ripristinatoIl.toISOString()}`,
+        })
+      }
 
+      // Solo se l’eliminazione aveva riportato il requisito a «richiesto»
+      // (nessun altro file vivo): altrimenti non si tocca uno stato già
+      // avanzato (es. approvato / in verifica su un’altra versione).
+      const requisito = await tx.query.documentRequirements.findFirst({
+        where: eq(documentRequirements.id, file.requirementId),
+        columns: { id: true, status: true },
+      })
+      if (requisito?.status === 'richiesto') {
+        const [altroVivo] = await tx
+          .select({ id: documentFiles.id })
+          .from(documentFiles)
+          .where(
+            and(
+              eq(documentFiles.requirementId, file.requirementId),
+              isNull(documentFiles.deletedAt),
+              ne(documentFiles.id, id),
+            ),
+          )
+          .limit(1)
+        if (!altroVivo) {
+          await tx
+            .update(documentRequirements)
+            .set({ status: 'da_verificare', statusSince: new Date() })
+            .where(eq(documentRequirements.id, file.requirementId))
+        }
+      }
+    })
+    driveDaAllineare = file.driveFileId
     revalidatePath('/cantieri')
   }
 
@@ -100,12 +132,20 @@ export async function ripristinaDalCestino(
     })
     if (!file?.deletedAt) return { ok: false, errors: { _: 'Contabile non nel cestino.' } }
 
-    await db
-      .update(paymentReceipts)
-      .set({ deletedAt: null, deletedBy: null })
-      .where(eq(paymentReceipts.id, id))
-    await fuoriDalCestinoDrive(file.driveFileId)
-
+    await db.transaction(async (tx) => {
+      await tx
+        .update(paymentReceipts)
+        .set({ deletedAt: null, deletedBy: null })
+        .where(eq(paymentReceipts.id, id))
+      if (file.driveFileId) {
+        await accodaAllineamentoCestinoDrive(tx, {
+          driveFileId: file.driveFileId,
+          azione: 'ripristina',
+          chiave: `contabile:${id}:${ripristinatoIl.toISOString()}`,
+        })
+      }
+    })
+    driveDaAllineare = file.driveFileId
     revalidatePath('/controllo-bancario')
   }
 
@@ -119,33 +159,44 @@ export async function ripristinaDalCestino(
       where: eq(surveys.id, file.surveyId),
     })
 
-    await db
-      .update(surveyFiles)
-      .set({ deletedAt: null, deletedBy: null })
-      .where(eq(surveyFiles.id, id))
-    await fuoriDalCestinoDrive(file.driveFileId)
-
-    // Le risposte del questionario elencano gli id delle foto: eliminandola era
-    // stata tolta da lì, e senza rimetterla il file esisterebbe senza comparire.
-    if (sopralluogo) {
-      const risposte = (sopralluogo.answers ?? {}) as Record<string, unknown>
-      const attuali = Array.isArray(risposte[file.fieldCode])
-        ? (risposte[file.fieldCode] as unknown[]).filter(
-            (v): v is string => typeof v === 'string',
-          )
-        : []
-      if (!attuali.includes(id)) {
-        await db
-          .update(surveys)
-          .set({
-            answers: { ...risposte, [file.fieldCode]: [...attuali, id] },
-            updatedAt: new Date(),
-          })
-          .where(eq(surveys.id, file.surveyId))
+    await db.transaction(async (tx) => {
+      await tx
+        .update(surveyFiles)
+        .set({ deletedAt: null, deletedBy: null })
+        .where(eq(surveyFiles.id, id))
+      if (file.driveFileId) {
+        await accodaAllineamentoCestinoDrive(tx, {
+          driveFileId: file.driveFileId,
+          azione: 'ripristina',
+          chiave: `fotografia:${id}:${ripristinatoIl.toISOString()}`,
+        })
       }
-      revalidatePath(`/agenda/${file.surveyId}`)
-    }
+
+      // Le risposte del questionario elencano gli id delle foto: eliminandola era
+      // stata tolta da lì, e senza rimetterla il file esisterebbe senza comparire.
+      if (sopralluogo) {
+        const risposte = (sopralluogo.answers ?? {}) as Record<string, unknown>
+        const attuali = Array.isArray(risposte[file.fieldCode])
+          ? (risposte[file.fieldCode] as unknown[]).filter(
+              (v): v is string => typeof v === 'string',
+            )
+          : []
+        if (!attuali.includes(id)) {
+          await tx
+            .update(surveys)
+            .set({
+              answers: { ...risposte, [file.fieldCode]: [...attuali, id] },
+              updatedAt: new Date(),
+            })
+            .where(eq(surveys.id, file.surveyId))
+        }
+      }
+    })
+    driveDaAllineare = file.driveFileId
+    if (sopralluogo) revalidatePath(`/agenda/${file.surveyId}`)
   }
+
+  if (driveDaAllineare) avviaSmaltimentoOutbox()
 
   await recordEntityChange({
     actorId: utente.id,
@@ -159,22 +210,4 @@ export async function ripristinaDalCestino(
 
   revalidatePath('/amministrazione/impostazioni')
   return { ok: true, data: undefined }
-}
-
-/**
- * Rimette il file fuori dal cestino di Drive.
- *
- * Non solleva: il ripristino nel gestionale è già avvenuto e vale comunque —
- * la copia su Drive si riallinea al passaggio successivo della coda.
- */
-async function fuoriDalCestinoDrive(driveFileId: string | null): Promise<void> {
-  if (!driveFileId) return
-  try {
-    await ripristinaFile(driveFileId)
-  } catch (errore) {
-    console.warn('[drive] ripristino dal cestino non riuscito', {
-      driveFileId,
-      errore: errore instanceof Error ? errore.message : errore,
-    })
-  }
 }

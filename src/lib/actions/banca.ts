@@ -16,9 +16,9 @@ import {
 } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
+import { accodaAllineamentoCestinoDrive } from '@/lib/drive/accoda-cestino'
 import { TIPO_COPIA_CONTABILE } from '@/lib/drive/gestori'
 import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
-import { cestinaFile } from '@/lib/drive/client'
 import { leggiCsv } from '@/lib/domain/estratto-conto'
 import { importoAStringa, importoDaEuro } from '@/lib/domain/money'
 import { riconcilia, type PagamentoAtteso } from '@/lib/domain/riconciliazione'
@@ -221,7 +221,7 @@ export async function caricaContabile(
   }
 }
 
-/** Elimina una contabile da archivio, Drive (se presente) e database. */
+/** Mette una contabile nel cestino (D-017): resta in archivio e in database. */
 export async function deleteContabile(receiptId: string): Promise<ActionResult> {
   const utente = await guard('delete', 'invoice')
 
@@ -231,7 +231,7 @@ export async function deleteContabile(receiptId: string): Promise<ActionResult> 
 
   const db = getDb()
   const file = await db.query.paymentReceipts.findFirst({
-    where: eq(paymentReceipts.id, receiptId),
+    where: and(eq(paymentReceipts.id, receiptId), isNull(paymentReceipts.deletedAt)),
   })
   if (!file) return { ok: false, errors: { _: 'Contabile non trovata.' } }
 
@@ -251,23 +251,23 @@ export async function deleteContabile(receiptId: string): Promise<ActionResult> 
 
   // Cestino, non cancellazione (D-017): una contabile è la prova di un
   // incasso, ed è il file che meno di tutti si può ricostruire a posteriori.
-  await db
-    .update(paymentReceipts)
-    .set({ deletedAt: new Date(), deletedBy: utente.id })
-    .where(eq(paymentReceipts.id, receiptId))
+  const deletedAt = new Date()
+  await db.transaction(async (tx) => {
+    await tx
+      .update(paymentReceipts)
+      .set({ deletedAt, deletedBy: utente.id })
+      .where(eq(paymentReceipts.id, receiptId))
 
-  if (file.driveFileId) {
-    try {
-      await cestinaFile(file.driveFileId)
-    } catch (errore) {
-      // Drive giù non blocca: la verità è la riga, la copia si riallinea dopo.
-      console.warn('[drive] spostamento contabile nel cestino non riuscito', {
-        receiptId,
+    if (file.driveFileId) {
+      await accodaAllineamentoCestinoDrive(tx, {
         driveFileId: file.driveFileId,
-        errore: errore instanceof Error ? errore.message : errore,
+        azione: 'cestina',
+        chiave: `contabile:${receiptId}:${deletedAt.toISOString()}`,
       })
     }
-  }
+  })
+
+  if (file.driveFileId) avviaSmaltimentoOutbox()
 
   await recordEntityChange({
     actorId: utente.id,

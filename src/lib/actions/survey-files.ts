@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb } from '@/db'
@@ -13,6 +13,7 @@ import {
   type DefinizioneQuestionario,
   type Risposte,
 } from '@/lib/domain/questionnaire'
+import { accodaAllineamentoCestinoDrive } from '@/lib/drive/accoda-cestino'
 import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
 import { TIPO_COPIA_FOTO_SOPRALLUOGO } from '@/lib/drive/gestori'
 import { accoda } from '@/lib/outbox'
@@ -160,7 +161,7 @@ export async function deleteSurveyPhoto(fileId: string): Promise<ActionResult> {
 
   const db = getDb()
   const file = await db.query.surveyFiles.findFirst({
-    where: eq(surveyFiles.id, fileId),
+    where: and(eq(surveyFiles.id, fileId), isNull(surveyFiles.deletedAt)),
   })
   if (!file) return { ok: false, errors: { _: 'Fotografia non trovata.' } }
 
@@ -177,10 +178,11 @@ export async function deleteSurveyPhoto(fileId: string): Promise<ActionResult> {
 
   // Cestino, non cancellazione (D-017). Una foto di sopralluogo si rifà solo
   // tornando sul tetto: è il file meno ricostruibile di tutto il sistema.
+  const deletedAt = new Date()
   await db.transaction(async (tx) => {
     await tx
       .update(surveyFiles)
-      .set({ deletedAt: new Date(), deletedBy: utente.id })
+      .set({ deletedAt, deletedBy: utente.id })
       .where(eq(surveyFiles.id, fileId))
     await tx
       .update(surveys)
@@ -189,7 +191,17 @@ export async function deleteSurveyPhoto(fileId: string): Promise<ActionResult> {
         updatedAt: new Date(),
       })
       .where(eq(surveys.id, file.surveyId))
+
+    if (file.driveFileId) {
+      await accodaAllineamentoCestinoDrive(tx, {
+        driveFileId: file.driveFileId,
+        azione: 'cestina',
+        chiave: `fotografia:${fileId}:${deletedAt.toISOString()}`,
+      })
+    }
   })
+
+  if (file.driveFileId) avviaSmaltimentoOutbox()
 
   await recordEntityChange({
     actorId: utente.id,

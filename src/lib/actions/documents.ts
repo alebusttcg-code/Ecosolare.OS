@@ -7,9 +7,9 @@ import { getDb } from '@/db'
 import { documentFiles, documentRequirements } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
+import { accodaAllineamentoCestinoDrive } from '@/lib/drive/accoda-cestino'
 import { TIPO_COPIA_DOCUMENTO } from '@/lib/drive/gestori'
 import { avviaSmaltimentoOutbox } from '@/lib/drive/avvia-outbox'
-import { cestinaFile } from '@/lib/drive/client'
 import { accoda } from '@/lib/outbox'
 import { ripulisciNome, validaFile } from '@/lib/domain/upload'
 import { getArchivio } from '@/lib/storage'
@@ -162,42 +162,41 @@ export async function deleteDocumentFile(fileId: string): Promise<ActionResult> 
     where: eq(documentRequirements.id, file.requirementId),
   })
 
-  await db
-    .update(documentFiles)
-    .set({ deletedAt: new Date(), deletedBy: utente.id })
-    .where(eq(documentFiles.id, fileId))
+  const deletedAt = new Date()
+  await db.transaction(async (tx) => {
+    await tx
+      .update(documentFiles)
+      .set({ deletedAt, deletedBy: utente.id })
+      .where(eq(documentFiles.id, fileId))
 
-  if (file.driveFileId) {
-    try {
-      await cestinaFile(file.driveFileId)
-    } catch (errore) {
-      // Drive irraggiungibile non deve impedire l'eliminazione: la verità è la
-      // riga, e la copia su Drive si riallinea al prossimo passaggio.
-      console.warn('[drive] spostamento nel cestino non riuscito', {
-        fileId,
+    if (file.driveFileId) {
+      await accodaAllineamentoCestinoDrive(tx, {
         driveFileId: file.driveFileId,
-        errore: errore instanceof Error ? errore.message : errore,
+        azione: 'cestina',
+        chiave: `documento:${fileId}:${deletedAt.toISOString()}`,
       })
     }
-  }
 
-  const [rimasto] = await db
-    .select({ id: documentFiles.id })
-    .from(documentFiles)
-    .where(
-      and(
-        eq(documentFiles.requirementId, file.requirementId),
-        isNull(documentFiles.deletedAt),
-      ),
-    )
-    .limit(1)
+    const [rimasto] = await tx
+      .select({ id: documentFiles.id })
+      .from(documentFiles)
+      .where(
+        and(
+          eq(documentFiles.requirementId, file.requirementId),
+          isNull(documentFiles.deletedAt),
+        ),
+      )
+      .limit(1)
 
-  if (!rimasto) {
-    await db
-      .update(documentRequirements)
-      .set({ status: 'richiesto', statusSince: new Date() })
-      .where(eq(documentRequirements.id, file.requirementId))
-  }
+    if (!rimasto) {
+      await tx
+        .update(documentRequirements)
+        .set({ status: 'richiesto', statusSince: new Date() })
+        .where(eq(documentRequirements.id, file.requirementId))
+    }
+  })
+
+  if (file.driveFileId) avviaSmaltimentoOutbox()
 
   await recordEntityChange({
     actorId: utente.id,

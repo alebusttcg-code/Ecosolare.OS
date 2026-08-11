@@ -15,7 +15,13 @@ import {
 } from '@/db/schema'
 import type { Gestore } from '@/lib/outbox'
 import { getArchivio } from '@/lib/storage'
-import { caricaFile, creaCartella, driveConfigurato } from './client'
+import {
+  caricaFile,
+  cestinaFile,
+  creaCartella,
+  driveConfigurato,
+  ripristinaFile,
+} from './client'
 import { nomeCartellaCliente, nomeCartellaCommessa } from './nomi'
 
 /**
@@ -34,6 +40,8 @@ export const TIPO_CARTELLA_CLIENTE = 'drive.cartella_cliente'
 export const TIPO_COPIA_DOCUMENTO = 'drive.copia_documento'
 export const TIPO_COPIA_CONTABILE = 'drive.copia_contabile'
 export const TIPO_COPIA_FOTO_SOPRALLUOGO = 'drive.copia_foto_sopralluogo'
+export const TIPO_CESTINA_FILE = 'drive.cestina_file'
+export const TIPO_RIPRISTINA_FILE = 'drive.ripristina_file'
 
 /**
  * Cartella di primo livello per le fotografie dei sopralluoghi.
@@ -301,6 +309,20 @@ const copiaFotoSopralluogo: Gestore = async (payload) => {
     .where(eq(surveyFiles.id, surveyFileId))
 }
 
+/** Sposta nel cestino Drive; 404 = già assente, successo idempotente. */
+const gestisciCestinaFile: Gestore = async (payload) => {
+  const driveFileId = typeof payload.driveFileId === 'string' ? payload.driveFileId : ''
+  if (!driveFileId) return
+  await cestinaFile(driveFileId)
+}
+
+/** Riporta fuori dal cestino Drive; 404 = già assente, successo idempotente. */
+const gestisciRipristinaFile: Gestore = async (payload) => {
+  const driveFileId = typeof payload.driveFileId === 'string' ? payload.driveFileId : ''
+  if (!driveFileId) return
+  await ripristinaFile(driveFileId)
+}
+
 /**
  * I gestori attivi.
  *
@@ -315,5 +337,7 @@ export function gestoriDrive(): Record<string, Gestore> {
     [TIPO_COPIA_DOCUMENTO]: copiaDocumento,
     [TIPO_COPIA_CONTABILE]: copiaContabile,
     [TIPO_COPIA_FOTO_SOPRALLUOGO]: copiaFotoSopralluogo,
+    [TIPO_CESTINA_FILE]: gestisciCestinaFile,
+    [TIPO_RIPRISTINA_FILE]: gestisciRipristinaFile,
   }
 }

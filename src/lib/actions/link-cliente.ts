@@ -48,11 +48,24 @@ export async function creaLinkCliente(
   // 32 byte: lo stesso ordine di grandezza di una sessione, perché svolge la
   // stessa funzione — è l'unica cosa che separa questa pagina da chiunque.
   const token = randomBytes(32).toString('base64url')
+  const adesso = new Date()
 
-  await db.insert(clientLinks).values({
-    projectId: commessa.id,
-    tokenHash: improntaToken(token),
-    createdBy: utente.id,
+  await db.transaction(async (tx) => {
+    // Un solo collegamento attivo per commessa: i precedenti smettono di
+    // aprire la pagina (D-019). Generarne uno nuovo è anche il modo di
+    // «ruotare» un link perso o inoltrato per sbaglio.
+    await tx
+      .update(clientLinks)
+      .set({ revokedAt: adesso })
+      .where(
+        and(eq(clientLinks.projectId, commessa.id), isNull(clientLinks.revokedAt)),
+      )
+
+    await tx.insert(clientLinks).values({
+      projectId: commessa.id,
+      tokenHash: improntaToken(token),
+      createdBy: utente.id,
+    })
   })
 
   await recordAudit({
@@ -64,7 +77,7 @@ export async function creaLinkCliente(
     entityId: commessa.id,
     // Mai il token nell'audit: il registro è consultabile, e chi lo legge
     // potrebbe aprire la pagina del cliente.
-    newValue: '(collegamento generato)',
+    newValue: '(collegamento generato; precedenti revocati)',
   })
 
   revalidatePath(`/cantieri/${commessa.id}`)
