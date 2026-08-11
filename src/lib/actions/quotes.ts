@@ -29,6 +29,7 @@ import {
   type StatoVersione,
 } from '@/lib/domain/quote-lifecycle'
 import { unitaRichiedeIntero } from '@/lib/domain/unita'
+import { getParametriSimulazioneFv } from '@/lib/queries/parametri-simulazione'
 import type { ActionResult } from './opportunities'
 
 function errori(issues: readonly z.core.$ZodIssue[]): Record<string, string> {
@@ -392,6 +393,7 @@ export async function sendQuote(versionId: string): Promise<ActionResult<{ invia
   }
 
   const adesso = new Date()
+  const parametriSimulazione = await getParametriSimulazioneFv()
   await db
     .update(quoteVersions)
     .set({
@@ -402,6 +404,7 @@ export async function sendQuote(versionId: string): Promise<ActionResult<{ invia
       snapshot: {
         inviatoIl: adesso.toISOString(),
         sogliaMarginePct: (soglia / 100).toFixed(2),
+        parametriSimulazione,
         totali: {
           imponibile: versione.revenueNet,
           costo: versione.costTotal,

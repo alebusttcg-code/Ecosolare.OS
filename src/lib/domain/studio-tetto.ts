@@ -3,8 +3,8 @@ import type { AnalisiTetto, Coordinate, RettangoloModulo } from '@/lib/solar'
 /**
  * Snapshot persistito di uno studio tetto (Sviluppo → CRM).
  *
- * Fase A: produzione annua è una stima operativa (kWp × resa specifica).
- * Il motore economico completo arriva in Fase B.
+ * Produzione e tariffe sono del caso cliente; il motore economico
+ * (`simulaImpiantoFv`) le consuma senza sovrascrivere i dati di situazione.
  */
 
 export interface LayoutStudioFalda {
@@ -24,9 +24,14 @@ export interface SnapshotStudioTetto {
   readonly layout: LayoutStudioFalda | null
   readonly consumoAnnuoKwh: number
   readonly produzioneAnnuakWh: number
-  /** Default commerciali usati nei preventivi attuali. */
+  /** Tariffe del caso (€/kWh), non valori di listino catalogo. */
   readonly tariffaImportEurKwh: number
   readonly tariffaExportEurKwh: number
+  /**
+   * Quota produzione → autoconsumo in [0, 1]. Se assente, in simulazione si
+   * usa il default di config vigente.
+   */
+  readonly frazioneAutoconsumo?: number
 }
 
 /** Resa specifica di default (kWh/kWp·anno), allineata ai dossier recenti (~1309–1344). */

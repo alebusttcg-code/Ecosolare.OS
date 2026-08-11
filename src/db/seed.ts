@@ -154,6 +154,53 @@ const CONFIGURAZIONI = [
     description: 'Validità proposta per un nuovo preventivo, in giorni.',
   },
   {
+    key: 'energia.tariffa_import_eur_kwh',
+    value: { valore: 0.3, validoDal: '2024-01-01', nota: 'Ipotesi commerciale dossier' },
+    description:
+      'Tariffa import energia di default (€/kWh) se lo studio non ne indica una propria.',
+  },
+  {
+    key: 'energia.tariffa_export_eur_kwh',
+    value: { valore: 0.1, validoDal: '2024-01-01', nota: 'Ipotesi RID dossier' },
+    description: 'Tariffa export / RID di default (€/kWh).',
+  },
+  {
+    key: 'energia.frazione_autoconsumo_default',
+    value: { valore: 0.4, validoDal: '2024-01-01' },
+    description:
+      'Quota produzione→autoconsumo di default (0–1) se assente nello studio cliente.',
+  },
+  {
+    key: 'incentivi.detrazione_fv_pct',
+    value: { valore: 50, validoDal: '2024-01-01', nota: 'Detrazione IRPEF FV residenziale' },
+    description: 'Percentuale detrazione IRPEF sul prezzo IVA inclusa (A18).',
+  },
+  {
+    key: 'incentivi.detrazione_fv_anni',
+    value: { valore: 10, validoDal: '2024-01-01' },
+    description: 'Anni di ripartizione della detrazione nel cashflow.',
+  },
+  {
+    key: 'simulazione.orizzonte_anni',
+    value: 25,
+    description: 'Orizzonte anni per cashflow / NPV dell’allegato simulazione.',
+  },
+  {
+    key: 'simulazione.inflazione_energia_pct',
+    value: 3,
+    description: 'Inflazione annua del prezzo energia usata in simulazione (%).',
+  },
+  {
+    key: 'simulazione.tasso_sconto_pct',
+    value: 5,
+    description: 'Tasso di sconto per il NPV (%).',
+  },
+  {
+    key: 'simulazione.degradazione_pct_anno',
+    value: 0.5,
+    description: 'Degradazione annua di produzione dei moduli (%).',
+  },
+  {
     key: 'orari.servizio',
     value: { dal: 'lun', al: 'ven', dalle: '08:30', alle: '18:00' },
     description:

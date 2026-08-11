@@ -5,6 +5,12 @@ import { useAvvisi } from '@/components/avvisi'
 import { Badge, Card, Vuoto } from '@/components/ui'
 import { salvaStudioTetto } from '@/lib/actions/site-studies'
 import { analizzaTetto, analizzaTettoAlPunto, caricaDsmEdificio } from '@/lib/actions/sviluppo'
+import { bilanciaEnergia } from '@/lib/domain/bilancio-energia'
+import {
+  bollettaConFvAnnuacents,
+  costoEnergiaCents,
+} from '@/lib/domain/economia-fv'
+import { formattaImporto } from '@/lib/domain/money'
 import { stimaProduzioneAnnuakWh } from '@/lib/domain/studio-tetto'
 import {
   areaPoligonoMetri2,
@@ -87,7 +93,58 @@ export function LaboratorioSolar({
   const [consumoAnnuoKwh, setConsumoAnnuoKwh] = useState(
     iniziale ? String(iniziale.consumoAnnuoKwh) : '8000',
   )
+  const [tariffaImport, setTariffaImport] = useState(
+    iniziale ? String(iniziale.tariffaImportEurKwh) : '0,30',
+  )
+  const [tariffaExport, setTariffaExport] = useState(
+    iniziale ? String(iniziale.tariffaExportEurKwh) : '0,10',
+  )
+  const [autoconsumoPct, setAutoconsumoPct] = useState(
+    iniziale?.frazioneAutoconsumo != null
+      ? String(Math.round(iniziale.frazioneAutoconsumo * 100))
+      : '40',
+  )
   const [studyId, setStudyId] = useState<string | undefined>(contestoCrm?.studyId)
+
+  const anteprimaEnergia = useMemo(() => {
+    const consumo = Number.parseFloat(consumoAnnuoKwh.replace(',', '.'))
+    const tImport = Number.parseFloat(tariffaImport.replace(',', '.'))
+    const tExport = Number.parseFloat(tariffaExport.replace(',', '.'))
+    const fPct = Number.parseFloat(autoconsumoPct.replace(',', '.'))
+    const produzione = stimaProduzioneAnnuakWh(layoutModuli?.kWp ?? 0)
+    if (
+      !layoutModuli ||
+      !(produzione > 0) ||
+      !Number.isFinite(consumo) ||
+      consumo < 0 ||
+      !Number.isFinite(tImport) ||
+      !Number.isFinite(tExport) ||
+      !Number.isFinite(fPct)
+    ) {
+      return null
+    }
+    const bilancio = bilanciaEnergia({
+      produzioneKwh: produzione,
+      consumoKwh: consumo,
+      frazioneAutoconsumo: fPct / 100,
+    })
+    const attuale = costoEnergiaCents(consumo, tImport)
+    const conFv = bollettaConFvAnnuacents(bilancio, tImport, tExport)
+    const risparmio = attuale - conFv
+    return {
+      produzione,
+      bilancio,
+      bollettaAttualeMensile: formattaImporto(Math.round(attuale / 12)),
+      bollettaConFvMensile: formattaImporto(Math.round(conFv / 12)),
+      risparmioAnnuo: formattaImporto(risparmio),
+    }
+  }, [
+    autoconsumoPct,
+    consumoAnnuoKwh,
+    layoutModuli,
+    tariffaExport,
+    tariffaImport,
+  ])
 
   if (!configurato) {
     return (
@@ -105,8 +162,23 @@ export function LaboratorioSolar({
     setErrore(null)
     esegui(async () => {
       const consumo = Number.parseFloat(consumoAnnuoKwh.replace(',', '.'))
+      const tImport = Number.parseFloat(tariffaImport.replace(',', '.'))
+      const tExport = Number.parseFloat(tariffaExport.replace(',', '.'))
+      const fPct = Number.parseFloat(autoconsumoPct.replace(',', '.'))
       if (!Number.isFinite(consumo) || consumo < 0) {
         setErrore('Indica il consumo annuo in kWh (0 se impianto aggiuntivo).')
+        return
+      }
+      if (!Number.isFinite(tImport) || tImport < 0 || tImport > 5) {
+        setErrore('Tariffa di prelievo non valida (€/kWh).')
+        return
+      }
+      if (!Number.isFinite(tExport) || tExport < 0 || tExport > 5) {
+        setErrore('Tariffa di cessione / RID non valida (€/kWh).')
+        return
+      }
+      if (!Number.isFinite(fPct) || fPct < 0 || fPct > 100) {
+        setErrore('Autoconsumo atteso: indicare una percentuale tra 0 e 100.')
         return
       }
       const poligoniJson: Record<string, Coordinate[]> = {}
@@ -152,8 +224,9 @@ export function LaboratorioSolar({
           layout,
           consumoAnnuoKwh: consumo,
           produzioneAnnuakWh: produzione,
-          tariffaImportEurKwh: 0.3,
-          tariffaExportEurKwh: 0.1,
+          tariffaImportEurKwh: tImport,
+          tariffaExportEurKwh: tExport,
+          frazioneAutoconsumo: fPct / 100,
         },
       })
       if (!esito.ok) {
@@ -250,13 +323,13 @@ export function LaboratorioSolar({
 
       {analisi && contestoCrm ? (
         <Card title="Salva studio per il preventivo">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <label className="block min-w-[12rem] flex-1">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="block">
               <span
                 className="mb-1.5 block text-xs font-medium"
                 style={{ color: 'var(--testo-fioco)' }}
               >
-                Consumo annuo stimato (kWh)
+                Consumo annuo (kWh)
               </span>
               <input
                 type="text"
@@ -270,22 +343,119 @@ export function LaboratorioSolar({
                 }}
               />
               <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
-                Usa 0 se l’impianto è aggiuntivo (tutta l’energia in rete).
+                0 = impianto aggiuntivo (tutta l’energia in rete).
               </span>
             </label>
-            <div className="text-sm tabular-nums" style={{ color: 'var(--testo-tenue)' }}>
-              {layoutModuli ? (
-                <>
-                  {layoutModuli.moduli.length} moduli ·{' '}
-                  {layoutModuli.kWp.toFixed(2)} kWp · ~{' '}
-                  {stimaProduzioneAnnuakWh(layoutModuli.kWp).toLocaleString('it-IT')}{' '}
-                  kWh/anno
-                </>
-              ) : (
-                'Posiziona i moduli sulla falda per stimare kWp e produzione.'
-              )}
-            </div>
+            <label className="block">
+              <span
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: 'var(--testo-fioco)' }}
+              >
+                Tariffa prelievo (€/kWh)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={tariffaImport}
+                onChange={(e) => setTariffaImport(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: 'rgba(5,10,20,0.55)',
+                  borderColor: 'var(--bordo)',
+                }}
+              />
+            </label>
+            <label className="block">
+              <span
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: 'var(--testo-fioco)' }}
+              >
+                Tariffa cessione / RID (€/kWh)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={tariffaExport}
+                onChange={(e) => setTariffaExport(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: 'rgba(5,10,20,0.55)',
+                  borderColor: 'var(--bordo)',
+                }}
+              />
+            </label>
+            <label className="block">
+              <span
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: 'var(--testo-fioco)' }}
+              >
+                Autoconsumo atteso (%)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={autoconsumoPct}
+                onChange={(e) => setAutoconsumoPct(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: 'rgba(5,10,20,0.55)',
+                  borderColor: 'var(--bordo)',
+                }}
+              />
+              <span className="mt-1 block text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+                Quota della produzione usata in casa (poi limitata dal consumo).
+              </span>
+            </label>
           </div>
+          <div className="mt-4 text-sm tabular-nums" style={{ color: 'var(--testo-tenue)' }}>
+            {layoutModuli ? (
+              <>
+                {layoutModuli.moduli.length} moduli ·{' '}
+                {layoutModuli.kWp.toFixed(2)} kWp · ~{' '}
+                {stimaProduzioneAnnuakWh(layoutModuli.kWp).toLocaleString('it-IT')}{' '}
+                kWh/anno
+              </>
+            ) : (
+              'Posiziona i moduli sulla falda per stimare kWp e produzione.'
+            )}
+          </div>
+          {anteprimaEnergia ? (
+            <div
+              className="mt-4 grid gap-3 rounded-lg border p-3 sm:grid-cols-3"
+              style={{ borderColor: 'var(--bordo)', background: 'rgba(5,10,20,0.35)' }}
+            >
+              <div>
+                <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--oro)' }}>
+                  Bolletta attuale / mese
+                </p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--testo)' }}>
+                  {anteprimaEnergia.bollettaAttualeMensile}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--oro)' }}>
+                  Bolletta con FV / mese
+                </p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--testo)' }}>
+                  {anteprimaEnergia.bollettaConFvMensile}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--oro)' }}>
+                  Risparmio anno 1
+                </p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--testo)' }}>
+                  {anteprimaEnergia.risparmioAnnuo}
+                </p>
+                <p className="mt-1 text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+                  Autoconsumo {anteprimaEnergia.bilancio.autoconsumoKwh.toLocaleString('it-IT')}{' '}
+                  kWh · export{' '}
+                  {anteprimaEnergia.bilancio.exportKwh.toLocaleString('it-IT')} kWh · da rete{' '}
+                  {anteprimaEnergia.bilancio.daReteKwh.toLocaleString('it-IT')} kWh
+                </p>
+              </div>
+            </div>
+          ) : null}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"

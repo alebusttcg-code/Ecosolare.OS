@@ -12,6 +12,9 @@ import {
   siteStudies,
   sites,
 } from '@/db/schema'
+import { importoDaEuro } from '@/lib/domain/money'
+import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
+import type { SnapshotStudioTetto } from '@/lib/domain/studio-tetto'
 import {
   formattaDataIt,
   formattaEuroDb,
@@ -19,6 +22,8 @@ import {
   formattaQuantita,
   type DatiPdfPreventivo,
 } from '@/lib/pdf/dati-preventivo'
+import { mappaSimulazionePerPdf } from '@/lib/pdf/mappa-simulazione-pdf'
+import { getParametriSimulazioneFv } from '@/lib/queries/parametri-simulazione'
 
 export interface RigaVisibile {
   readonly id: string
@@ -137,6 +142,7 @@ export async function getQuoteVersionPerPdf(
       studioProduzione: siteStudies.produzioneKwh,
       studioConsumo: siteStudies.consumoKwh,
       studioIndirizzo: siteStudies.formattedAddress,
+      studioPayload: siteStudies.payload,
     })
     .from(quoteVersions)
     .innerJoin(quotes, eq(quotes.id, quoteVersions.quoteId))
@@ -215,6 +221,24 @@ export async function getQuoteVersionPerPdf(
   const indirizzoDaStudio =
     !indirizzoImmobile && riga.studioIndirizzo ? riga.studioIndirizzo : null
 
+  let dettagliImpianto: DatiPdfPreventivo['dettagliImpianto'] = null
+  let condizioniEconomiche: DatiPdfPreventivo['condizioniEconomiche'] = null
+  let simulazione: DatiPdfPreventivo['simulazione'] = null
+
+  const payload = riga.studioPayload as SnapshotStudioTetto | null
+  if (payload?.layout && payload.produzioneAnnuakWh > 0) {
+    const parametri = await getParametriSimulazioneFv()
+    const sim = simulaImpiantoFv({
+      snapshot: payload,
+      investimentoLordoCents: importoDaEuro(riga.grossTotal),
+      parametri,
+    })
+    const mappata = mappaSimulazionePerPdf(sim)
+    dettagliImpianto = mappata.dettagliImpianto
+    condizioniEconomiche = mappata.condizioniEconomiche
+    simulazione = mappata.simulazione
+  }
+
   return {
     codice: riga.quoteCode,
     titolo: riga.quoteTitle,
@@ -226,6 +250,9 @@ export async function getQuoteVersionPerPdf(
     immobileEtichetta: riga.immobileEtichetta,
     immobileIndirizzo: indirizzoImmobile ?? indirizzoDaStudio,
     copertinaKpi,
+    dettagliImpianto,
+    condizioniEconomiche,
+    simulazione,
     righe: righeDb.map((r) => {
       const sconto = Number.parseFloat(r.discountPct)
       return {

@@ -420,6 +420,13 @@ automaticamente dal solo DSM).
 2026): lo studio si salva su `site_studies` collegato al lead; stato `completo`
 richiede analisi + layout moduli + produzione stimata. `createQuote` richiede
 `siteStudyId` completo sullo stesso lead. Il PDF mostra i KPI di copertina
-(moduli, kWp, produzione/consumo). Motore economico completo e dossier PDF
-parità commerciale = fasi successive.
+(moduli, kWp, produzione/consumo).
+
+**Estensione Fase B** (11 agosto 2026): motori di dominio puri
+(`bilancio-energia`, `economia-fv`, `incentivi`, `simulazione-fv`) calcolano
+bollette, risparmio, detrazione, cashflow, payback e NPV **solo dagli input del
+caso cliente** (consumo, produzione, tariffe, frazione autoconsumo, totale
+preventivo) e dai parametri in `app_settings` (A18). Il PDF ha copertina +
+dettagli impianto, listino/condizioni §7 e allegato simulazione. Parità
+dossier marketing/garanzie/schede = Fase C.
 

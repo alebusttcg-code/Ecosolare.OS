@@ -32,6 +32,62 @@ export interface CopertinaKpiPdf {
   readonly consumoMwh: string | null
 }
 
+export interface FaldaPdf {
+  readonly etichetta: string
+  readonly inclinazione: string
+  readonly esposizione: string
+  readonly area: string | null
+}
+
+/** §1 dettagli impianto + regime incentivante (testi da simulazione). */
+export interface DettagliImpiantoPdf {
+  readonly composizione: string
+  readonly potenzaKwp: string
+  readonly produzioneKwh: string
+  readonly resaSpecifica: string | null
+  readonly consumoKwh: string | null
+  readonly falde: readonly FaldaPdf[]
+  readonly regimeRid: string
+  readonly detrazioneSintesi: string
+}
+
+export interface CondizioniEconomichePdf {
+  readonly totaleLordo: string
+  readonly detrazionePct: string
+  readonly detrazioneImporto: string
+  readonly nettoIndicativo: string
+  readonly bollettaAttualeMensile: string
+  readonly bollettaConFvMensile: string
+  readonly risparmioMensile: string
+  readonly risparmioAnnuo: string
+  readonly paybackAnni: string | null
+  readonly notePagamento: string
+}
+
+export interface FlussoEnergiaPdf {
+  readonly produzione: string
+  readonly autoconsumo: string
+  readonly exportRete: string
+  readonly daRete: string
+}
+
+export interface RigaCashflowPdf {
+  readonly anno: string
+  readonly risparmio: string
+  readonly detrazione: string
+  readonly flusso: string
+}
+
+export interface SimulazionePdf {
+  readonly tariffe: string
+  readonly flussi: FlussoEnergiaPdf
+  readonly npv: string
+  readonly paybackAnni: string | null
+  /** Prime righe del cashflow (il resto si omette per leggibilità). */
+  readonly cashflow: readonly RigaCashflowPdf[]
+  readonly orizzonteAnni: number
+}
+
 export interface DatiPdfPreventivo {
   readonly codice: string
   readonly titolo: string
@@ -43,6 +99,9 @@ export interface DatiPdfPreventivo {
   readonly immobileEtichetta: string | null
   readonly immobileIndirizzo: string | null
   readonly copertinaKpi: CopertinaKpiPdf | null
+  readonly dettagliImpianto: DettagliImpiantoPdf | null
+  readonly condizioniEconomiche: CondizioniEconomichePdf | null
+  readonly simulazione: SimulazionePdf | null
   readonly righe: readonly RigaPdfPreventivo[]
   readonly scontoGlobalePct: string | null
   readonly imponibile: string

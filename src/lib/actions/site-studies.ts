@@ -44,6 +44,7 @@ const snapshotSchema = z.object({
   produzioneAnnuakWh: z.number().min(0).max(500_000).optional(),
   tariffaImportEurKwh: z.number().min(0).max(5).default(0.3),
   tariffaExportEurKwh: z.number().min(0).max(5).default(0.1),
+  frazioneAutoconsumo: z.number().min(0).max(1).optional(),
 })
 
 const salvaSchema = z.object({
@@ -73,6 +74,9 @@ function normalizzaSnapshot(
     produzioneAnnuakWh: produzione,
     tariffaImportEurKwh: grezzo.tariffaImportEurKwh,
     tariffaExportEurKwh: grezzo.tariffaExportEurKwh,
+    ...(grezzo.frazioneAutoconsumo != null
+      ? { frazioneAutoconsumo: grezzo.frazioneAutoconsumo }
+      : {}),
   }
 }
 

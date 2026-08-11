@@ -33,3 +33,21 @@ export const CHIAVI_MARGINE = {
   sogliaMarginePct: 'preventivi.soglia_margine_pct',
   giorniValidita: 'preventivi.giorni_validita',
 } as const
+
+/**
+ * Parametri energetici / incentivi / simulazione (A18).
+ *
+ * I valori vivono in `app_settings`; i motori di dominio li ricevono come
+ * input e non contengono aliquote normative.
+ */
+export const CHIAVI_SIMULAZIONE = {
+  tariffaImportEurKwh: 'energia.tariffa_import_eur_kwh',
+  tariffaExportEurKwh: 'energia.tariffa_export_eur_kwh',
+  frazioneAutoconsumoDefault: 'energia.frazione_autoconsumo_default',
+  detrazioneFvPct: 'incentivi.detrazione_fv_pct',
+  detrazioneFvAnni: 'incentivi.detrazione_fv_anni',
+  orizzonteAnni: 'simulazione.orizzonte_anni',
+  inflazioneEnergiaPct: 'simulazione.inflazione_energia_pct',
+  tassoScontoPct: 'simulazione.tasso_sconto_pct',
+  degradazionePctAnno: 'simulazione.degradazione_pct_anno',
+} as const
