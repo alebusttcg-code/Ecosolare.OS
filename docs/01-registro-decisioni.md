@@ -434,9 +434,13 @@ dettagli impianto, listino/condizioni §7 e allegato simulazione.
 PDF con incluso/escluso, garanzie, pagine marketing da template, planimetria
 moduli (ortofoto satellitare Static Maps + overlay moduli concordati; fallback
 schema SVG se Maps non disponibile) e blocco termico opzionale
-(`quote_versions.dossier`). Tipografia dossier: Cormorant Garamond + DM Sans
-(OFL), layout editoriale abisso/oro. Schede prodotto allegato catalogo restano
-miglioramento successivo.
+(`quote_versions.dossier`).
+
+**Redesign template commerciale PDF** (11 agosto 2026): base **carta chiara**
+blu/oro EcoSolare (niente hero/footer abisso), tipografia unica DM Sans con
+grassetti sui numeri, sezioni fisse identiche per tutti i preventivi, grafici
+SVG (produzione mensile, stacked energia, cashflow). Schede prodotto catalogo
+restano miglioramento successivo.
 
 **Multi-falda** (11 agosto 2026): i moduli possono stare su più falde nello
 stesso studio (`layouts[]`); la produzione è la somma delle stime per falda.

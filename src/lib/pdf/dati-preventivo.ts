@@ -49,6 +49,11 @@ export interface DettagliImpiantoPdf {
   readonly falde: readonly FaldaPdf[]
   readonly regimeRid: string
   readonly detrazioneSintesi: string
+  /** Valori grezzi per grassetti e grafici. */
+  readonly moduli: number
+  readonly kWpNumero: number
+  readonly produzioneKwhNumero: number
+  readonly wattPicco: number | null
 }
 
 export interface CondizioniEconomichePdf {
@@ -71,19 +76,32 @@ export interface FlussoEnergiaPdf {
   readonly daRete: string
 }
 
+/** Numeri per grafici stacked (kWh). */
+export interface FlussiEnergiaNumPdf {
+  readonly produzione: number
+  readonly autoconsumo: number
+  readonly exportRete: number
+  readonly daRete: number
+  readonly consumo: number
+}
+
 export interface RigaCashflowPdf {
   readonly anno: string
   readonly risparmio: string
   readonly detrazione: string
   readonly flusso: string
+  /** Flusso netto in centesimi (grafico). */
+  readonly flussoCents: number
 }
 
 export interface SimulazionePdf {
   readonly tariffe: string
   readonly flussi: FlussoEnergiaPdf
+  readonly flussiNum: FlussiEnergiaNumPdf
+  readonly produzioneMensileKwh: readonly number[]
   readonly npv: string
+  readonly npvCents: number
   readonly paybackAnni: string | null
-  /** Prime righe del cashflow (il resto si omette per leggibilità). */
   readonly cashflow: readonly RigaCashflowPdf[]
   readonly orizzonteAnni: number
 }
@@ -119,6 +137,13 @@ export interface PlanimetriaPdfDto {
   readonly fotoPixelH?: number
 }
 
+export interface MittentePdf {
+  readonly nome: string
+  readonly ruolo: string | null
+  readonly email: string | null
+  readonly telefono: string | null
+}
+
 export interface DatiPdfPreventivo {
   readonly codice: string
   readonly titolo: string
@@ -129,6 +154,7 @@ export interface DatiPdfPreventivo {
   readonly aziendaCliente: string | null
   readonly immobileEtichetta: string | null
   readonly immobileIndirizzo: string | null
+  readonly mittente: MittentePdf
   readonly copertinaKpi: CopertinaKpiPdf | null
   readonly dettagliImpianto: DettagliImpiantoPdf | null
   readonly condizioniEconomiche: CondizioniEconomichePdf | null

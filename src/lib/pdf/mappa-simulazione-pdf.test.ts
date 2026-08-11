@@ -54,6 +54,9 @@ describe('mappaSimulazionePerPdf — etichette falda', () => {
 
     const pdf = mappaSimulazionePerPdf(sim)
     expect(pdf.dettagliImpianto.falde[0]!.etichetta).toMatch(/^Falda 3 ·/)
+    expect(pdf.simulazione.produzioneMensileKwh).toHaveLength(12)
+    expect(pdf.simulazione.flussiNum.produzione).toBe(3000)
+    expect(pdf.dettagliImpianto.moduli).toBe(4)
   })
 
   it('esclude falde senza moduli dal PDF cliente', () => {

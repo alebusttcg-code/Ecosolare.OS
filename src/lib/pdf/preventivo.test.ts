@@ -48,4 +48,11 @@ describe('biglietto da visita EcoSolare', () => {
     // Garanzia di prodotto: il modulo brand non parla di margini o costi.
     expect(JSON.stringify(ECOSOLARE)).not.toMatch(/costo|margine|unitCost/i)
   })
+
+  it('definisce la palette PDF commerciale chiara', () => {
+    expect(ECOSOLARE.pdf.carta).toBe('#ffffff')
+    expect('abisso' in ECOSOLARE.pdf).toBe(false)
+    expect(ECOSOLARE.pdf.verde).toMatch(/^#/)
+    expect(ECOSOLARE.trust.length).toBeGreaterThanOrEqual(2)
+  })
 })

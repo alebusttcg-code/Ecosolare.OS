@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  distribuisciProduzioneMensile,
   fattoreAzimut,
   fattoreTilt,
+  PESI_MENSILI_FV_ITALIA,
   resaBaseDaLatitudine,
   stimaProduzioneFalda,
 } from './produzione-fv'
@@ -61,5 +63,14 @@ describe('produzione FV sito-specifica', () => {
     // Ordine di grandezza dei dossier (~5–8 MWh), non costante 1320×kWp
     expect(riboldi.resaSpecificaKwhKwp).toBeGreaterThan(1000)
     expect(riboldi.resaSpecificaKwhKwp).toBeLessThan(1600)
+  })
+
+  it('ripartisce la produzione mensile con pesi che sommano 1', () => {
+    const sommaPesi = PESI_MENSILI_FV_ITALIA.reduce((a, b) => a + b, 0)
+    expect(sommaPesi).toBeCloseTo(1, 3)
+    const mesi = distribuisciProduzioneMensile(7890)
+    expect(mesi).toHaveLength(12)
+    expect(mesi.reduce((a, b) => a + b, 0)).toBe(7890)
+    expect(mesi[6]!).toBeGreaterThan(mesi[0]!) // luglio > gennaio
   })
 })

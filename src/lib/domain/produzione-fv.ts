@@ -103,3 +103,46 @@ export function stimaProduzioneFalda(
     fattoreSunshine: fs,
   }
 }
+
+/**
+ * Pesi stagionali relativi (Italia centro-nord) per ripartire un totale annuo
+ * in 12 mesi. Non sono tariffe né valori normativi: solo forma del profilo.
+ * Somma = 1.
+ */
+export const PESI_MENSILI_FV_ITALIA: readonly number[] = [
+  0.041, 0.051, 0.082, 0.092, 0.112, 0.122, 0.133, 0.112, 0.092, 0.071, 0.051,
+  0.041,
+]
+
+export const ETICHETTE_MESI_IT = [
+  'Gen',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mag',
+  'Giu',
+  'Lug',
+  'Ago',
+  'Set',
+  'Ott',
+  'Nov',
+  'Dic',
+] as const
+
+/** Ripartisce kWh annui sui 12 mesi; l’ultimo mese assorbe l’arrotondamento. */
+export function distribuisciProduzioneMensile(
+  produzioneAnnuakWh: number,
+): number[] {
+  if (!(produzioneAnnuakWh > 0) || !Number.isFinite(produzioneAnnuakWh)) {
+    return Array.from({ length: 12 }, () => 0)
+  }
+  const out: number[] = []
+  let somma = 0
+  for (let i = 0; i < 11; i++) {
+    const v = Math.round(produzioneAnnuakWh * PESI_MENSILI_FV_ITALIA[i]!)
+    out.push(v)
+    somma += v
+  }
+  out.push(Math.max(0, Math.round(produzioneAnnuakWh) - somma))
+  return out
+}

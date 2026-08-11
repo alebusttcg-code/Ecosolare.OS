@@ -56,3 +56,11 @@ export const GARANZIE_TESTI: readonly {
 
 export const NOTA_GARANZIA =
   'La garanzia non copre i materiali danneggiati da eventi atmosferici, atti di vandalismo o utilizzo non adeguato. Interventi di terzi senza approvazione scritta di EcoSolare rendono nulle le condizioni di garanzia.'
+
+/** Termini di pagamento standard (template commerciale fisso). */
+export const TERMINI_PAGAMENTO = {
+  acconto: '50% — all’ordine',
+  saldo: 'Saldo — a collaudo / messa in servizio',
+  validitaGiorniLavorativi: 10,
+} as const
+

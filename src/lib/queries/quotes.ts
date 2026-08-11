@@ -11,7 +11,9 @@ import {
   quotes,
   siteStudies,
   sites,
+  users,
 } from '@/db/schema'
+import { ECOSOLARE } from '@/lib/brand/ecosolare'
 import { normalizzaDossier } from '@/lib/domain/dossier-preventivo'
 import { formattaImporto, importoDaEuro } from '@/lib/domain/money'
 import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
@@ -161,11 +163,15 @@ export async function getQuoteVersionPerPdf(
       studioIndirizzo: siteStudies.formattedAddress,
       studioPayload: siteStudies.payload,
       dossier: quoteVersions.dossier,
+      ownerName: users.name,
+      ownerEmail: users.email,
+      ownerRole: users.role,
     })
     .from(quoteVersions)
     .innerJoin(quotes, eq(quotes.id, quoteVersions.quoteId))
     .innerJoin(opportunities, eq(opportunities.id, quotes.opportunityId))
     .innerJoin(contacts, eq(contacts.id, opportunities.contactId))
+    .leftJoin(users, eq(users.id, opportunities.ownerId))
     .leftJoin(companies, eq(companies.id, contacts.companyId))
     .leftJoin(sites, eq(sites.id, opportunities.siteId))
     .leftJoin(siteStudies, eq(siteStudies.id, quotes.siteStudyId))
@@ -291,6 +297,17 @@ export async function getQuoteVersionPerPdf(
     aziendaCliente: riga.aziendaNome,
     immobileEtichetta: riga.immobileEtichetta,
     immobileIndirizzo: indirizzoImmobile ?? indirizzoDaStudio,
+    mittente: {
+      nome: riga.ownerName?.trim() || ECOSOLARE.nome,
+      ruolo:
+        riga.ownerRole === 'commerciale'
+          ? 'Resp. Commerciale'
+          : riga.ownerRole === 'amministratore'
+            ? 'Amministratore'
+            : null,
+      email: riga.ownerEmail ?? ECOSOLARE.email,
+      telefono: null,
+    },
     copertinaKpi,
     dettagliImpianto,
     condizioniEconomiche,

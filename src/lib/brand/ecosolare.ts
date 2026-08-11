@@ -24,6 +24,29 @@ export const ECOSOLARE = {
     testoTenue: '#9aabbf',
     bordo: 'rgba(255,255,255,0.12)',
   },
+  /**
+   * Palette del PDF cliente (brochure commerciale): carta chiara, non abisso.
+   * L’UI interna resta sui colori sopra.
+   */
+  pdf: {
+    carta: '#ffffff',
+    cartaSoft: '#f7f9fc',
+    inchiostro: '#1a2332',
+    inchiostroMorbido: '#5a6578',
+    linea: '#d8dee8',
+    blu: '#3f7fc4',
+    bluScuro: '#2a5f9e',
+    oro: '#d9a441',
+    verde: '#2f9e6b',
+    arancio: '#e07a3d',
+    teal: '#2a9d8f',
+  },
+  trust: [
+    '+2000 impianti realizzati',
+    '+500 impianti monitorati ogni giorno',
+    '+2000 clienti soddisfatti',
+    '€ 200.000 capitale sociale versato',
+  ] as const,
   sedi: [
     {
       nome: 'Sede La Spezia',

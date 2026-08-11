@@ -1,5 +1,7 @@
 import { formattaImporto } from '@/lib/domain/money'
+import { distribuisciProduzioneMensile } from '@/lib/domain/produzione-fv'
 import type { RisultatoSimulazioneFv } from '@/lib/domain/simulazione-fv'
+import { TERMINI_PAGAMENTO } from '@/lib/pdf/dossier-testi'
 import type {
   CondizioniEconomichePdf,
   DettagliImpiantoPdf,
@@ -41,7 +43,6 @@ export function mappaSimulazionePerPdf(sim: RisultatoSimulazioneFv): {
         ? `${sim.resaSpecificaKwhKwp.toLocaleString('it-IT')} kWh/kWp·anno`
         : null,
     consumoKwh: sim.consumoKwh > 0 ? kwh(sim.consumoKwh) : null,
-    // Solo falde con moduli: allineato a planimetria / ortofoto.
     falde: sim.falde
       .filter((f) => f.moduli > 0)
       .map((f) => ({
@@ -55,6 +56,10 @@ export function mappaSimulazionePerPdf(sim: RisultatoSimulazioneFv): {
       })),
     regimeRid: `Cessione dell’energia immessa valorizzata a ${sim.tariffaExportEurKwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €/kWh (ipotesi RID dello studio).`,
     detrazioneSintesi: `Detrazione IRPEF ${sim.detrazione.detrazionePct.toLocaleString('it-IT')}% sul prezzo IVA inclusa (${euroCents(sim.detrazione.detrazioneTotaleCents)}), ripartita in ${sim.detrazione.anniRate} anni nel piano economico.`,
+    moduli: sim.moduli,
+    kWpNumero: sim.kWp,
+    produzioneKwhNumero: sim.produzioneKwh,
+    wattPicco: wp ?? null,
   }
 
   const condizioniEconomiche: CondizioniEconomichePdf = {
@@ -70,25 +75,35 @@ export function mappaSimulazionePerPdf(sim: RisultatoSimulazioneFv): {
       eco.paybackAnni != null
         ? `${eco.paybackAnni.toLocaleString('it-IT')} anni`
         : null,
-    notePagamento:
-      'Modalità di pagamento e tempi di validità della proposta sono indicati in sede di accettazione. Risparmio, detrazione IRPEF, ritorno dell’investimento e bollette sono stime indicative dallo studio tetto e dalla configurazione vigente: non costituiscono quotazione fiscale, bancaria né certificazione di producibilità.',
+    notePagamento: `Acconto ${TERMINI_PAGAMENTO.acconto}. ${TERMINI_PAGAMENTO.saldo}. Offerta valida ${TERMINI_PAGAMENTO.validitaGiorniLavorativi} giorni lavorativi, salvo diversa indicazione. Risparmio e detrazione IRPEF sono stime dallo studio tetto: non costituiscono quotazione fiscale né certificazione di producibilità.`,
   }
 
+  const b = sim.bilancio
   const simulazione: SimulazionePdf = {
     tariffe: `Prelievo ${sim.tariffaImportEurKwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €/kWh · cessione ${sim.tariffaExportEurKwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €/kWh · autoconsumo ${(sim.frazioneAutoconsumoUsata * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 })}% della produzione`,
     flussi: {
-      produzione: kwh(sim.bilancio.produzioneKwh),
-      autoconsumo: kwh(sim.bilancio.autoconsumoKwh),
-      exportRete: kwh(sim.bilancio.exportKwh),
-      daRete: kwh(sim.bilancio.daReteKwh),
+      produzione: kwh(b.produzioneKwh),
+      autoconsumo: kwh(b.autoconsumoKwh),
+      exportRete: kwh(b.exportKwh),
+      daRete: kwh(b.daReteKwh),
     },
+    flussiNum: {
+      produzione: b.produzioneKwh,
+      autoconsumo: b.autoconsumoKwh,
+      exportRete: b.exportKwh,
+      daRete: b.daReteKwh,
+      consumo: b.consumoKwh,
+    },
+    produzioneMensileKwh: distribuisciProduzioneMensile(sim.produzioneKwh),
     npv: euroCents(eco.npvCents),
+    npvCents: eco.npvCents,
     paybackAnni: condizioniEconomiche.paybackAnni,
     cashflow: eco.cashflow.slice(0, 12).map((r) => ({
       anno: String(r.anno),
       risparmio: euroCents(r.risparmioEnergiaCents),
       detrazione: euroCents(r.rataDetrazioneCents),
       flusso: euroCents(r.flussoCents),
+      flussoCents: r.flussoCents,
     })),
     orizzonteAnni: eco.cashflow.length,
   }
