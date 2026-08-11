@@ -11,6 +11,11 @@ import {
 import { calcolaPreventivo } from '@/lib/domain/pricing'
 import { normalizzaQuantita, unitaRichiedeIntero } from '@/lib/domain/unita'
 import { saveQuoteLines } from '@/lib/actions/quotes'
+import {
+  normalizzaDossier,
+  type BloccoTermicoDossier,
+  type DossierPreventivo,
+} from '@/lib/domain/dossier-preventivo'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import type { RigaVisibile } from '@/lib/queries/quotes'
 
@@ -60,6 +65,7 @@ export function EditorPreventivo({
   mostraCosti,
   catalogo,
   sogliaMarginePct,
+  dossierIniziale,
 }: {
   versionId: string
   righeIniziali: readonly RigaVisibile[]
@@ -68,6 +74,7 @@ export function EditorPreventivo({
   mostraCosti: boolean
   catalogo: readonly VoceCatalogo[]
   sogliaMarginePct: number
+  dossierIniziale?: DossierPreventivo | null
 }) {
   const [righe, setRighe] = useState<RigaEditor[]>(
     righeIniziali.map((r) => ({
@@ -77,6 +84,23 @@ export function EditorPreventivo({
     })),
   )
   const [sconto, setSconto] = useState(scontoIniziale)
+  const termicoIniziale = normalizzaDossier(dossierIniziale).termico
+  const [termicoAttivo, setTermicoAttivo] = useState(!!termicoIniziale?.presente)
+  const [termicoTipo, setTermicoTipo] = useState<BloccoTermicoDossier['tipo']>(
+    termicoIniziale?.tipo ?? 'pdc',
+  )
+  const [termicoDesc, setTermicoDesc] = useState(termicoIniziale?.descrizione ?? '')
+  const [termicoPrezzo, setTermicoPrezzo] = useState(
+    termicoIniziale ? String(termicoIniziale.prezzoLordoEur) : '',
+  )
+  const [termicoDetrazione, setTermicoDetrazione] = useState(
+    termicoIniziale ? String(termicoIniziale.detrazionePct) : '50',
+  )
+  const [termicoCt, setTermicoCt] = useState(
+    termicoIniziale?.contoTermicoEur != null
+      ? String(termicoIniziale.contoTermicoEur)
+      : '',
+  )
   const [messaggio, setMessaggio] = useState<string | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
   const { inCorso, esegui } = useAzioneServer()
@@ -151,6 +175,33 @@ export function EditorPreventivo({
     setMessaggio(null)
     setErrore(null)
     esegui(async () => {
+      let dossier: DossierPreventivo = { termico: null }
+      if (termicoAttivo) {
+        const prezzo = Number.parseFloat(termicoPrezzo.replace(',', '.'))
+        const detrazione = Number.parseFloat(termicoDetrazione.replace(',', '.'))
+        const ctRaw = termicoCt.trim()
+        const ct =
+          ctRaw === '' ? null : Number.parseFloat(ctRaw.replace(',', '.'))
+        if (!termicoDesc.trim()) {
+          setErrore('Descrivi il blocco termico (modello / potenza).')
+          return
+        }
+        if (!Number.isFinite(prezzo) || prezzo < 0) {
+          setErrore('Prezzo termico non valido.')
+          return
+        }
+        dossier = {
+          termico: {
+            presente: true,
+            tipo: termicoTipo,
+            descrizione: termicoDesc.trim(),
+            prezzoLordoEur: prezzo,
+            detrazionePct: Number.isFinite(detrazione) ? detrazione : 50,
+            contoTermicoEur: ct != null && Number.isFinite(ct) ? ct : null,
+          },
+        }
+      }
+
       const esito = await saveQuoteLines({
         versionId,
         globalDiscountPct: sconto,
@@ -165,6 +216,7 @@ export function EditorPreventivo({
           discountPct: r.discountPct,
           vatRate: r.vatRate,
         })),
+        dossier,
       })
 
       if (!esito.ok) {
@@ -447,6 +499,98 @@ export function EditorPreventivo({
             </p>
           </div>
         )}
+      </div>
+
+      <div
+        className="space-y-3 rounded-lg border p-4 text-sm"
+        style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+      >
+        <label className="flex items-center gap-2 font-medium">
+          <input
+            type="checkbox"
+            checked={termicoAttivo}
+            disabled={!modificabile}
+            onChange={(e) => setTermicoAttivo(e.target.checked)}
+          />
+          Blocco termico (PdC / ibrido) nel preventivo
+        </label>
+        {termicoAttivo ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block sm:col-span-2">
+              <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                Tipo
+              </span>
+              <select
+                value={termicoTipo}
+                disabled={!modificabile}
+                onChange={(e) =>
+                  setTermicoTipo(e.target.value as BloccoTermicoDossier['tipo'])
+                }
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              >
+                <option value="pdc">Pompa di calore</option>
+                <option value="ibrido">Caldaia ibrida</option>
+                <option value="altro">Altro</option>
+              </select>
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                Descrizione (modello, potenza…)
+              </span>
+              <textarea
+                value={termicoDesc}
+                disabled={!modificabile}
+                onChange={(e) => setTermicoDesc(e.target.value)}
+                rows={2}
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                Prezzo IVA inclusa (€)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={termicoPrezzo}
+                disabled={!modificabile}
+                onChange={(e) => setTermicoPrezzo(e.target.value)}
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                Detrazione (%)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={termicoDetrazione}
+                disabled={!modificabile}
+                onChange={(e) => setTermicoDetrazione(e.target.value)}
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
+                Conto Termico indicativo (€, opzionale)
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={termicoCt}
+                disabled={!modificabile}
+                onChange={(e) => setTermicoCt(e.target.value)}
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
+              />
+            </label>
+          </div>
+        ) : null}
       </div>
 
       {errore ? (

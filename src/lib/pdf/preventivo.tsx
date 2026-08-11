@@ -1,4 +1,13 @@
-import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
+import {
+  Document,
+  Image,
+  Page,
+  Path,
+  StyleSheet,
+  Svg,
+  Text,
+  View,
+} from '@react-pdf/renderer'
 import { ECOSOLARE } from '@/lib/brand/ecosolare'
 import type { DatiPdfPreventivo } from '@/lib/pdf/dati-preventivo'
 
@@ -351,6 +360,29 @@ const stili = StyleSheet.create({
   colCashAnno: { width: '12%' },
   colCash: { width: '22%' },
   colCashFlusso: { width: '22%' },
+  bullet: {
+    fontSize: 8.5,
+    color: '#334155',
+    lineHeight: 1.35,
+    marginBottom: 4,
+    paddingLeft: 8,
+  },
+  paginaPiena: {
+    padding: 0,
+  },
+  marketingFull: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  planimetriaWrap: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
 })
 
 function PieDiPagina() {
@@ -618,7 +650,7 @@ export function DocumentoPreventivo({
               <Text style={stili.sezioneTitolo}>7 · Condizioni economiche</Text>
               <View style={stili.griglia}>
                 <View style={stili.card}>
-                  <Text style={stili.cardTitolo}>Investimento</Text>
+                  <Text style={stili.cardTitolo}>Investimento FV</Text>
                   <Text style={stili.cardTesto}>
                     {dati.condizioniEconomiche.totaleLordo}
                   </Text>
@@ -649,6 +681,25 @@ export function DocumentoPreventivo({
                   </Text>
                 </View>
               </View>
+              {dati.bloccoTermico ? (
+                <View style={[stili.note, { marginTop: 8 }]}>
+                  <Text style={stili.noteTitolo}>
+                    {dati.bloccoTermico.tipoEtichetta}
+                  </Text>
+                  <Text style={stili.noteTesto}>{dati.bloccoTermico.descrizione}</Text>
+                  <Text style={[stili.noteTesto, { marginTop: 6 }]}>
+                    Prezzo IVA inclusa: {dati.bloccoTermico.prezzoLordo} · detrazione{' '}
+                    {dati.bloccoTermico.detrazionePct}:{' '}
+                    {dati.bloccoTermico.detrazioneImporto}
+                    {dati.bloccoTermico.contoTermico
+                      ? ` · Conto Termico indicativo: ${dati.bloccoTermico.contoTermico}`
+                      : ''}
+                  </Text>
+                  <Text style={stili.noteTesto}>
+                    Netto indicativo: {dati.bloccoTermico.nettoIndicativo}
+                  </Text>
+                </View>
+              ) : null}
               <Text style={stili.paragrafo}>
                 {dati.condizioniEconomiche.notePagamento}
               </Text>
@@ -673,6 +724,87 @@ export function DocumentoPreventivo({
         </View>
         <PieDiPagina />
       </Page>
+
+      <Page size="A4" style={stili.pagina}>
+        <IntestazioneSezione
+          logoSrc={logoSrc}
+          titolo="Incluso, escluso e garanzie"
+        />
+        <View style={stili.corpo}>
+          <Text style={stili.sezioneTitolo}>Attività incluse — impianto FV</Text>
+          {dati.dossierTestuale.incluso.map((voce) => (
+            <Text key={voce} style={stili.bullet}>
+              • {voce}
+            </Text>
+          ))}
+          <Text style={[stili.sezioneTitolo, { marginTop: 14 }]}>
+            Attività escluse dall’offerta
+          </Text>
+          {dati.dossierTestuale.escluso.map((voce) => (
+            <Text key={voce} style={stili.bullet}>
+              • {voce}
+            </Text>
+          ))}
+          <Text style={[stili.sezioneTitolo, { marginTop: 14 }]}>Garanzie</Text>
+          {dati.dossierTestuale.garanzie.map((g) => (
+            <View key={g.titolo} style={{ marginBottom: 8 }} wrap={false}>
+              <Text style={stili.cardTitolo}>{g.titolo}</Text>
+              {g.punti.map((p) => (
+                <Text key={p} style={stili.bullet}>
+                  • {p}
+                </Text>
+              ))}
+            </View>
+          ))}
+          <Text style={stili.paragrafo}>{dati.dossierTestuale.notaGaranzia}</Text>
+        </View>
+        <PieDiPagina />
+      </Page>
+
+      {dati.pagineMarketing.map((src, i) => (
+        <Page key={`mkt-${i}`} size="A4" style={stili.paginaPiena}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image src={src} style={stili.marketingFull} />
+        </Page>
+      ))}
+
+      {dati.planimetria ? (
+        <Page size="A4" style={stili.pagina}>
+          <IntestazioneSezione
+            logoSrc={logoSrc}
+            titolo="Planimetria moduli"
+          />
+          <View style={stili.corpo}>
+            <Text style={stili.paragrafo}>{dati.planimetria.legenda}</Text>
+            <View style={stili.planimetriaWrap}>
+              <Svg viewBox={dati.planimetria.viewBox} width={480} height={480}>
+                {dati.planimetria.poligonoPath ? (
+                  <Path
+                    d={dati.planimetria.poligonoPath}
+                    stroke={C.blu}
+                    strokeWidth={0.12}
+                    fill="rgba(37,99,235,0.08)"
+                  />
+                ) : null}
+                {dati.planimetria.moduliPaths.map((d, i) => (
+                  <Path
+                    key={`mod-${i}`}
+                    d={d}
+                    stroke={C.oro}
+                    strokeWidth={0.06}
+                    fill="rgba(217,164,65,0.55)"
+                  />
+                ))}
+              </Svg>
+            </View>
+            <Text style={stili.chiusuraTesto}>
+              Disegno dallo studio tetto EcoSolare. Non sostituisce il rilievo di
+              cantiere.
+            </Text>
+          </View>
+          <PieDiPagina />
+        </Page>
+      ) : null}
 
       {dati.simulazione ? (
         <Page size="A4" style={stili.pagina}>

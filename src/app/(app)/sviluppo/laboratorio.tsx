@@ -11,7 +11,7 @@ import {
   costoEnergiaCents,
 } from '@/lib/domain/economia-fv'
 import { formattaImporto } from '@/lib/domain/money'
-import { stimaProduzioneAnnuakWh } from '@/lib/domain/studio-tetto'
+import { stimaProduzioneDaStudio } from '@/lib/domain/studio-tetto'
 import {
   areaPoligonoMetri2,
   etichettaAzimuth,
@@ -111,10 +111,9 @@ export function LaboratorioSolar({
     const tImport = Number.parseFloat(tariffaImport.replace(',', '.'))
     const tExport = Number.parseFloat(tariffaExport.replace(',', '.'))
     const fPct = Number.parseFloat(autoconsumoPct.replace(',', '.'))
-    const produzione = stimaProduzioneAnnuakWh(layoutModuli?.kWp ?? 0)
     if (
       !layoutModuli ||
-      !(produzione > 0) ||
+      !analisi ||
       !Number.isFinite(consumo) ||
       consumo < 0 ||
       !Number.isFinite(tImport) ||
@@ -123,6 +122,19 @@ export function LaboratorioSolar({
     ) {
       return null
     }
+    const produzione = stimaProduzioneDaStudio({
+      analisi,
+      faldeRimosse: [...faldeRimosse],
+      layout: {
+        faldaIndice: layoutModuli.faldaIndice,
+        formatoId: layoutModuli.formatoId,
+        wattPicco: layoutModuli.wattPicco,
+        quantitaRichiesta: layoutModuli.quantitaRichiesta,
+        landscape: layoutModuli.landscape,
+        moduli: layoutModuli.moduli,
+      },
+    })
+    if (!(produzione > 0)) return null
     const bilancio = bilanciaEnergia({
       produzioneKwh: produzione,
       consumoKwh: consumo,
@@ -139,8 +151,10 @@ export function LaboratorioSolar({
       risparmioAnnuo: formattaImporto(risparmio),
     }
   }, [
+    analisi,
     autoconsumoPct,
     consumoAnnuoKwh,
+    faldeRimosse,
     layoutModuli,
     tariffaExport,
     tariffaImport,
@@ -209,7 +223,11 @@ export function LaboratorioSolar({
             })),
           }
         : null
-      const produzione = stimaProduzioneAnnuakWh(layoutModuli?.kWp ?? 0)
+      const produzione = stimaProduzioneDaStudio({
+        analisi,
+        faldeRimosse: [...faldeRimosse],
+        layout,
+      })
       const esito = await salvaStudioTetto({
         studyId,
         opportunityId: contestoCrm.opportunityId,
@@ -408,12 +426,23 @@ export function LaboratorioSolar({
             </label>
           </div>
           <div className="mt-4 text-sm tabular-nums" style={{ color: 'var(--testo-tenue)' }}>
-            {layoutModuli ? (
+            {layoutModuli && analisi ? (
               <>
                 {layoutModuli.moduli.length} moduli ·{' '}
                 {layoutModuli.kWp.toFixed(2)} kWp · ~{' '}
-                {stimaProduzioneAnnuakWh(layoutModuli.kWp).toLocaleString('it-IT')}{' '}
-                kWh/anno
+                {stimaProduzioneDaStudio({
+                  analisi,
+                  faldeRimosse: [...faldeRimosse],
+                  layout: {
+                    faldaIndice: layoutModuli.faldaIndice,
+                    formatoId: layoutModuli.formatoId,
+                    wattPicco: layoutModuli.wattPicco,
+                    quantitaRichiesta: layoutModuli.quantitaRichiesta,
+                    landscape: layoutModuli.landscape,
+                    moduli: layoutModuli.moduli,
+                  },
+                }).toLocaleString('it-IT')}{' '}
+                kWh/anno (da esposizione, inclinazione e zona)
               </>
             ) : (
               'Posiziona i moduli sulla falda per stimare kWp e produzione.'

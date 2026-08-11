@@ -8,6 +8,16 @@ import { DocumentoPreventivo } from '@/lib/pdf/preventivo'
 
 let logoCache: Buffer | null = null
 
+const MARKETING_RELATIVI = [
+  'public/preventivo/template/perche-qualita.png',
+  'public/preventivo/template/altroconsumo.png',
+  'public/preventivo/template/recensioni.png',
+  'public/preventivo/template/garanzie.png',
+  'public/preventivo/template/garanzia-10-anni.png',
+] as const
+
+const marketingCache = new Map<string, string>()
+
 async function logoBuffer(): Promise<Buffer> {
   if (logoCache) return logoCache
   const percorso = path.join(process.cwd(), ECOSOLARE.logoRelativo)
@@ -15,13 +25,32 @@ async function logoBuffer(): Promise<Buffer> {
   return logoCache
 }
 
+async function marketingDataUri(relativo: string): Promise<string | null> {
+  const cached = marketingCache.get(relativo)
+  if (cached) return cached
+  try {
+    const buf = await readFile(path.join(process.cwd(), relativo))
+    const uri = `data:image/png;base64,${buf.toString('base64')}`
+    marketingCache.set(relativo, uri)
+    return uri
+  } catch {
+    return null
+  }
+}
+
 /** Produce il PDF del preventivo come buffer, pronto per la risposta HTTP. */
 export async function generaPdfPreventivo(dati: DatiPdfPreventivo): Promise<Buffer> {
   const logo = await logoBuffer()
   const logoSrc = `data:image/png;base64,${logo.toString('base64')}`
-  // DocumentoPreventivo restituisce <Document>: il cast allinea i tipi di react-pdf.
+  const pagineMarketing = (
+    await Promise.all(MARKETING_RELATIVI.map((r) => marketingDataUri(r)))
+  ).filter((u): u is string => !!u)
+
   const documento = (
-    <DocumentoPreventivo dati={dati} logoSrc={logoSrc} />
+    <DocumentoPreventivo
+      dati={{ ...dati, pagineMarketing }}
+      logoSrc={logoSrc}
+    />
   ) as ReactElement<DocumentProps>
   return renderToBuffer(documento)
 }

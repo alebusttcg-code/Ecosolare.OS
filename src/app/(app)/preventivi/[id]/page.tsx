@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { LinkNome, nomePersona } from '@/components/link-nome'
 import { Badge, Card, formattaData } from '@/components/ui'
 import { guard } from '@/lib/auth/session'
+import { normalizzaDossier } from '@/lib/domain/dossier-preventivo'
 import { puoModificare, type StatoVersione } from '@/lib/domain/quote-lifecycle'
 import { getCatalogo, getQuoteVersion } from '@/lib/queries/quotes'
 import { CHIAVI_MARGINE, getSetting } from '@/lib/settings'
@@ -101,6 +102,7 @@ export default async function PreventivoPage({
             mostraCosti={mostraCosti}
             catalogo={catalogo}
             sogliaMarginePct={soglia}
+            dossierIniziale={normalizzaDossier(dati.versione.dossier)}
           />
         </div>
 

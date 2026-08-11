@@ -427,6 +427,11 @@ richiede analisi + layout moduli + produzione stimata. `createQuote` richiede
 bollette, risparmio, detrazione, cashflow, payback e NPV **solo dagli input del
 caso cliente** (consumo, produzione, tariffe, frazione autoconsumo, totale
 preventivo) e dai parametri in `app_settings` (A18). Il PDF ha copertina +
-dettagli impianto, listino/condizioni §7 e allegato simulazione. Parità
-dossier marketing/garanzie/schede = Fase C.
+dettagli impianto, listino/condizioni §7 e allegato simulazione.
+
+**Estensione Fase C** (11 agosto 2026): produzione sito-specifica
+(`produzione-fv`: latitudine, inclinazione, esposizione, sunshine relativo);
+PDF con incluso/escluso, garanzie, pagine marketing da template, planimetria
+moduli e blocco termico opzionale (`quote_versions.dossier`). Schede prodotto
+allegato catalogo restano miglioramento successivo.
 

@@ -1,3 +1,4 @@
+import { stimaProduzioneFalda } from '@/lib/domain/produzione-fv'
 import type { AnalisiTetto, Coordinate, RettangoloModulo } from '@/lib/solar'
 
 /**
@@ -34,7 +35,10 @@ export interface SnapshotStudioTetto {
   readonly frazioneAutoconsumo?: number
 }
 
-/** Resa specifica di default (kWh/kWp·anno), allineata ai dossier recenti (~1309–1344). */
+/**
+ * Fallback se mancano geometria/posizione (lab senza analisi completa).
+ * Preferire sempre `stimaProduzioneDaStudio`.
+ */
 export const RESA_SPECIFICA_DEFAULT_KWH_KWP = 1320
 
 export function kWpDaLayout(layout: LayoutStudioFalda | null): number {
@@ -45,6 +49,52 @@ export function kWpDaLayout(layout: LayoutStudioFalda | null): number {
 export function stimaProduzioneAnnuakWh(kWp: number, resa = RESA_SPECIFICA_DEFAULT_KWH_KWP): number {
   if (kWp <= 0) return 0
   return Math.round(kWp * resa)
+}
+
+/**
+ * Produzione annua dal layout + falda/posizione dello studio.
+ * Usa inclinazione, esposizione e latitudine; altrimenti fallback a resa fissa.
+ */
+export function stimaProduzioneDaStudio(
+  snapshot: Pick<
+    SnapshotStudioTetto,
+    'analisi' | 'layout' | 'faldeRimosse'
+  >,
+): number {
+  const kWp = kWpDaLayout(snapshot.layout)
+  if (kWp <= 0) return 0
+
+  const falde = (snapshot.analisi.falde ?? []).filter(
+    (f) => !snapshot.faldeRimosse.includes(f.indice),
+  )
+  const faldaIdx = snapshot.layout?.faldaIndice
+  const falda =
+    faldaIdx != null ? falde.find((f) => f.indice === faldaIdx) : falde[0]
+
+  const lat =
+    snapshot.analisi.location?.latitude ??
+    falda?.center?.latitude ??
+    null
+  if (lat == null || !falda) {
+    return stimaProduzioneAnnuakWh(kWp)
+  }
+
+  const sunshineVals = falde
+    .map((f) => f.sunshineMedio)
+    .filter((v): v is number => v != null && v > 0)
+  const sunshineMedioTetto =
+    sunshineVals.length > 0
+      ? sunshineVals.reduce((a, b) => a + b, 0) / sunshineVals.length
+      : null
+
+  return stimaProduzioneFalda({
+    kWp,
+    latitudine: lat,
+    pitchDegrees: falda.pitchDegrees,
+    azimuthDegrees: falda.azimuthDegrees,
+    sunshineMedio: falda.sunshineMedio,
+    sunshineMedioTetto,
+  }).produzioneKwh
 }
 
 export function studioCompleto(snapshot: SnapshotStudioTetto): boolean {

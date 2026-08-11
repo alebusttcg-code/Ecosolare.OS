@@ -88,6 +88,30 @@ export interface SimulazionePdf {
   readonly orizzonteAnni: number
 }
 
+export interface BloccoTermicoPdf {
+  readonly tipoEtichetta: string
+  readonly descrizione: string
+  readonly prezzoLordo: string
+  readonly detrazionePct: string
+  readonly detrazioneImporto: string
+  readonly contoTermico: string | null
+  readonly nettoIndicativo: string
+}
+
+export interface DossierTestualePdf {
+  readonly incluso: readonly string[]
+  readonly escluso: readonly string[]
+  readonly garanzie: readonly { readonly titolo: string; readonly punti: readonly string[] }[]
+  readonly notaGaranzia: string
+}
+
+export interface PlanimetriaPdfDto {
+  readonly viewBox: string
+  readonly poligonoPath: string
+  readonly moduliPaths: readonly string[]
+  readonly legenda: string
+}
+
 export interface DatiPdfPreventivo {
   readonly codice: string
   readonly titolo: string
@@ -101,7 +125,12 @@ export interface DatiPdfPreventivo {
   readonly copertinaKpi: CopertinaKpiPdf | null
   readonly dettagliImpianto: DettagliImpiantoPdf | null
   readonly condizioniEconomiche: CondizioniEconomichePdf | null
+  readonly bloccoTermico: BloccoTermicoPdf | null
+  readonly dossierTestuale: DossierTestualePdf
+  readonly planimetria: PlanimetriaPdfDto | null
   readonly simulazione: SimulazionePdf | null
+  /** Data-URI PNG delle pagine marketing (ordine di stampa). */
+  readonly pagineMarketing: readonly string[]
   readonly righe: readonly RigaPdfPreventivo[]
   readonly scontoGlobalePct: string | null
   readonly imponibile: string

@@ -12,7 +12,8 @@ import {
   siteStudies,
   sites,
 } from '@/db/schema'
-import { importoDaEuro } from '@/lib/domain/money'
+import { normalizzaDossier } from '@/lib/domain/dossier-preventivo'
+import { formattaImporto, importoDaEuro } from '@/lib/domain/money'
 import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
 import type { SnapshotStudioTetto } from '@/lib/domain/studio-tetto'
 import {
@@ -22,7 +23,14 @@ import {
   formattaQuantita,
   type DatiPdfPreventivo,
 } from '@/lib/pdf/dati-preventivo'
+import {
+  ESCLUSO_OFFERTA,
+  GARANZIE_TESTI,
+  INCLUSO_FV,
+  NOTA_GARANZIA,
+} from '@/lib/pdf/dossier-testi'
 import { mappaSimulazionePerPdf } from '@/lib/pdf/mappa-simulazione-pdf'
+import { planimetriaDaStudio } from '@/lib/pdf/planimetria-moduli'
 import { getParametriSimulazioneFv } from '@/lib/queries/parametri-simulazione'
 
 export interface RigaVisibile {
@@ -143,6 +151,7 @@ export async function getQuoteVersionPerPdf(
       studioConsumo: siteStudies.consumoKwh,
       studioIndirizzo: siteStudies.formattedAddress,
       studioPayload: siteStudies.payload,
+      dossier: quoteVersions.dossier,
     })
     .from(quoteVersions)
     .innerJoin(quotes, eq(quotes.id, quoteVersions.quoteId))
@@ -224,6 +233,7 @@ export async function getQuoteVersionPerPdf(
   let dettagliImpianto: DatiPdfPreventivo['dettagliImpianto'] = null
   let condizioniEconomiche: DatiPdfPreventivo['condizioniEconomiche'] = null
   let simulazione: DatiPdfPreventivo['simulazione'] = null
+  let planimetria: DatiPdfPreventivo['planimetria'] = null
 
   const payload = riga.studioPayload as SnapshotStudioTetto | null
   if (payload?.layout && payload.produzioneAnnuakWh > 0) {
@@ -237,6 +247,33 @@ export async function getQuoteVersionPerPdf(
     dettagliImpianto = mappata.dettagliImpianto
     condizioniEconomiche = mappata.condizioniEconomiche
     simulazione = mappata.simulazione
+    planimetria = planimetriaDaStudio(payload)
+  }
+
+  const dossier = normalizzaDossier(riga.dossier)
+  let bloccoTermico: DatiPdfPreventivo['bloccoTermico'] = null
+  if (dossier.termico?.presente) {
+    const t = dossier.termico
+    const prezzoCents = importoDaEuro(t.prezzoLordoEur)
+    const detrazioneCents = Math.round((prezzoCents * t.detrazionePct) / 100)
+    const tipoEtichetta =
+      t.tipo === 'pdc'
+        ? 'Pompa di calore'
+        : t.tipo === 'ibrido'
+          ? 'Caldaia ibrida'
+          : 'Impianto termico'
+    bloccoTermico = {
+      tipoEtichetta,
+      descrizione: t.descrizione,
+      prezzoLordo: formattaImporto(prezzoCents),
+      detrazionePct: `${t.detrazionePct.toLocaleString('it-IT')}%`,
+      detrazioneImporto: formattaImporto(detrazioneCents),
+      contoTermico:
+        t.contoTermicoEur != null
+          ? formattaImporto(importoDaEuro(t.contoTermicoEur))
+          : null,
+      nettoIndicativo: formattaImporto(prezzoCents - detrazioneCents),
+    }
   }
 
   return {
@@ -252,7 +289,16 @@ export async function getQuoteVersionPerPdf(
     copertinaKpi,
     dettagliImpianto,
     condizioniEconomiche,
+    bloccoTermico,
+    dossierTestuale: {
+      incluso: INCLUSO_FV,
+      escluso: ESCLUSO_OFFERTA,
+      garanzie: GARANZIE_TESTI,
+      notaGaranzia: NOTA_GARANZIA,
+    },
+    planimetria,
     simulazione,
+    pagineMarketing: [],
     righe: righeDb.map((r) => {
       const sconto = Number.parseFloat(r.discountPct)
       return {

@@ -9,7 +9,7 @@ import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
 import {
   kWpDaLayout,
-  stimaProduzioneAnnuakWh,
+  stimaProduzioneDaStudio,
   studioCompleto,
   type SnapshotStudioTetto,
 } from '@/lib/domain/studio-tetto'
@@ -59,21 +59,24 @@ function normalizzaSnapshot(
   grezzo: z.infer<typeof snapshotSchema>,
 ): SnapshotStudioTetto {
   const layout = grezzo.layout
-  const kWp = kWpDaLayout(layout)
-  const produzione =
-    grezzo.produzioneAnnuakWh != null && grezzo.produzioneAnnuakWh > 0
-      ? grezzo.produzioneAnnuakWh
-      : stimaProduzioneAnnuakWh(kWp)
-
-  return {
+  const base: SnapshotStudioTetto = {
     analisi: grezzo.analisi as SnapshotStudioTetto['analisi'],
     poligoni: grezzo.poligoni,
     faldeRimosse: grezzo.faldeRimosse,
     layout,
     consumoAnnuoKwh: grezzo.consumoAnnuoKwh,
-    produzioneAnnuakWh: produzione,
+    produzioneAnnuakWh: 0,
     tariffaImportEurKwh: grezzo.tariffaImportEurKwh,
     tariffaExportEurKwh: grezzo.tariffaExportEurKwh,
+  }
+  const produzione =
+    grezzo.produzioneAnnuakWh != null && grezzo.produzioneAnnuakWh > 0
+      ? grezzo.produzioneAnnuakWh
+      : stimaProduzioneDaStudio(base)
+
+  return {
+    ...base,
+    produzioneAnnuakWh: produzione,
     ...(grezzo.frazioneAutoconsumo != null
       ? { frazioneAutoconsumo: grezzo.frazioneAutoconsumo }
       : {}),

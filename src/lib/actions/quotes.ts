@@ -28,6 +28,10 @@ import {
   registraEsitoCliente,
   type StatoVersione,
 } from '@/lib/domain/quote-lifecycle'
+import {
+  normalizzaDossier,
+  type DossierPreventivo,
+} from '@/lib/domain/dossier-preventivo'
 import { unitaRichiedeIntero } from '@/lib/domain/unita'
 import { getParametriSimulazioneFv } from '@/lib/queries/parametri-simulazione'
 import type { ActionResult } from './opportunities'
@@ -158,12 +162,29 @@ const rigaSchema = z
     }
   })
 
+const bloccoTermicoSchema = z
+  .object({
+    presente: z.boolean(),
+    tipo: z.enum(['pdc', 'ibrido', 'altro']),
+    descrizione: z.string().trim().max(500),
+    prezzoLordoEur: z.number().min(0).max(1_000_000),
+    detrazionePct: z.number().min(0).max(100),
+    contoTermicoEur: z.number().min(0).max(1_000_000).nullable(),
+  })
+  .nullable()
+  .optional()
+
 const salvaRigheSchema = z.object({
   versionId: z.uuid(),
   globalDiscountPct: z.number().min(0).max(100).default(0),
   righe: z.array(rigaSchema).max(200),
   notes: z.string().trim().max(4000).optional(),
   validUntil: z.date().optional(),
+  dossier: z
+    .object({
+      termico: bloccoTermicoSchema,
+    })
+    .optional(),
 })
 
 /**
@@ -293,6 +314,13 @@ export async function saveQuoteLines(
         })),
         notes: dati.notes ?? null,
         validUntil: dati.validUntil ?? null,
+        ...(dati.dossier !== undefined
+          ? {
+              dossier: normalizzaDossier(
+                dati.dossier as DossierPreventivo,
+              ) as DossierPreventivo,
+            }
+          : {}),
         updatedAt: new Date(),
       })
       .where(eq(quoteVersions.id, dati.versionId))
@@ -549,6 +577,7 @@ export async function newQuoteVersion(
         globalDiscountPct: precedente?.globalDiscountPct ?? '0.00',
         notes: precedente?.notes ?? null,
         termsAndConditions: precedente?.termsAndConditions ?? null,
+        dossier: precedente?.dossier ?? null,
         createdBy: utente.id,
       })
       .returning({ id: quoteVersions.id })

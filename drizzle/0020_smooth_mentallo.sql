@@ -1,0 +1,1 @@
+ALTER TABLE "quote_versions" ADD COLUMN "dossier" jsonb;

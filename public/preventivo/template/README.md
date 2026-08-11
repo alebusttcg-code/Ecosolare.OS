@@ -2,4 +2,4 @@
 
 Pagine marketing condivise dai dossier commerciali (garanzie, perché EcoSolare,
 Altroconsumo, recensioni, garanzia 10 anni). Estratte dai PDF di riferimento
-e riusate nel generatore PDF del CRM (fasi B/C).
+e inserite a pagina intera nel generatore PDF del CRM.

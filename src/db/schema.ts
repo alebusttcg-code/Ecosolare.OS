@@ -1045,6 +1045,11 @@ export const quoteVersions = pgTable(
 
     notes: text('notes'),
     termsAndConditions: text('terms_and_conditions'),
+    /**
+     * Extra commerciali del dossier (es. blocco termico/PdC).
+     * Forma: {@link import('@/lib/domain/dossier-preventivo').DossierPreventivo}.
+     */
+    dossier: jsonb('dossier'),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
