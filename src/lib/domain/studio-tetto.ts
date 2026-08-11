@@ -26,7 +26,7 @@ export interface SnapshotStudioTetto {
   readonly layouts: readonly LayoutStudioFalda[]
   /**
    * Legacy: un solo layout. Se presente in payload vecchi viene fuso in
-   * `layouts` da `normalizzaLayouts`.
+   * `layouts` da `layoutsDelloStudio`.
    */
   readonly layout?: LayoutStudioFalda | null
   readonly consumoAnnuoKwh: number
@@ -42,7 +42,7 @@ export interface SnapshotStudioTetto {
  */
 export const RESA_SPECIFICA_DEFAULT_KWH_KWP = 1320
 
-/** Unifica `layouts` e l’eventuale `layout` legacy. */
+/** Unifica `layouts` e l’eventuale `layout` legacy (senza filtrare le rimosse). */
 export function layoutsDelloStudio(
   snapshot:
     | {
@@ -55,7 +55,6 @@ export function layoutsDelloStudio(
   if (!snapshot) return []
   const daArray = (snapshot.layouts ?? []).filter((l) => l.moduli.length > 0)
   if (daArray.length > 0) {
-    // Dedup per faldaIndice (ultima vince)
     const mappa = new Map<number, LayoutStudioFalda>()
     for (const l of daArray) mappa.set(l.faldaIndice, l)
     return [...mappa.values()].sort((a, b) => a.faldaIndice - b.faldaIndice)
@@ -64,6 +63,21 @@ export function layoutsDelloStudio(
     return [snapshot.layout]
   }
   return []
+}
+
+/**
+ * Layout su falde ancora presenti nello studio (esclude `faldeRimosse`).
+ * Usare per kWp, produzione, PDF e completamento.
+ */
+export function layoutsAttivi(
+  snapshot: {
+    readonly layouts?: readonly LayoutStudioFalda[] | null
+    readonly layout?: LayoutStudioFalda | null
+    readonly faldeRimosse?: readonly number[] | null
+  } | null | undefined,
+): readonly LayoutStudioFalda[] {
+  const rimossi = new Set(snapshot?.faldeRimosse ?? [])
+  return layoutsDelloStudio(snapshot).filter((l) => !rimossi.has(l.faldaIndice))
 }
 
 export function kWpDaLayout(layout: LayoutStudioFalda | null | undefined): number {
@@ -94,8 +108,8 @@ export function stimaProduzioneAnnuakWh(
 }
 
 /**
- * Produzione annua sommando ogni falda con i propri moduli.
- * Ogni falda usa inclinazione, esposizione e latitudine proprie.
+ * Produzione annua sommando ogni falda attiva con i propri moduli.
+ * Layout su falde rimosse o assenti dall’analisi non contano.
  */
 export function stimaProduzioneDaStudio(
   snapshot: Pick<
@@ -103,7 +117,7 @@ export function stimaProduzioneDaStudio(
     'analisi' | 'layouts' | 'layout' | 'faldeRimosse'
   >,
 ): number {
-  const layouts = layoutsDelloStudio(snapshot)
+  const layouts = layoutsAttivi(snapshot)
   if (layouts.length === 0) return 0
 
   const falde = (snapshot.analisi.falde ?? []).filter(
@@ -124,11 +138,11 @@ export function stimaProduzioneDaStudio(
     const kWp = kWpDaLayout(layout)
     if (kWp <= 0) continue
     const falda = falde.find((f) => f.indice === layout.faldaIndice)
-    const lat = falda?.center?.latitude ?? latFallback
-    if (lat == null || !falda) {
-      totale += stimaProduzioneAnnuakWh(kWp)
-      continue
-    }
+    // Falda non più nell’analisi: non inventare kWh (evita orfani).
+    if (!falda) continue
+    const lat = falda.center?.latitude ?? latFallback
+    if (lat == null) continue
+
     totale += stimaProduzioneFalda({
       kWp,
       latitudine: lat,
@@ -143,7 +157,7 @@ export function stimaProduzioneDaStudio(
 
 export function studioCompleto(snapshot: SnapshotStudioTetto): boolean {
   if (!snapshot.analisi?.falde?.length) return false
-  if (layoutsDelloStudio(snapshot).length < 1) return false
+  if (layoutsAttivi(snapshot).length < 1) return false
   if (!(snapshot.consumoAnnuoKwh >= 0)) return false
   if (!(snapshot.produzioneAnnuakWh > 0)) return false
   return true

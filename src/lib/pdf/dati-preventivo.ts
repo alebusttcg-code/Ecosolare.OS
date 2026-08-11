@@ -110,6 +110,13 @@ export interface PlanimetriaPdfDto {
   readonly poligoniPaths: readonly string[]
   readonly moduliPaths: readonly string[]
   readonly legenda: string
+  /**
+   * Ortofoto satellitare (data-URI) con moduli proiettati in pixel.
+   * null = solo schema geometrico (fallback senza Static Maps).
+   */
+  readonly fotoDataUri: string | null
+  readonly fotoPixelW?: number
+  readonly fotoPixelH?: number
 }
 
 export interface DatiPdfPreventivo {

@@ -10,7 +10,7 @@ import {
 import {
   contaModuli,
   kWpDaLayouts,
-  layoutsDelloStudio,
+  layoutsAttivi,
   type SnapshotStudioTetto,
 } from '@/lib/domain/studio-tetto'
 
@@ -64,7 +64,7 @@ export type RisultatoSimulazioneFv = {
 
 export function simulaImpiantoFv(input: InputSimulazioneFv): RisultatoSimulazioneFv {
   const { snapshot, parametri } = input
-  const layouts = layoutsDelloStudio(snapshot)
+  const layouts = layoutsAttivi(snapshot)
   const moduli = contaModuli(layouts)
   const kWp = kWpDaLayouts(layouts)
   const produzioneKwh = Math.round(snapshot.produzioneAnnuakWh)

@@ -16,7 +16,7 @@ import { normalizzaDossier } from '@/lib/domain/dossier-preventivo'
 import { formattaImporto, importoDaEuro } from '@/lib/domain/money'
 import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
 import {
-  layoutsDelloStudio,
+  layoutsAttivi,
   type SnapshotStudioTetto,
 } from '@/lib/domain/studio-tetto'
 import {
@@ -120,9 +120,15 @@ export async function getQuoteVersion(versionId: string, mostraCosti: boolean) {
  * Non include costi né margini: il documento esce dall'azienda e non deve
  * rivelare prezzi di acquisto (ADR-006).
  */
+export type QuoteVersionPdfBundle = {
+  readonly dati: DatiPdfPreventivo
+  /** Snapshot studio per ortofoto satellitare in generazione PDF. */
+  readonly studio: SnapshotStudioTetto | null
+}
+
 export async function getQuoteVersionPerPdf(
   versionId: string,
-): Promise<DatiPdfPreventivo | null> {
+): Promise<QuoteVersionPdfBundle | null> {
   const db = getDb()
 
   const [riga] = await db
@@ -202,34 +208,6 @@ export async function getQuoteVersionPerPdf(
 
   const dataRiferimento = riga.sentAt ?? riga.createdAt
 
-  const kWpNum = riga.studioKwp != null ? Number.parseFloat(riga.studioKwp) : NaN
-  const prodNum =
-    riga.studioProduzione != null ? Number.parseFloat(riga.studioProduzione) : NaN
-  const consNum =
-    riga.studioConsumo != null ? Number.parseFloat(riga.studioConsumo) : NaN
-  const copertinaKpi =
-    riga.studioModuli != null &&
-    Number.isFinite(kWpNum) &&
-    kWpNum > 0 &&
-    Number.isFinite(prodNum) &&
-    prodNum > 0
-      ? {
-          moduli: riga.studioModuli,
-          kWp: kWpNum.toLocaleString('it-IT', {
-            maximumFractionDigits: 2,
-          }),
-          produzioneMwh: (prodNum / 1000).toLocaleString('it-IT', {
-            maximumFractionDigits: 2,
-          }),
-          consumoMwh:
-            Number.isFinite(consNum) && consNum > 0
-              ? (consNum / 1000).toLocaleString('it-IT', {
-                  maximumFractionDigits: 2,
-                })
-              : null,
-        }
-      : null
-
   const indirizzoDaStudio =
     !indirizzoImmobile && riga.studioIndirizzo ? riga.studioIndirizzo : null
 
@@ -237,11 +215,12 @@ export async function getQuoteVersionPerPdf(
   let condizioniEconomiche: DatiPdfPreventivo['condizioniEconomiche'] = null
   let simulazione: DatiPdfPreventivo['simulazione'] = null
   let planimetria: DatiPdfPreventivo['planimetria'] = null
+  let copertinaKpi: DatiPdfPreventivo['copertinaKpi'] = null
 
   const payload = riga.studioPayload as SnapshotStudioTetto | null
   if (
     payload &&
-    layoutsDelloStudio(payload).length > 0 &&
+    layoutsAttivi(payload).length > 0 &&
     payload.produzioneAnnuakWh > 0
   ) {
     const parametri = await getParametriSimulazioneFv()
@@ -255,6 +234,22 @@ export async function getQuoteVersionPerPdf(
     condizioniEconomiche = mappata.condizioniEconomiche
     simulazione = mappata.simulazione
     planimetria = planimetriaDaStudio(payload)
+    // Stessa fonte di dettagli/planimetria/simulazione (niente colonne denormalizzate).
+    if (sim.moduli > 0 && sim.kWp > 0 && sim.produzioneKwh > 0) {
+      copertinaKpi = {
+        moduli: sim.moduli,
+        kWp: sim.kWp.toLocaleString('it-IT', { maximumFractionDigits: 2 }),
+        produzioneMwh: (sim.produzioneKwh / 1000).toLocaleString('it-IT', {
+          maximumFractionDigits: 2,
+        }),
+        consumoMwh:
+          sim.consumoKwh > 0
+            ? (sim.consumoKwh / 1000).toLocaleString('it-IT', {
+                maximumFractionDigits: 2,
+              })
+            : null,
+      }
+    }
   }
 
   const dossier = normalizzaDossier(riga.dossier)
@@ -283,7 +278,10 @@ export async function getQuoteVersionPerPdf(
     }
   }
 
-  return {
+  const studio =
+    payload && layoutsAttivi(payload).length > 0 ? payload : null
+
+  const dati: DatiPdfPreventivo = {
     codice: riga.quoteCode,
     titolo: riga.quoteTitle,
     versione: riga.versionNo,
@@ -330,6 +328,8 @@ export async function getQuoteVersionPerPdf(
     totaleLordo: formattaEuroDb(riga.grossTotal),
     note: riga.notes?.trim() || null,
   }
+
+  return { dati, studio }
 }
 
 /** Catalogo attivo per il selettore di riga. */

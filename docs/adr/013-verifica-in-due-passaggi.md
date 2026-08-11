@@ -1,6 +1,10 @@
 # ADR-013 — Verifica in due passaggi con TOTP, obbligatoria dove serve
 
-**Stato:** accettata · **Data:** 11 agosto 2026
+**Stato:** superata · **Data:** 11 agosto 2026 · **Superata il:** 11 agosto 2026
+
+> **Superata:** l’accesso torna a email + password senza secondo fattore
+> (frizione operativa). Vedi D-018 revocata nel registro decisioni. Le colonne
+> `totp_*` restano nello schema inutilizzate.
 
 ## Contesto
 

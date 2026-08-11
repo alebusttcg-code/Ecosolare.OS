@@ -17,13 +17,6 @@ export function ModuloAccesso() {
    * battitura si finirebbe a riscrivere ogni volta anche l'indirizzo giusto.
    */
   const [email, setEmail] = useState('')
-  /**
-   * Al secondo passaggio la password serve di nuovo: si rimanda tutto insieme.
-   * È il prezzo per non avere in giro uno stato «mezzo autenticato», che
-   * sarebbe una cosa in più da proteggere e da far scadere.
-   */
-  const [password, setPassword] = useState('')
-  const [chiedeCodice, setChiedeCodice] = useState(false)
   const { inCorso, esegui } = useAzioneServer()
 
   return (
@@ -31,20 +24,11 @@ export function ModuloAccesso() {
       action={(formData) => {
         setErrore(null)
         esegui(async () => {
-          const codice = String(formData.get('codice') ?? '').trim()
-          const esito = await accedi({
-            email,
-            password,
-            ...(codice ? { codice } : {}),
-          })
+          const password = String(formData.get('password') ?? '')
+          const esito = await accedi({ email, password })
 
           if (!esito.ok) {
-            setErrore(esito.errors.codice ?? esito.errors._ ?? 'Accesso non riuscito.')
-            return
-          }
-
-          if (esito.data.richiedeCodice) {
-            setChiedeCodice(true)
+            setErrore(esito.errors._ ?? 'Accesso non riuscito.')
             return
           }
 
@@ -81,58 +65,32 @@ export function ModuloAccesso() {
         ) : null}
       </div>
 
-      {chiedeCodice ? (
-        <>
-          <p className="text-sm" style={{ color: 'var(--testo-tenue)' }}>
-            Scrivi il codice a sei cifre dell&apos;app di autenticazione. Se hai perso
-            il telefono, va bene anche uno dei codici di recupero.
-          </p>
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium">Email</span>
+        <input
+          name="email"
+          type="email"
+          autoComplete="username"
+          required
+          autoFocus
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={CAMPO}
+          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        />
+      </label>
 
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium">Codice</span>
-            <input
-              name="codice"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              required
-              autoFocus
-              className={`${CAMPO} font-mono tracking-[0.3em]`}
-              style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
-            />
-          </label>
-        </>
-      ) : (
-        <>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium">Email</span>
-            <input
-              name="email"
-              type="email"
-              autoComplete="username"
-              required
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={CAMPO}
-              style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium">Password</span>
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={CAMPO}
-              style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
-            />
-          </label>
-        </>
-      )}
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium">Password</span>
+        <input
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          className={CAMPO}
+          style={{ background: 'var(--superficie)', borderColor: 'var(--bordo)' }}
+        />
+      </label>
 
       <button
         type="submit"
@@ -143,23 +101,8 @@ export function ModuloAccesso() {
           color: '#050a14',
         }}
       >
-        {inCorso ? 'Verifica…' : chiedeCodice ? 'Conferma' : 'Accedi'}
+        {inCorso ? 'Verifica…' : 'Accedi'}
       </button>
-
-      {chiedeCodice ? (
-        <button
-          type="button"
-          onClick={() => {
-            setChiedeCodice(false)
-            setErrore(null)
-            setPassword('')
-          }}
-          className="w-full text-center text-xs underline"
-          style={{ color: 'var(--testo-fioco)' }}
-        >
-          Torna indietro
-        </button>
-      ) : null}
     </form>
   )
 }

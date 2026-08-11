@@ -21,7 +21,7 @@ ricostruire il ragionamento a memoria.
 | [010](010-pglite-per-i-test.md) | PGlite per i test, PostgreSQL gestito per tutto il resto | Accettata |
 | [011](011-drive-specchio-non-archivio.md) | Google Drive è uno specchio, non l'archivio | Accettata |
 | [012](012-nessuna-cancellazione-dei-file.md) | Nessun file viene mai cancellato | Accettata |
-| [013](013-verifica-in-due-passaggi.md) | Verifica in due passaggi con TOTP | Accettata |
+| [013](013-verifica-in-due-passaggi.md) | Verifica in due passaggi con TOTP | Superata |
 | [014](014-pagina-pubblica-stato-cliente.md) | Pagina di stato per il cliente, senza account | Accettata |
 
 Riferimento esteso: [§8.3 del blueprint](../00-discovery-blueprint-v1.md).

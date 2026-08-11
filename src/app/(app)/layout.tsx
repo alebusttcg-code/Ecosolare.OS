@@ -4,7 +4,6 @@ import { AvvisiProvider } from '@/components/avvisi'
 import { Sidebar, type VoceMenu } from '@/components/sidebar'
 import { TransizionePagina } from '@/components/transizione'
 import { esci } from '@/lib/actions/auth'
-import { mfaObbligatoria } from '@/lib/auth/mfa'
 import { can, type Action, type Resource, type Role } from '@/lib/auth/policy'
 import { getCurrentUser } from '@/lib/auth/session'
 import { contaAttivitaScadute } from '@/lib/queries/dashboard'
@@ -80,11 +79,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // Finche' la password e' quella assegnata dall'amministratore, la sessione
   // non identifica ancora la persona: nessun dato prima del cambio.
   if (utente.mustChangePassword) redirect('/cambia-password')
-
-  // Ruoli che vedono costi e anagrafiche complete non entrano senza secondo
-  // fattore (D-018). Il controllo sta qui e non nel middleware perche' dipende
-  // dal ruolo, che si legge dal database.
-  if (mfaObbligatoria(utente.role) && !utente.mfaAttiva) redirect('/due-passaggi')
 
   // Contatori nel menu. In sequenza: su Vercel il pool DB è da 1 connessione
   // e due query parallele nel layout bloccano spesso la navigazione.

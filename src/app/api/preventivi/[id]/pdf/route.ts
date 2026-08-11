@@ -26,16 +26,16 @@ export async function GET(
     throw errore
   }
 
-  const dati = await getQuoteVersionPerPdf(id)
-  if (!dati) {
+  const bundle = await getQuoteVersionPerPdf(id)
+  if (!bundle) {
     return NextResponse.json(
       { errore: 'Preventivo non trovato o senza righe da stampare.' },
       { status: 404 },
     )
   }
 
-  const pdf = await generaPdfPreventivo(dati)
-  const nome = nomeFilePreventivo(dati.codice, dati.versione)
+  const pdf = await generaPdfPreventivo(bundle.dati, { studio: bundle.studio })
+  const nome = nomeFilePreventivo(bundle.dati.codice, bundle.dati.versione)
 
   return new NextResponse(new Uint8Array(pdf), {
     status: 200,

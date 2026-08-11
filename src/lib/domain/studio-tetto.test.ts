@@ -3,6 +3,7 @@ import {
   contaModuli,
   kWpDaLayout,
   kWpDaLayouts,
+  layoutsAttivi,
   layoutsDelloStudio,
   RESA_SPECIFICA_DEFAULT_KWH_KWP,
   stimaProduzioneAnnuakWh,
@@ -134,5 +135,50 @@ describe('studio tetto — multi-falda', () => {
     expect(studioCompleto(base)).toBe(true)
     expect(studioCompleto({ ...base, layouts: [] })).toBe(false)
     expect(studioCompleto({ ...base, produzioneAnnuakWh: 0 })).toBe(false)
+  })
+
+  it('ignora layout su falde rimosse in kWp/produzione/completamento', () => {
+    const conRimossa: SnapshotStudioTetto = {
+      analisi: analisiDueFalde,
+      poligoni: {},
+      faldeRimosse: [1],
+      layouts: [layoutFalda(0, 6), layoutFalda(1, 6)],
+      consumoAnnuoKwh: 8000,
+      produzioneAnnuakWh: 1,
+      tariffaImportEurKwh: 0.3,
+      tariffaExportEurKwh: 0.1,
+    }
+    expect(layoutsAttivi(conRimossa)).toHaveLength(1)
+    expect(layoutsAttivi(conRimossa)[0]!.faldaIndice).toBe(0)
+    expect(layoutsDelloStudio(conRimossa)).toHaveLength(2)
+
+    const soloAttiva = stimaProduzioneDaStudio({
+      analisi: analisiDueFalde,
+      faldeRimosse: [1],
+      layouts: [layoutFalda(0, 6)],
+    })
+    const conOrfana = stimaProduzioneDaStudio({
+      analisi: analisiDueFalde,
+      faldeRimosse: [1],
+      layouts: [layoutFalda(0, 6), layoutFalda(1, 6)],
+    })
+    expect(conOrfana).toBe(soloAttiva)
+
+    expect(
+      studioCompleto({
+        ...conRimossa,
+        layouts: [layoutFalda(1, 6)],
+        produzioneAnnuakWh: 5000,
+      }),
+    ).toBe(false)
+  })
+
+  it('ignora layout su indice falda assente dall’analisi', () => {
+    const prod = stimaProduzioneDaStudio({
+      analisi: analisiDueFalde,
+      faldeRimosse: [],
+      layouts: [layoutFalda(99, 12)],
+    })
+    expect(prod).toBe(0)
   })
 })

@@ -199,6 +199,81 @@ describe('economia FV — bollette da situazione cliente', () => {
     expect(b.kWp).toBe(6)
   })
 
+  it('esclude moduli su falde rimosse da kWp e elenco falde', () => {
+    const base = snapshotCliente({
+      consumoAnnuoKwh: 5000,
+      produzioneAnnuakWh: 8000,
+      frazioneAutoconsumo: 0.4,
+      layouts: [
+        {
+          faldaIndice: 0,
+          formatoId: 'mod-500',
+          wattPicco: 500,
+          quantitaRichiesta: 6,
+          landscape: true,
+          moduli: Array.from({ length: 6 }, () => ({
+            angoli: [
+              { latitude: 0, longitude: 0 },
+              { latitude: 0, longitude: 0.001 },
+              { latitude: 0.001, longitude: 0.001 },
+              { latitude: 0.001, longitude: 0 },
+            ] as const,
+            centro: { latitude: 0.0005, longitude: 0.0005 },
+            rotazioneDegrees: 0,
+          })),
+        },
+        {
+          faldaIndice: 1,
+          formatoId: 'mod-500',
+          wattPicco: 500,
+          quantitaRichiesta: 4,
+          landscape: true,
+          moduli: Array.from({ length: 4 }, () => ({
+            angoli: [
+              { latitude: 0, longitude: 0 },
+              { latitude: 0, longitude: 0.001 },
+              { latitude: 0.001, longitude: 0.001 },
+              { latitude: 0.001, longitude: 0 },
+            ] as const,
+            centro: { latitude: 0.0005, longitude: 0.0005 },
+            rotazioneDegrees: 0,
+          })),
+        },
+      ],
+    })
+    // snapshotCliente ha una sola falda indice 0: forziamo due falde + rimozione.
+    const conDue = {
+      ...base,
+      faldeRimosse: [1],
+      analisi: {
+        ...base.analisi,
+        falde: [
+          ...base.analisi.falde,
+          {
+            indice: 1,
+            pitchDegrees: 15,
+            azimuthDegrees: 90,
+            areaMeters2: 20,
+            groundAreaMeters2: 19,
+            center: { latitude: 45.1, longitude: 9.2 },
+            boundingBox: null,
+            sunshineMedio: null,
+            planeHeightAtCenterMeters: null,
+          },
+        ],
+      },
+    }
+    const sim = simulaImpiantoFv({
+      snapshot: conDue,
+      investimentoLordoCents: 1_000_000,
+      parametri: PARAMETRI_TEST,
+    })
+    expect(sim.kWp).toBe(3)
+    expect(sim.moduli).toBe(6)
+    expect(sim.falde).toHaveLength(1)
+    expect(sim.falde[0]!.indice).toBe(0)
+  })
+
   it('Tarantola: detrazione 50% su 10.000 € e consumo 0', () => {
     const detrazione = calcolaDetrazioneIrpef({
       prezzoLordoCents: 1_000_000,

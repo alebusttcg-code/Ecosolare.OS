@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { createUser, resetPassword, updateUser } from '@/lib/actions/admin'
-import { azzeraMfaUtente } from '@/lib/actions/mfa'
 import { generaCodiceCollegamentoTelegram } from '@/lib/actions/telegram'
 import type { Role } from '@/lib/auth/policy'
 
@@ -28,7 +27,6 @@ export interface UtenteInElenco {
   readonly isFieldOnly: boolean
   readonly isActive: boolean
   readonly telegramCollegato: boolean
-  readonly mfaAttiva: boolean
 }
 
 export function GestioneUtenti({
@@ -313,7 +311,6 @@ function RigaUtente({
             {utente.email} · {RUOLI.find((r) => r.value === utente.role)?.label}
             {utente.canViewCosts ? ' · costi visibili' : ''}
             {utente.isFieldOnly ? ' · solo campo' : ''}
-            {utente.mfaAttiva ? ' · due passaggi attivi' : ''}
           </div>
         </div>
         <button
@@ -440,55 +437,6 @@ function RigaUtente({
       ) : null}
 
       {aperto ? <RigeneraPassword utente={utente} /> : null}
-      {aperto && utente.mfaAttiva && !eSeStesso ? <AzzeraMfa utente={utente} /> : null}
-    </div>
-  )
-}
-
-/**
- * Azzeramento della verifica in due passaggi.
- *
- * È la via d'uscita per chi perde telefono e codici di recupero insieme. Non
- * compare su se stessi: un amministratore che si azzera da solo il secondo
- * fattore vanificherebbe l'obbligo con un clic.
- */
-function AzzeraMfa({ utente }: { utente: UtenteInElenco }) {
-  const [fatto, setFatto] = useState(false)
-  const [errore, setErrore] = useState<string | null>(null)
-  const { inCorso, esegui } = useAzioneServer()
-
-  if (fatto) {
-    return (
-      <p className="mt-4 text-xs" style={{ color: 'var(--testo-tenue)' }}>
-        Verifica in due passaggi azzerata. Alla persona verrà chiesto di
-        riconfigurarla al prossimo accesso.
-      </p>
-    )
-  }
-
-  return (
-    <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--bordo)' }}>
-      <button
-        type="button"
-        disabled={inCorso}
-        onClick={() => {
-          setErrore(null)
-          esegui(async () => {
-            const esito = await azzeraMfaUtente({ userId: utente.id })
-            if (esito.ok) setFatto(true)
-            else setErrore(esito.errors._ ?? 'Operazione non riuscita.')
-          })
-        }}
-        className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
-        style={{ borderColor: 'var(--bordo)' }}
-      >
-        {inCorso ? 'Azzeramento…' : 'Azzera la verifica in due passaggi'}
-      </button>
-      <p className="mt-1 text-xs" style={{ color: 'var(--testo-tenue)' }}>
-        Da usare se ha perso telefono e codici di recupero. Chiude tutte le sue
-        sessioni e gli chiede di riconfigurarla al prossimo accesso.
-      </p>
-      {errore ? <p className="mt-1 text-xs text-eco-red-400">{errore}</p> : null}
     </div>
   )
 }

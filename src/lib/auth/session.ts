@@ -4,7 +4,6 @@ import { sessioneCorrente } from '@/auth'
 import { getDb } from '@/db'
 import { users } from '@/db/schema'
 import { recordAccessDenied } from '@/lib/audit'
-import { mfaObbligatoria } from './mfa'
 import {
   AuthorizationError,
   authorize,
@@ -63,21 +62,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 /**
  * Come `getCurrentUser`, ma solleva invece di restituire null.
  *
- * Di default applica anche l’obbligo MFA (D-018): il layout reindirizza a
- * `/due-passaggi`, ma le server action devono rifiutare da sole — altrimenti
- * una sessione senza secondo fattore può ancora toccare i dati.
- *
- * `consentitoSenzaMfa` è solo per i bootstrap del proprio account (enrollment
- * MFA, cambio password iniziale): non usarlo sulle azioni di dominio.
+ * `consentitoSenzaMfa` è mantenuto per compatibilità con call-site legacy
+ * (cambio password); l’obbligo MFA non è più attivo.
  */
-export async function requireUser(opzioni?: {
+export async function requireUser(_opzioni?: {
   readonly consentitoSenzaMfa?: boolean
 }): Promise<CurrentUser> {
   const utente = await getCurrentUser()
   if (!utente) throw new AuthorizationError('read', 'contact')
-  if (!opzioni?.consentitoSenzaMfa) {
-    assertMfaSeObbligatoria(utente)
-  }
   return utente
 }
 
@@ -108,7 +100,6 @@ export async function guard(
 
   try {
     authorize(utente, action, resource)
-    assertMfaSeObbligatoria(utente)
   } catch (error) {
     await recordAccessDenied({
       userId: utente.id,
@@ -122,11 +113,4 @@ export async function guard(
   }
 
   return utente
-}
-
-/** Admin/contabilità senza TOTP attivo: niente dati, solo enrollment. */
-function assertMfaSeObbligatoria(utente: CurrentUser): void {
-  if (mfaObbligatoria(utente.role) && !utente.mfaAttiva) {
-    throw new AuthorizationError('read', 'user')
-  }
 }

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { env } from '@/env'
 import { AuthorizationError } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
+import { scaricaStaticMap } from '@/lib/solar/static-map'
 
 /**
  * Proxy Static Maps (satellite): la key resta sul server.
@@ -45,34 +46,29 @@ export async function GET(request: Request) {
   }
 
   const { lat, lng, zoom, marker } = parsed.data
-  const staticUrl = new URL('https://maps.googleapis.com/maps/api/staticmap')
-  staticUrl.searchParams.set('center', `${lat},${lng}`)
-  staticUrl.searchParams.set('zoom', String(zoom))
-  staticUrl.searchParams.set('size', '640x420')
-  staticUrl.searchParams.set('scale', '2')
-  staticUrl.searchParams.set('maptype', 'satellite')
-  if (marker === '1') {
-    staticUrl.searchParams.set('markers', `color:0xd9a441|${lat},${lng}`)
-  }
-  staticUrl.searchParams.set('key', chiave)
+  const mappa = await scaricaStaticMap({
+    centro: { latitude: lat, longitude: lng },
+    zoom,
+    width: 640,
+    height: 420,
+    scale: 2,
+    maptype: 'satellite',
+    marker: marker === '1',
+    apiKey: chiave,
+  })
 
-  try {
-    const res = await fetch(staticUrl, { signal: AbortSignal.timeout(15_000) })
-    if (!res.ok) {
-      return NextResponse.json(
-        { errore: `Static Maps non disponibile (${res.status})` },
-        { status: 502 },
-      )
-    }
-    const bytes = await res.arrayBuffer()
-    return new NextResponse(bytes, {
-      status: 200,
-      headers: {
-        'Content-Type': res.headers.get('Content-Type') ?? 'image/png',
-        'Cache-Control': 'private, max-age=300',
-      },
-    })
-  } catch {
-    return NextResponse.json({ errore: 'Impossibile scaricare la mappa' }, { status: 502 })
+  if (!mappa) {
+    return NextResponse.json(
+      { errore: 'Static Maps non disponibile' },
+      { status: 502 },
+    )
   }
+
+  return new NextResponse(new Uint8Array(mappa.bytes), {
+    status: 200,
+    headers: {
+      'Content-Type': mappa.contentType,
+      'Cache-Control': 'private, max-age=300',
+    },
+  })
 }

@@ -41,18 +41,18 @@ export function mappaSimulazionePerPdf(sim: RisultatoSimulazioneFv): {
         ? `${sim.resaSpecificaKwhKwp.toLocaleString('it-IT')} kWh/kWp·anno`
         : null,
     consumoKwh: sim.consumoKwh > 0 ? kwh(sim.consumoKwh) : null,
-    falde: sim.falde.map((f, i) => ({
-      etichetta:
-        f.moduli > 0
-          ? `Falda ${i + 1} · ${f.moduli} moduli · ${f.kWp.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWp`
-          : `Falda ${i + 1}`,
-      inclinazione: `${f.pitchDegrees.toLocaleString('it-IT', { maximumFractionDigits: 1 })}°`,
-      esposizione: `${f.azimuthDegrees.toLocaleString('it-IT', { maximumFractionDigits: 0 })}°`,
-      area:
-        f.areaMeters2 != null
-          ? `${f.areaMeters2.toLocaleString('it-IT', { maximumFractionDigits: 1 })} m²`
-          : null,
-    })),
+    // Solo falde con moduli: allineato a planimetria / ortofoto.
+    falde: sim.falde
+      .filter((f) => f.moduli > 0)
+      .map((f) => ({
+        etichetta: `Falda ${f.indice + 1} · ${f.moduli} moduli · ${f.kWp.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWp`,
+        inclinazione: `${f.pitchDegrees.toLocaleString('it-IT', { maximumFractionDigits: 1 })}°`,
+        esposizione: `${f.azimuthDegrees.toLocaleString('it-IT', { maximumFractionDigits: 0 })}°`,
+        area:
+          f.areaMeters2 != null
+            ? `${f.areaMeters2.toLocaleString('it-IT', { maximumFractionDigits: 1 })} m²`
+            : null,
+      })),
     regimeRid: `Cessione dell’energia immessa valorizzata a ${sim.tariffaExportEurKwh.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} €/kWh (ipotesi RID dello studio).`,
     detrazioneSintesi: `Detrazione IRPEF ${sim.detrazione.detrazionePct.toLocaleString('it-IT')}% sul prezzo IVA inclusa (${euroCents(sim.detrazione.detrazioneTotaleCents)}), ripartita in ${sim.detrazione.anniRate} anni nel piano economico.`,
   }
@@ -71,7 +71,7 @@ export function mappaSimulazionePerPdf(sim: RisultatoSimulazioneFv): {
         ? `${eco.paybackAnni.toLocaleString('it-IT')} anni`
         : null,
     notePagamento:
-      'Modalità di pagamento e tempi di validità della proposta sono indicati in sede di accettazione. I valori energetici e di detrazione derivano dallo studio tetto e dalla configurazione vigente al momento della generazione del documento.',
+      'Modalità di pagamento e tempi di validità della proposta sono indicati in sede di accettazione. Risparmio, detrazione IRPEF, ritorno dell’investimento e bollette sono stime indicative dallo studio tetto e dalla configurazione vigente: non costituiscono quotazione fiscale, bancaria né certificazione di producibilità.',
   }
 
   const simulazione: SimulazionePdf = {

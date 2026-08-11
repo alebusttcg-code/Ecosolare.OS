@@ -2,18 +2,13 @@ import { createHash } from 'node:crypto'
 import type { Role } from './policy'
 
 /**
- * Chi deve avere per forza la verifica in due passaggi.
+ * Obbligo MFA per ruolo.
  *
- * Non tutti: obbligarla a un installatore che entra dal telefono in cantiere,
- * con la connessione che va e viene, produce solo persone che smettono di usare
- * il sistema. La si impone dove una password rubata apre davvero qualcosa —
- * costi, margini, anagrafiche complete, configurazioni — e la si lascia
- * disponibile a tutti gli altri.
- *
- * Modulo puro: la decisione non dipende da database né da richieste.
+ * Disattivato (D-018 revocata): accesso solo email + password. La funzione
+ * resta per non rompere i call-site; restituisce sempre `false`.
  */
-export function mfaObbligatoria(ruolo: Role): boolean {
-  return ruolo === 'amministratore' || ruolo === 'contabilita'
+export function mfaObbligatoria(_ruolo: Role): boolean {
+  return false
 }
 
 /**

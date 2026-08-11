@@ -55,17 +55,17 @@ L'azienda usa Google Workspace. Ne discendono tre decisioni.
 
 *Motivo:* non tutte le persone che devono entrare hanno un account Workspace del dominio, e attendere che ne abbiano uno bloccherebbe l'avvio. Il codice per Google resta previsto e le tabelle restano in schema: si potrà affiancare senza migrazioni.
 
-*Conseguenza risolta l'11 agosto 2026:* la verifica in due passaggi è stata reimplementata con TOTP — vedere D-018.
+*Conseguenza (11 agosto 2026):* TOTP in-app in D-018; **revocata l’11 agosto 2026** — accesso di nuovo solo email + password.
 
 **D-019 — Pagina di stato per il cliente, senza account**
 - Un collegamento firmato per commessa mostra al cliente a che punto è e quali documenti aspettiamo da lui.
 - Nessun importo e nessun dato economico: il collegamento è la credenziale, e può finire in mano a chiunque.
 - Dettagli: [ADR-014](adr/014-pagina-pubblica-stato-cliente.md).
 
-**D-018 — Verifica in due passaggi con TOTP** (chiude il requisito lasciato aperto da D-003a-bis)
-- Obbligatoria per `amministratore` e `contabilita`, disponibile per tutti.
-- Segreto cifrato a riposo con `MFA_SECRET_KEY`; dieci codici di recupero usa e getta.
-- Dettagli: [ADR-013](adr/013-verifica-in-due-passaggi.md).
+**D-018 — Verifica in due passaggi con TOTP** — **revocata** (11 agosto 2026)
+- Era obbligatoria per `amministratore` e `contabilita` ([ADR-013](adr/013-verifica-in-due-passaggi.md)).
+- Revocata per frizione operativa: login di nuovo **solo email + password**.
+- Colonne `totp_*` e codice legacy restano inutilizzati (nessuna migrazione drop).
 
 **D-017 — Nessun file viene mai cancellato**
 - Documenti, contabili e fotografie eliminati finiscono in un cestino senza scadenza, ripristinabile dall'amministratore.
@@ -432,8 +432,11 @@ dettagli impianto, listino/condizioni §7 e allegato simulazione.
 **Estensione Fase C** (11 agosto 2026): produzione sito-specifica
 (`produzione-fv`: latitudine, inclinazione, esposizione, sunshine relativo);
 PDF con incluso/escluso, garanzie, pagine marketing da template, planimetria
-moduli e blocco termico opzionale (`quote_versions.dossier`). Schede prodotto
-allegato catalogo restano miglioramento successivo.
+moduli (ortofoto satellitare Static Maps + overlay moduli concordati; fallback
+schema SVG se Maps non disponibile) e blocco termico opzionale
+(`quote_versions.dossier`). Tipografia dossier: Cormorant Garamond + DM Sans
+(OFL), layout editoriale abisso/oro. Schede prodotto allegato catalogo restano
+miglioramento successivo.
 
 **Multi-falda** (11 agosto 2026): i moduli possono stare su più falde nello
 stesso studio (`layouts[]`); la produzione è la somma delle stime per falda.

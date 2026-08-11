@@ -90,22 +90,24 @@ export function EditorModuli({
   poligono,
   layoutIniziale,
   onLayoutChange,
+  onTrascinamentoChange,
 }: {
   falda: FaldaTetto | null
   poligono: readonly Coordinate[] | null
   /** Layout già salvato per questa falda (multi-falda: non perdere il lavoro). */
   layoutIniziale?: LayoutModuliCorrente | null
   onLayoutChange?: (layout: LayoutModuliCorrente | null) => void
+  /** true mentre si spostano moduli: il parent non deve cambiare falda. */
+  onTrascinamentoChange?: (attivo: boolean) => void
 }) {
+  const quantitaIniziale =
+    layoutIniziale?.quantitaRichiesta ??
+    layoutIniziale?.moduli.length ??
+    12
   const [formatoId, setFormatoId] = useState(
     () => layoutIniziale?.formatoId ?? FORMATI_MODULO_FV[0]!.id,
   )
-  const [quantita, setQuantita] = useState(
-    () =>
-      layoutIniziale?.quantitaRichiesta ??
-      layoutIniziale?.moduli.length ??
-      12,
-  )
+  const [quantita, setQuantita] = useState(() => quantitaIniziale)
   const [landscape, setLandscape] = useState(
     () => layoutIniziale?.landscape ?? true,
   )
@@ -115,7 +117,9 @@ export function EditorModuli({
   } | null>(() => {
     if (!layoutIniziale?.moduli.length) return null
     const idx = layoutIniziale.faldaIndice
-    const chiave = `${idx}|${layoutIniziale.formatoId}|${layoutIniziale.landscape}|${layoutIniziale.quantitaRichiesta}`
+    const q =
+      layoutIniziale.quantitaRichiesta ?? layoutIniziale.moduli.length
+    const chiave = `${idx}|${layoutIniziale.formatoId}|${layoutIniziale.landscape}|${q}`
     return { chiave, moduli: [...layoutIniziale.moduli] }
   })
   const [selezionati, setSelezionati] = useState<ReadonlySet<number>>(
@@ -171,16 +175,68 @@ export function EditorModuli({
     ]
   }, [falda, poligono, formato, quantita, landscape])
 
+  // Se il seedKey cambia e l’auto-pack è vuoto, non perdere i moduli manuali.
+  useEffect(() => {
+    setManuale((prev) => {
+      if (!prev || prev.chiave === seedKey) return prev
+      if (autoModuli.length > 0) return null
+      if (prev.moduli.length === 0) return null
+      return { chiave: seedKey, moduli: prev.moduli }
+    })
+  }, [seedKey, autoModuli])
+
   const moduli =
     manuale && manuale.chiave === seedKey ? manuale.moduli : autoModuli
 
   const moduliRef = useRef(moduli)
   const selezionatiRef = useRef(selezionati)
+  const onLayoutChangeRef = useRef(onLayoutChange)
+  const onTrascinamentoChangeRef = useRef(onTrascinamentoChange)
+  const formatoIdRef = useRef(formatoId)
+  const quantitaRef = useRef(quantita)
+  const landscapeRef = useRef(landscape)
+  const wattPiccoRef = useRef(formato.wattPicco)
+  const faldaIndiceRef = useRef(falda?.indice ?? null)
 
   useEffect(() => {
     moduliRef.current = moduli
     selezionatiRef.current = selezionati
   }, [moduli, selezionati])
+
+  useEffect(() => {
+    onLayoutChangeRef.current = onLayoutChange
+    onTrascinamentoChangeRef.current = onTrascinamentoChange
+    formatoIdRef.current = formatoId
+    quantitaRef.current = quantita
+    landscapeRef.current = landscape
+    wattPiccoRef.current = formato.wattPicco
+    faldaIndiceRef.current = falda?.indice ?? null
+  }, [
+    onLayoutChange,
+    onTrascinamentoChange,
+    formatoId,
+    quantita,
+    landscape,
+    formato.wattPicco,
+    falda?.indice,
+  ])
+
+  /** Notifica sincrona al parent (sopravvive al remount su cambio falda). */
+  const notificaLayoutAlParent = useCallback((lista: RettangoloModulo[]) => {
+    const cb = onLayoutChangeRef.current
+    const indice = faldaIndiceRef.current
+    if (!cb || indice == null) return
+    const wp = wattPiccoRef.current
+    cb({
+      faldaIndice: indice,
+      formatoId: formatoIdRef.current,
+      wattPicco: wp,
+      quantitaRichiesta: quantitaRef.current,
+      landscape: landscapeRef.current,
+      moduli: lista,
+      kWp: (lista.length * wp) / 1000,
+    })
+  }, [])
 
   const aggiornaModuli = useCallback(
     (next: RettangoloModulo[] | ((prev: RettangoloModulo[]) => RettangoloModulo[])) => {
@@ -202,11 +258,8 @@ export function EditorModuli({
   const kWp = (moduli.length * formato.wattPicco) / 1000
 
   useEffect(() => {
-    if (!onLayoutChange) return
-    if (!falda || moduli.length === 0) {
-      onLayoutChange(null)
-      return
-    }
+    if (!onLayoutChange || !falda) return
+    // Sempre con faldaIndice: moduli vuoti = clear solo quella falda (non null cieco).
     onLayoutChange({
       faldaIndice: falda.indice,
       formatoId,
@@ -226,6 +279,17 @@ export function EditorModuli({
     landscape,
     kWp,
   ])
+
+  // Cambio falda / unmount a metà drag: flush sincrono (non solo setState).
+  useEffect(() => {
+    return () => {
+      onTrascinamentoChangeRef.current?.(false)
+      const pendenti = pendingCommitRef.current
+      pendingCommitRef.current = null
+      dragRef.current = null
+      if (pendenti?.length) notificaLayoutAlParent(pendenti)
+    }
+  }, [falda?.indice, notificaLayoutAlParent])
 
   const urlStatica = centro
     ? `/api/sviluppo/mappa?lat=${centro.latitude}&lng=${centro.longitude}&zoom=${ZOOM}&marker=0`
@@ -519,6 +583,7 @@ export function EditorModuli({
         pointer0,
       }
       pendingCommitRef.current = null
+      onTrascinamentoChangeRef.current?.(true)
       canvas.setPointerCapture(e.pointerId)
       canvas.style.cursor = 'grabbing'
     }
@@ -623,9 +688,16 @@ export function EditorModuli({
       canvas.style.cursor = zoomVistaRef.current > 1.01 ? 'grab' : 'grab'
       marqueeRef.current = null
 
+      if (drag?.tipo === 'moduli') {
+        onTrascinamentoChangeRef.current?.(false)
+      }
+
       if (pendingCommitRef.current) {
-        aggiornaModuli(pendingCommitRef.current)
+        const next = pendingCommitRef.current
         pendingCommitRef.current = null
+        // Sincrono al parent: evita perdita se il remount scarta lo state React.
+        notificaLayoutAlParent(next)
+        aggiornaModuli(next)
       }
 
       disegnaRef.current()
@@ -676,7 +748,15 @@ export function EditorModuli({
       canvas.removeEventListener('wheel', onWheel)
       zoomAtRef.current = null
     }
-  }, [falda, poligono, centro, formatoId, landscape, aggiornaModuli])
+  }, [
+    falda,
+    poligono,
+    centro,
+    formatoId,
+    landscape,
+    aggiornaModuli,
+    notificaLayoutAlParent,
+  ])
 
   const zoomRelativo = (delta: number) => {
     const canvas = canvasRef.current

@@ -10,7 +10,7 @@ import { guard } from '@/lib/auth/session'
 import {
   contaModuli,
   kWpDaLayouts,
-  layoutsDelloStudio,
+  layoutsAttivi,
   stimaProduzioneDaStudio,
   studioCompleto,
   type LayoutStudioFalda,
@@ -64,14 +64,17 @@ const salvaSchema = z.object({
 function normalizzaSnapshot(
   grezzo: z.infer<typeof snapshotSchema>,
 ): SnapshotStudioTetto {
-  const layouts = layoutsDelloStudio({
+  const faldeRimosse = grezzo.faldeRimosse
+  // Persistiamo solo layout su falde ancora attive (niente orfani).
+  const layouts = layoutsAttivi({
     layouts: grezzo.layouts as LayoutStudioFalda[] | undefined,
     layout: grezzo.layout ?? null,
+    faldeRimosse,
   })
   const base: SnapshotStudioTetto = {
     analisi: grezzo.analisi as SnapshotStudioTetto['analisi'],
     poligoni: grezzo.poligoni,
-    faldeRimosse: grezzo.faldeRimosse,
+    faldeRimosse,
     layouts,
     consumoAnnuoKwh: grezzo.consumoAnnuoKwh,
     produzioneAnnuakWh: 0,

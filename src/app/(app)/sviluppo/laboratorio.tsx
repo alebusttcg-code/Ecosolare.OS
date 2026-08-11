@@ -14,7 +14,7 @@ import { formattaImporto } from '@/lib/domain/money'
 import {
   contaModuli,
   kWpDaLayouts,
-  layoutsDelloStudio,
+  layoutsAttivi,
   stimaProduzioneDaStudio,
   type LayoutStudioFalda,
 } from '@/lib/domain/studio-tetto'
@@ -86,7 +86,7 @@ export function LaboratorioSolar({
     return out
   })
   const [faldaSelezionata, setFaldaSelezionata] = useState<number | null>(() => {
-    const layouts = layoutsDelloStudio(iniziale)
+    const layouts = layoutsAttivi(iniziale)
     return layouts[0]?.faldaIndice ?? null
   })
   /** Indici Solar esclusi dall’editor (solo sessione UI). */
@@ -99,7 +99,7 @@ export function LaboratorioSolar({
     Record<number, LayoutModuliCorrente>
   >(() => {
     const out: Record<number, LayoutModuliCorrente> = {}
-    for (const L of layoutsDelloStudio(iniziale)) {
+    for (const L of layoutsAttivi(iniziale)) {
       out[L.faldaIndice] = {
         faldaIndice: L.faldaIndice,
         formatoId: L.formatoId,
@@ -115,28 +115,27 @@ export function LaboratorioSolar({
 
   const layoutsLista = useMemo((): LayoutStudioFalda[] => {
     return Object.values(layoutsPerFalda)
-      .filter((l) => l.moduli.length > 0)
+      .filter(
+        (l) => l.moduli.length > 0 && !faldeRimosse.has(l.faldaIndice),
+      )
       .map(({ kWp: _k, ...rest }) => rest)
       .sort((a, b) => a.faldaIndice - b.faldaIndice)
-  }, [layoutsPerFalda])
+  }, [layoutsPerFalda, faldeRimosse])
 
-  const onLayoutChangeFalda = useCallback(
-    (layout: LayoutModuliCorrente | null) => {
-      setLayoutsPerFalda((prev) => {
-        if (layout && layout.moduli.length > 0) {
-          return { ...prev, [layout.faldaIndice]: layout }
-        }
-        // null senza indice: non cancellare le altre falde (unmount / deselect)
-        if (!layout && faldaSelezionata != null) {
-          const next = { ...prev }
-          delete next[faldaSelezionata]
-          return next
-        }
-        return prev
-      })
-    },
-    [faldaSelezionata],
-  )
+  const onLayoutChangeFalda = useCallback((layout: LayoutModuliCorrente | null) => {
+    // null = rumore (unmount/deselect): non cancellare nulla.
+    // Upsert solo con moduli; clear esplicito = moduli vuoti + faldaIndice noto.
+    if (!layout) return
+    setLayoutsPerFalda((prev) => {
+      if (layout.moduli.length === 0) {
+        if (!(layout.faldaIndice in prev)) return prev
+        const next = { ...prev }
+        delete next[layout.faldaIndice]
+        return next
+      }
+      return { ...prev, [layout.faldaIndice]: layout }
+    })
+  }, [])
   const [consumoAnnuoKwh, setConsumoAnnuoKwh] = useState(
     iniziale ? String(iniziale.consumoAnnuoKwh) : '8000',
   )
@@ -617,11 +616,7 @@ export function LaboratorioSolar({
               delete next[indice]
               return next
             })
-            setLayoutsPerFalda((prev) => {
-              const next = { ...prev }
-              delete next[indice]
-              return next
-            })
+            // Layout moduli restano in memoria sessione: al ripristino tornano.
             setFaldaSelezionata((sel) => (sel === indice ? null : sel))
           }}
           onRipristinaFaldeRimosse={() => {
@@ -698,6 +693,15 @@ function Risultato({
   const [vistaMobile, setVistaMobile] = useState<'mappa' | 'moduli'>('mappa')
   /** null = non ancora misurato (mostra entrambe, evita flash desktop). */
   const [desktop, setDesktop] = useState<boolean | null>(null)
+  /** Durante lo spostamento moduli non si cambia falda (evita perdite). */
+  const [trascinamentoModuli, setTrascinamentoModuli] = useState(false)
+  const selezionaFalda = useCallback(
+    (indice: number | null) => {
+      if (trascinamentoModuli) return
+      onSeleziona(indice)
+    },
+    [onSeleziona, trascinamentoModuli],
+  )
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -798,7 +802,7 @@ function Risultato({
               analisi={analisiVista}
               poligoni={poligoni}
               faldaSelezionata={faldaSelezionata}
-              onSeleziona={onSeleziona}
+              onSeleziona={selezionaFalda}
               onPoligonoCambiato={onPoligonoCambiato}
               scegliTetto={scegliTetto}
               onScegliTettoChange={onScegliTettoChange}
@@ -815,6 +819,7 @@ function Risultato({
                 poligono={verticiSelezionati}
                 layoutIniziale={layoutInizialeFalda}
                 onLayoutChange={onLayoutChange}
+                onTrascinamentoChange={setTrascinamentoModuli}
               />
             </div>
           )}
@@ -836,7 +841,7 @@ function Risultato({
           vertici={verticiSelezionati}
           grigliaDsm={grigliaDsm}
           dsmStato={dsmStato}
-          onDeseleziona={() => onSeleziona(null)}
+          onDeseleziona={() => selezionaFalda(null)}
           onRipristina={() => onRipristina(falda.indice)}
           onElimina={() => onEliminaFalda(falda.indice)}
         />
@@ -921,6 +926,11 @@ function Risultato({
       </Card>
 
       <Card title="Falde del tetto">
+        {trascinamentoModuli ? (
+          <p className="mb-3 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+            Rilascia i moduli prima di cambiare falda.
+          </p>
+        ) : null}
         {faldeVisibili.length === 0 ? (
           <Vuoto
             messaggio={
@@ -930,7 +940,10 @@ function Risultato({
             }
           />
         ) : (
-          <div className="overflow-x-auto">
+          <div
+            className="overflow-x-auto"
+            style={{ opacity: trascinamentoModuli ? 0.55 : 1 }}
+          >
             <table className="w-full min-w-[44rem] text-sm">
               <thead>
                 <tr
@@ -965,14 +978,17 @@ function Risultato({
                   return (
                     <tr
                       key={f.indice}
-                      className="riga border-b last:border-0 cursor-pointer transition-colors"
+                      className="riga border-b last:border-0 transition-colors"
                       style={{
                         borderColor: 'var(--bordo-tenue)',
                         background: attiva
                           ? 'rgba(217, 164, 65, 0.12)'
                           : undefined,
+                        cursor: trascinamentoModuli
+                          ? 'not-allowed'
+                          : 'pointer',
                       }}
-                      onClick={() => onSeleziona(f.indice)}
+                      onClick={() => selezionaFalda(f.indice)}
                     >
                       <td className="py-2.5 pr-3 tabular-nums">
                         <span className="font-medium">{f.indice + 1}</span>

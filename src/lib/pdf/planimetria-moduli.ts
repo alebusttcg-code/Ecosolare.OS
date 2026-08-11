@@ -1,7 +1,7 @@
 import {
   contaModuli,
   kWpDaLayouts,
-  layoutsDelloStudio,
+  layoutsAttivi,
   type SnapshotStudioTetto,
 } from '@/lib/domain/studio-tetto'
 import type { Coordinate } from '@/lib/solar'
@@ -24,13 +24,14 @@ export type PlanimetriaPdf = {
   readonly poligoniPaths: readonly string[]
   readonly moduliPaths: readonly string[]
   readonly legenda: string
+  readonly fotoDataUri: string | null
 }
 
 /** Proietta tutte le falde con moduli in coordinate locali per SVG PDF. */
 export function planimetriaDaStudio(
   snapshot: SnapshotStudioTetto,
 ): PlanimetriaPdf | null {
-  const layouts = layoutsDelloStudio(snapshot)
+  const layouts = layoutsAttivi(snapshot)
   if (layouts.length === 0) return null
 
   const punti: Coordinate[] = []
@@ -98,5 +99,6 @@ export function planimetriaDaStudio(
     poligoniPaths,
     moduliPaths,
     legenda,
+    fotoDataUri: null,
   }
 }
