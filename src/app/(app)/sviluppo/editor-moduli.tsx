@@ -88,19 +88,36 @@ export type LayoutModuliCorrente = {
 export function EditorModuli({
   falda,
   poligono,
+  layoutIniziale,
   onLayoutChange,
 }: {
   falda: FaldaTetto | null
   poligono: readonly Coordinate[] | null
+  /** Layout già salvato per questa falda (multi-falda: non perdere il lavoro). */
+  layoutIniziale?: LayoutModuliCorrente | null
   onLayoutChange?: (layout: LayoutModuliCorrente | null) => void
 }) {
-  const [formatoId, setFormatoId] = useState(FORMATI_MODULO_FV[0]!.id)
-  const [quantita, setQuantita] = useState(12)
-  const [landscape, setLandscape] = useState(true)
+  const [formatoId, setFormatoId] = useState(
+    () => layoutIniziale?.formatoId ?? FORMATI_MODULO_FV[0]!.id,
+  )
+  const [quantita, setQuantita] = useState(
+    () =>
+      layoutIniziale?.quantitaRichiesta ??
+      layoutIniziale?.moduli.length ??
+      12,
+  )
+  const [landscape, setLandscape] = useState(
+    () => layoutIniziale?.landscape ?? true,
+  )
   const [manuale, setManuale] = useState<{
     chiave: string
     moduli: RettangoloModulo[]
-  } | null>(null)
+  } | null>(() => {
+    if (!layoutIniziale?.moduli.length) return null
+    const idx = layoutIniziale.faldaIndice
+    const chiave = `${idx}|${layoutIniziale.formatoId}|${layoutIniziale.landscape}|${layoutIniziale.quantitaRichiesta}`
+    return { chiave, moduli: [...layoutIniziale.moduli] }
+  })
   const [selezionati, setSelezionati] = useState<ReadonlySet<number>>(
     () => new Set(),
   )

@@ -107,7 +107,7 @@ export interface DossierTestualePdf {
 
 export interface PlanimetriaPdfDto {
   readonly viewBox: string
-  readonly poligonoPath: string
+  readonly poligoniPaths: readonly string[]
   readonly moduliPaths: readonly string[]
   readonly legenda: string
 }

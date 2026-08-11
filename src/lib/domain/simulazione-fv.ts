@@ -8,7 +8,9 @@ import {
   type DetrazioneIrpef,
 } from '@/lib/domain/incentivi'
 import {
-  kWpDaLayout,
+  contaModuli,
+  kWpDaLayouts,
+  layoutsDelloStudio,
   type SnapshotStudioTetto,
 } from '@/lib/domain/studio-tetto'
 
@@ -39,11 +41,14 @@ export type FaldaSimulazione = {
   readonly pitchDegrees: number
   readonly azimuthDegrees: number
   readonly areaMeters2: number | null
+  readonly moduli: number
+  readonly kWp: number
 }
 
 export type RisultatoSimulazioneFv = {
   readonly moduli: number
   readonly kWp: number
+  /** Watt di picco se unici su tutte le falde, altrimenti null. */
   readonly wattPicco: number | null
   readonly produzioneKwh: number
   readonly consumoKwh: number
@@ -59,9 +64,9 @@ export type RisultatoSimulazioneFv = {
 
 export function simulaImpiantoFv(input: InputSimulazioneFv): RisultatoSimulazioneFv {
   const { snapshot, parametri } = input
-  const layout = snapshot.layout
-  const moduli = layout?.moduli.length ?? 0
-  const kWp = kWpDaLayout(layout)
+  const layouts = layoutsDelloStudio(snapshot)
+  const moduli = contaModuli(layouts)
+  const kWp = kWpDaLayouts(layouts)
   const produzioneKwh = Math.round(snapshot.produzioneAnnuakWh)
   const consumoKwh = Math.round(snapshot.consumoAnnuoKwh)
   const frazioneAutoconsumoUsata =
@@ -94,20 +99,28 @@ export function simulaImpiantoFv(input: InputSimulazioneFv): RisultatoSimulazion
     degradazioneProduzionePctAnno: parametri.degradazioneProduzionePctAnno,
   })
 
-  const faldeVisibili = new Set(snapshot.faldeRimosse)
+  const faldeRimosse = new Set(snapshot.faldeRimosse)
+  const layoutPerFalda = new Map(layouts.map((l) => [l.faldaIndice, l]))
   const falde: FaldaSimulazione[] = (snapshot.analisi.falde ?? [])
-    .filter((f) => !faldeVisibili.has(f.indice))
-    .map((f) => ({
-      indice: f.indice,
-      pitchDegrees: f.pitchDegrees,
-      azimuthDegrees: f.azimuthDegrees,
-      areaMeters2: f.areaMeters2,
-    }))
+    .filter((f) => !faldeRimosse.has(f.indice))
+    .map((f) => {
+      const L = layoutPerFalda.get(f.indice)
+      return {
+        indice: f.indice,
+        pitchDegrees: f.pitchDegrees,
+        azimuthDegrees: f.azimuthDegrees,
+        areaMeters2: f.areaMeters2,
+        moduli: L?.moduli.length ?? 0,
+        kWp: L ? (L.moduli.length * L.wattPicco) / 1000 : 0,
+      }
+    })
+
+  const wattUnici = new Set(layouts.map((l) => l.wattPicco))
 
   return {
     moduli,
     kWp,
-    wattPicco: layout?.wattPicco ?? null,
+    wattPicco: wattUnici.size === 1 ? [...wattUnici][0]! : null,
     produzioneKwh,
     consumoKwh,
     resaSpecificaKwhKwp: kWp > 0 ? Math.round(produzioneKwh / kWp) : null,

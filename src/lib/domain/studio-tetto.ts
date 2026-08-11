@@ -4,8 +4,8 @@ import type { AnalisiTetto, Coordinate, RettangoloModulo } from '@/lib/solar'
 /**
  * Snapshot persistito di uno studio tetto (Sviluppo → CRM).
  *
- * Produzione e tariffe sono del caso cliente; il motore economico
- * (`simulaImpiantoFv`) le consuma senza sovrascrivere i dati di situazione.
+ * I moduli possono stare su più falde: `layouts` è l’elenco per falda.
+ * Produzione = somma delle stime per-falda (inclinazione/esposizione/zona).
  */
 
 export interface LayoutStudioFalda {
@@ -22,62 +22,94 @@ export interface SnapshotStudioTetto {
   /** Chiavi = indice falda in stringa (JSON). */
   readonly poligoni: Readonly<Record<string, readonly Coordinate[]>>
   readonly faldeRimosse: readonly number[]
-  readonly layout: LayoutStudioFalda | null
+  /** Layout moduli, uno per falda coinvolta. */
+  readonly layouts: readonly LayoutStudioFalda[]
+  /**
+   * Legacy: un solo layout. Se presente in payload vecchi viene fuso in
+   * `layouts` da `normalizzaLayouts`.
+   */
+  readonly layout?: LayoutStudioFalda | null
   readonly consumoAnnuoKwh: number
   readonly produzioneAnnuakWh: number
-  /** Tariffe del caso (€/kWh), non valori di listino catalogo. */
   readonly tariffaImportEurKwh: number
   readonly tariffaExportEurKwh: number
-  /**
-   * Quota produzione → autoconsumo in [0, 1]. Se assente, in simulazione si
-   * usa il default di config vigente.
-   */
   readonly frazioneAutoconsumo?: number
 }
 
 /**
- * Fallback se mancano geometria/posizione (lab senza analisi completa).
+ * Fallback se mancano geometria/posizione.
  * Preferire sempre `stimaProduzioneDaStudio`.
  */
 export const RESA_SPECIFICA_DEFAULT_KWH_KWP = 1320
 
-export function kWpDaLayout(layout: LayoutStudioFalda | null): number {
+/** Unifica `layouts` e l’eventuale `layout` legacy. */
+export function layoutsDelloStudio(
+  snapshot:
+    | {
+        readonly layouts?: readonly LayoutStudioFalda[] | null
+        readonly layout?: LayoutStudioFalda | null
+      }
+    | null
+    | undefined,
+): readonly LayoutStudioFalda[] {
+  if (!snapshot) return []
+  const daArray = (snapshot.layouts ?? []).filter((l) => l.moduli.length > 0)
+  if (daArray.length > 0) {
+    // Dedup per faldaIndice (ultima vince)
+    const mappa = new Map<number, LayoutStudioFalda>()
+    for (const l of daArray) mappa.set(l.faldaIndice, l)
+    return [...mappa.values()].sort((a, b) => a.faldaIndice - b.faldaIndice)
+  }
+  if (snapshot.layout && snapshot.layout.moduli.length > 0) {
+    return [snapshot.layout]
+  }
+  return []
+}
+
+export function kWpDaLayout(layout: LayoutStudioFalda | null | undefined): number {
   if (!layout || layout.moduli.length === 0) return 0
   return (layout.moduli.length * layout.wattPicco) / 1000
 }
 
-export function stimaProduzioneAnnuakWh(kWp: number, resa = RESA_SPECIFICA_DEFAULT_KWH_KWP): number {
+export function kWpDaLayouts(
+  layouts: readonly LayoutStudioFalda[] | null | undefined,
+): number {
+  if (!layouts?.length) return 0
+  return layouts.reduce((s, l) => s + kWpDaLayout(l), 0)
+}
+
+export function contaModuli(
+  layouts: readonly LayoutStudioFalda[] | null | undefined,
+): number {
+  if (!layouts?.length) return 0
+  return layouts.reduce((s, l) => s + l.moduli.length, 0)
+}
+
+export function stimaProduzioneAnnuakWh(
+  kWp: number,
+  resa = RESA_SPECIFICA_DEFAULT_KWH_KWP,
+): number {
   if (kWp <= 0) return 0
   return Math.round(kWp * resa)
 }
 
 /**
- * Produzione annua dal layout + falda/posizione dello studio.
- * Usa inclinazione, esposizione e latitudine; altrimenti fallback a resa fissa.
+ * Produzione annua sommando ogni falda con i propri moduli.
+ * Ogni falda usa inclinazione, esposizione e latitudine proprie.
  */
 export function stimaProduzioneDaStudio(
   snapshot: Pick<
     SnapshotStudioTetto,
-    'analisi' | 'layout' | 'faldeRimosse'
+    'analisi' | 'layouts' | 'layout' | 'faldeRimosse'
   >,
 ): number {
-  const kWp = kWpDaLayout(snapshot.layout)
-  if (kWp <= 0) return 0
+  const layouts = layoutsDelloStudio(snapshot)
+  if (layouts.length === 0) return 0
 
   const falde = (snapshot.analisi.falde ?? []).filter(
     (f) => !snapshot.faldeRimosse.includes(f.indice),
   )
-  const faldaIdx = snapshot.layout?.faldaIndice
-  const falda =
-    faldaIdx != null ? falde.find((f) => f.indice === faldaIdx) : falde[0]
-
-  const lat =
-    snapshot.analisi.location?.latitude ??
-    falda?.center?.latitude ??
-    null
-  if (lat == null || !falda) {
-    return stimaProduzioneAnnuakWh(kWp)
-  }
+  const latFallback = snapshot.analisi.location?.latitude ?? null
 
   const sunshineVals = falde
     .map((f) => f.sunshineMedio)
@@ -87,19 +119,31 @@ export function stimaProduzioneDaStudio(
       ? sunshineVals.reduce((a, b) => a + b, 0) / sunshineVals.length
       : null
 
-  return stimaProduzioneFalda({
-    kWp,
-    latitudine: lat,
-    pitchDegrees: falda.pitchDegrees,
-    azimuthDegrees: falda.azimuthDegrees,
-    sunshineMedio: falda.sunshineMedio,
-    sunshineMedioTetto,
-  }).produzioneKwh
+  let totale = 0
+  for (const layout of layouts) {
+    const kWp = kWpDaLayout(layout)
+    if (kWp <= 0) continue
+    const falda = falde.find((f) => f.indice === layout.faldaIndice)
+    const lat = falda?.center?.latitude ?? latFallback
+    if (lat == null || !falda) {
+      totale += stimaProduzioneAnnuakWh(kWp)
+      continue
+    }
+    totale += stimaProduzioneFalda({
+      kWp,
+      latitudine: lat,
+      pitchDegrees: falda.pitchDegrees,
+      azimuthDegrees: falda.azimuthDegrees,
+      sunshineMedio: falda.sunshineMedio,
+      sunshineMedioTetto,
+    }).produzioneKwh
+  }
+  return Math.round(totale)
 }
 
 export function studioCompleto(snapshot: SnapshotStudioTetto): boolean {
   if (!snapshot.analisi?.falde?.length) return false
-  if (!snapshot.layout || snapshot.layout.moduli.length < 1) return false
+  if (layoutsDelloStudio(snapshot).length < 1) return false
   if (!(snapshot.consumoAnnuoKwh >= 0)) return false
   if (!(snapshot.produzioneAnnuakWh > 0)) return false
   return true

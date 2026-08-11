@@ -15,7 +15,10 @@ import {
 import { normalizzaDossier } from '@/lib/domain/dossier-preventivo'
 import { formattaImporto, importoDaEuro } from '@/lib/domain/money'
 import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
-import type { SnapshotStudioTetto } from '@/lib/domain/studio-tetto'
+import {
+  layoutsDelloStudio,
+  type SnapshotStudioTetto,
+} from '@/lib/domain/studio-tetto'
 import {
   formattaDataIt,
   formattaEuroDb,
@@ -236,7 +239,11 @@ export async function getQuoteVersionPerPdf(
   let planimetria: DatiPdfPreventivo['planimetria'] = null
 
   const payload = riga.studioPayload as SnapshotStudioTetto | null
-  if (payload?.layout && payload.produzioneAnnuakWh > 0) {
+  if (
+    payload &&
+    layoutsDelloStudio(payload).length > 0 &&
+    payload.produzioneAnnuakWh > 0
+  ) {
     const parametri = await getParametriSimulazioneFv()
     const sim = simulaImpiantoFv({
       snapshot: payload,

@@ -778,14 +778,15 @@ export function DocumentoPreventivo({
             <Text style={stili.paragrafo}>{dati.planimetria.legenda}</Text>
             <View style={stili.planimetriaWrap}>
               <Svg viewBox={dati.planimetria.viewBox} width={480} height={480}>
-                {dati.planimetria.poligonoPath ? (
+                {dati.planimetria.poligoniPaths.map((d, i) => (
                   <Path
-                    d={dati.planimetria.poligonoPath}
+                    key={`poli-${i}`}
+                    d={d}
                     stroke={C.blu}
                     strokeWidth={0.12}
                     fill="rgba(37,99,235,0.08)"
                   />
-                ) : null}
+                ))}
                 {dati.planimetria.moduliPaths.map((d, i) => (
                   <Path
                     key={`mod-${i}`}

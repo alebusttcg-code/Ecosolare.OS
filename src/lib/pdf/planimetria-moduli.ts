@@ -1,4 +1,9 @@
-import type { SnapshotStudioTetto } from '@/lib/domain/studio-tetto'
+import {
+  contaModuli,
+  kWpDaLayouts,
+  layoutsDelloStudio,
+  type SnapshotStudioTetto,
+} from '@/lib/domain/studio-tetto'
 import type { Coordinate } from '@/lib/solar'
 
 function aMetriLocali(
@@ -16,24 +21,23 @@ function aMetriLocali(
 
 export type PlanimetriaPdf = {
   readonly viewBox: string
-  readonly poligonoPath: string
+  readonly poligoniPaths: readonly string[]
   readonly moduliPaths: readonly string[]
   readonly legenda: string
 }
 
-/** Proietta poligono falda + moduli in coordinate locali per SVG PDF. */
+/** Proietta tutte le falde con moduli in coordinate locali per SVG PDF. */
 export function planimetriaDaStudio(
   snapshot: SnapshotStudioTetto,
 ): PlanimetriaPdf | null {
-  const layout = snapshot.layout
-  if (!layout || layout.moduli.length === 0) return null
+  const layouts = layoutsDelloStudio(snapshot)
+  if (layouts.length === 0) return null
 
-  const chiave = String(layout.faldaIndice)
-  const poligono = snapshot.poligoni[chiave]
   const punti: Coordinate[] = []
-  if (poligono && poligono.length >= 3) punti.push(...poligono)
-  for (const m of layout.moduli) {
-    punti.push(...m.angoli)
+  for (const layout of layouts) {
+    const poligono = snapshot.poligoni[String(layout.faldaIndice)]
+    if (poligono && poligono.length >= 3) punti.push(...poligono)
+    for (const m of layout.moduli) punti.push(...m.angoli)
   }
   if (punti.length < 3) return null
 
@@ -42,10 +46,8 @@ export function planimetriaDaStudio(
     longitude: punti.reduce((s, p) => s + p.longitude, 0) / punti.length,
   }
 
-  const localizza = (c: Coordinate) => aMetriLocali(c, origine)
-  // SVG: x = est, y = −nord (nord in alto)
   const toSvg = (c: Coordinate) => {
-    const { e, n } = localizza(c)
+    const { e, n } = aMetriLocali(c, origine)
     return { x: e, y: -n }
   }
 
@@ -76,14 +78,25 @@ export function planimetriaDaStudio(
     )
   }
 
-  const poligonoPath =
-    poligono && poligono.length >= 3 ? pathDi(poligono) : ''
-  const moduliPaths = layout.moduli.map((m) => pathDi(m.angoli))
+  const poligoniPaths: string[] = []
+  const moduliPaths: string[] = []
+  for (const layout of layouts) {
+    const poligono = snapshot.poligoni[String(layout.faldaIndice)]
+    if (poligono && poligono.length >= 3) {
+      poligoniPaths.push(pathDi(poligono))
+    }
+    for (const m of layout.moduli) {
+      moduliPaths.push(pathDi(m.angoli))
+    }
+  }
+
+  const nFalde = layouts.length
+  const legenda = `${contaModuli(layouts)} moduli · ${kWpDaLayouts(layouts).toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWp · ${nFalde} falda${nFalde === 1 ? '' : 'e'} (${layouts.map((l) => `F${l.faldaIndice + 1}:${l.moduli.length}`).join(', ')})`
 
   return {
     viewBox: `${minX.toFixed(3)} ${minY.toFixed(3)} ${(maxX - minX).toFixed(3)} ${(maxY - minY).toFixed(3)}`,
-    poligonoPath,
+    poligoniPaths,
     moduliPaths,
-    legenda: `${layout.moduli.length} moduli · ${((layout.moduli.length * layout.wattPicco) / 1000).toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWp · falda ${layout.faldaIndice + 1}`,
+    legenda,
   }
 }

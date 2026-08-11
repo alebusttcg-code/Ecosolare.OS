@@ -8,9 +8,12 @@ import { opportunities, siteStudies } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
 import {
-  kWpDaLayout,
+  contaModuli,
+  kWpDaLayouts,
+  layoutsDelloStudio,
   stimaProduzioneDaStudio,
   studioCompleto,
+  type LayoutStudioFalda,
   type SnapshotStudioTetto,
 } from '@/lib/domain/studio-tetto'
 import type { ActionResult } from './opportunities'
@@ -39,7 +42,10 @@ const snapshotSchema = z.object({
   analisi: z.any(),
   poligoni: z.record(z.string(), z.array(coordinata)),
   faldeRimosse: z.array(z.number().int().min(0)).default([]),
-  layout: layoutSchema.nullable(),
+  /** Preferito: un layout per falda. */
+  layouts: z.array(layoutSchema).max(40).optional(),
+  /** Legacy: singolo layout. */
+  layout: layoutSchema.nullable().optional(),
   consumoAnnuoKwh: z.number().min(0).max(500_000),
   produzioneAnnuakWh: z.number().min(0).max(500_000).optional(),
   tariffaImportEurKwh: z.number().min(0).max(5).default(0.3),
@@ -58,12 +64,15 @@ const salvaSchema = z.object({
 function normalizzaSnapshot(
   grezzo: z.infer<typeof snapshotSchema>,
 ): SnapshotStudioTetto {
-  const layout = grezzo.layout
+  const layouts = layoutsDelloStudio({
+    layouts: grezzo.layouts as LayoutStudioFalda[] | undefined,
+    layout: grezzo.layout ?? null,
+  })
   const base: SnapshotStudioTetto = {
     analisi: grezzo.analisi as SnapshotStudioTetto['analisi'],
     poligoni: grezzo.poligoni,
     faldeRimosse: grezzo.faldeRimosse,
-    layout,
+    layouts,
     consumoAnnuoKwh: grezzo.consumoAnnuoKwh,
     produzioneAnnuakWh: 0,
     tariffaImportEurKwh: grezzo.tariffaImportEurKwh,
@@ -86,8 +95,7 @@ function normalizzaSnapshot(
 /**
  * Crea o aggiorna uno studio tetto per un lead.
  *
- * `completa: true` richiede layout moduli e produzione > 0; solo allora il
- * preventivo può nascere da questo studio.
+ * `completa: true` richiede layout moduli (anche su più falde) e produzione > 0.
  */
 export async function salvaStudioTetto(
   input: z.input<typeof salvaSchema>,
@@ -107,8 +115,8 @@ export async function salvaStudioTetto(
   if (!opp) return { ok: false, errors: { _: 'Lead non trovato.' } }
 
   const snapshot = normalizzaSnapshot(parsed.data.snapshot)
-  const kWp = kWpDaLayout(snapshot.layout)
-  const moduli = snapshot.layout?.moduli.length ?? 0
+  const kWp = kWpDaLayouts(snapshot.layouts)
+  const moduli = contaModuli(snapshot.layouts)
 
   if (parsed.data.completa && !studioCompleto(snapshot)) {
     return {
@@ -170,7 +178,7 @@ export async function salvaStudioTetto(
     action: studyId === parsed.data.studyId ? 'update' : 'create',
     entityType: 'site_study',
     entityId: studyId,
-    after: { status, moduli, kWp },
+    after: { status, moduli, kWp, faldeConModuli: snapshot.layouts.length },
   })
 
   revalidatePath(`/lead/${opp.id}`)

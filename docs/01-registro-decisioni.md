@@ -435,3 +435,7 @@ PDF con incluso/escluso, garanzie, pagine marketing da template, planimetria
 moduli e blocco termico opzionale (`quote_versions.dossier`). Schede prodotto
 allegato catalogo restano miglioramento successivo.
 
+**Multi-falda** (11 agosto 2026): i moduli possono stare su più falde nello
+stesso studio (`layouts[]`); la produzione è la somma delle stime per falda.
+Payload legacy con `layout` singolo restano leggibili.
+

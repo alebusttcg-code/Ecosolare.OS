@@ -42,7 +42,10 @@ export function mappaSimulazionePerPdf(sim: RisultatoSimulazioneFv): {
         : null,
     consumoKwh: sim.consumoKwh > 0 ? kwh(sim.consumoKwh) : null,
     falde: sim.falde.map((f, i) => ({
-      etichetta: `Falda ${i + 1}`,
+      etichetta:
+        f.moduli > 0
+          ? `Falda ${i + 1} · ${f.moduli} moduli · ${f.kWp.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWp`
+          : `Falda ${i + 1}`,
       inclinazione: `${f.pitchDegrees.toLocaleString('it-IT', { maximumFractionDigits: 1 })}°`,
       esposizione: `${f.azimuthDegrees.toLocaleString('it-IT', { maximumFractionDigits: 0 })}°`,
       area:

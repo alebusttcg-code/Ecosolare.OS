@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAvvisi } from '@/components/avvisi'
 import { Badge, Card, Vuoto } from '@/components/ui'
 import { salvaStudioTetto } from '@/lib/actions/site-studies'
@@ -11,7 +11,13 @@ import {
   costoEnergiaCents,
 } from '@/lib/domain/economia-fv'
 import { formattaImporto } from '@/lib/domain/money'
-import { stimaProduzioneDaStudio } from '@/lib/domain/studio-tetto'
+import {
+  contaModuli,
+  kWpDaLayouts,
+  layoutsDelloStudio,
+  stimaProduzioneDaStudio,
+  type LayoutStudioFalda,
+} from '@/lib/domain/studio-tetto'
 import {
   areaPoligonoMetri2,
   etichettaAzimuth,
@@ -79,16 +85,57 @@ export function LaboratorioSolar({
     }
     return out
   })
-  const [faldaSelezionata, setFaldaSelezionata] = useState<number | null>(
-    iniziale?.layout?.faldaIndice ?? null,
-  )
+  const [faldaSelezionata, setFaldaSelezionata] = useState<number | null>(() => {
+    const layouts = layoutsDelloStudio(iniziale)
+    return layouts[0]?.faldaIndice ?? null
+  })
   /** Indici Solar esclusi dall’editor (solo sessione UI). */
   const [faldeRimosse, setFaldeRimosse] = useState<ReadonlySet<number>>(
     () => new Set(iniziale?.faldeRimosse ?? []),
   )
   const [scegliTetto, setScegliTetto] = useState(false)
-  const [layoutModuli, setLayoutModuli] = useState<LayoutModuliCorrente | null>(
-    null,
+  /** Layout moduli per falda: si accumulano cambiando falda nell’editor. */
+  const [layoutsPerFalda, setLayoutsPerFalda] = useState<
+    Record<number, LayoutModuliCorrente>
+  >(() => {
+    const out: Record<number, LayoutModuliCorrente> = {}
+    for (const L of layoutsDelloStudio(iniziale)) {
+      out[L.faldaIndice] = {
+        faldaIndice: L.faldaIndice,
+        formatoId: L.formatoId,
+        wattPicco: L.wattPicco,
+        quantitaRichiesta: L.quantitaRichiesta,
+        landscape: L.landscape,
+        moduli: L.moduli,
+        kWp: (L.moduli.length * L.wattPicco) / 1000,
+      }
+    }
+    return out
+  })
+
+  const layoutsLista = useMemo((): LayoutStudioFalda[] => {
+    return Object.values(layoutsPerFalda)
+      .filter((l) => l.moduli.length > 0)
+      .map(({ kWp: _k, ...rest }) => rest)
+      .sort((a, b) => a.faldaIndice - b.faldaIndice)
+  }, [layoutsPerFalda])
+
+  const onLayoutChangeFalda = useCallback(
+    (layout: LayoutModuliCorrente | null) => {
+      setLayoutsPerFalda((prev) => {
+        if (layout && layout.moduli.length > 0) {
+          return { ...prev, [layout.faldaIndice]: layout }
+        }
+        // null senza indice: non cancellare le altre falde (unmount / deselect)
+        if (!layout && faldaSelezionata != null) {
+          const next = { ...prev }
+          delete next[faldaSelezionata]
+          return next
+        }
+        return prev
+      })
+    },
+    [faldaSelezionata],
   )
   const [consumoAnnuoKwh, setConsumoAnnuoKwh] = useState(
     iniziale ? String(iniziale.consumoAnnuoKwh) : '8000',
@@ -112,7 +159,7 @@ export function LaboratorioSolar({
     const tExport = Number.parseFloat(tariffaExport.replace(',', '.'))
     const fPct = Number.parseFloat(autoconsumoPct.replace(',', '.'))
     if (
-      !layoutModuli ||
+      layoutsLista.length === 0 ||
       !analisi ||
       !Number.isFinite(consumo) ||
       consumo < 0 ||
@@ -125,14 +172,7 @@ export function LaboratorioSolar({
     const produzione = stimaProduzioneDaStudio({
       analisi,
       faldeRimosse: [...faldeRimosse],
-      layout: {
-        faldaIndice: layoutModuli.faldaIndice,
-        formatoId: layoutModuli.formatoId,
-        wattPicco: layoutModuli.wattPicco,
-        quantitaRichiesta: layoutModuli.quantitaRichiesta,
-        landscape: layoutModuli.landscape,
-        moduli: layoutModuli.moduli,
-      },
+      layouts: layoutsLista,
     })
     if (!(produzione > 0)) return null
     const bilancio = bilanciaEnergia({
@@ -145,6 +185,9 @@ export function LaboratorioSolar({
     const risparmio = attuale - conFv
     return {
       produzione,
+      moduli: contaModuli(layoutsLista),
+      kWp: kWpDaLayouts(layoutsLista),
+      nFalde: layoutsLista.length,
       bilancio,
       bollettaAttualeMensile: formattaImporto(Math.round(attuale / 12)),
       bollettaConFvMensile: formattaImporto(Math.round(conFv / 12)),
@@ -155,7 +198,7 @@ export function LaboratorioSolar({
     autoconsumoPct,
     consumoAnnuoKwh,
     faldeRimosse,
-    layoutModuli,
+    layoutsLista,
     tariffaExport,
     tariffaImport,
   ])
@@ -199,34 +242,32 @@ export function LaboratorioSolar({
       for (const [k, v] of Object.entries(poligoni)) {
         if (!faldeRimosse.has(Number(k))) poligoniJson[k] = v
       }
-      const layout = layoutModuli
-        ? {
-            faldaIndice: layoutModuli.faldaIndice,
-            formatoId: layoutModuli.formatoId,
-            wattPicco: layoutModuli.wattPicco,
-            quantitaRichiesta: layoutModuli.quantitaRichiesta,
-            landscape: layoutModuli.landscape,
-            moduli: layoutModuli.moduli.map((m) => ({
-              angoli: [
-                m.angoli[0],
-                m.angoli[1],
-                m.angoli[2],
-                m.angoli[3],
-              ] as [
-                (typeof m.angoli)[0],
-                (typeof m.angoli)[1],
-                (typeof m.angoli)[2],
-                (typeof m.angoli)[3],
-              ],
-              centro: m.centro,
-              rotazioneDegrees: m.rotazioneDegrees,
-            })),
-          }
-        : null
+      const layouts = layoutsLista.map((L) => ({
+        faldaIndice: L.faldaIndice,
+        formatoId: L.formatoId,
+        wattPicco: L.wattPicco,
+        quantitaRichiesta: L.quantitaRichiesta,
+        landscape: L.landscape,
+        moduli: L.moduli.map((m) => ({
+          angoli: [
+            m.angoli[0],
+            m.angoli[1],
+            m.angoli[2],
+            m.angoli[3],
+          ] as [
+            (typeof m.angoli)[0],
+            (typeof m.angoli)[1],
+            (typeof m.angoli)[2],
+            (typeof m.angoli)[3],
+          ],
+          centro: m.centro,
+          rotazioneDegrees: m.rotazioneDegrees,
+        })),
+      }))
       const produzione = stimaProduzioneDaStudio({
         analisi,
         faldeRimosse: [...faldeRimosse],
-        layout,
+        layouts,
       })
       const esito = await salvaStudioTetto({
         studyId,
@@ -239,7 +280,7 @@ export function LaboratorioSolar({
           analisi,
           poligoni: poligoniJson,
           faldeRimosse: [...faldeRimosse],
-          layout,
+          layouts,
           consumoAnnuoKwh: consumo,
           produzioneAnnuakWh: produzione,
           tariffaImportEurKwh: tImport,
@@ -296,14 +337,14 @@ export function LaboratorioSolar({
                 setPoligoni({})
                 setFaldaSelezionata(null)
                 setFaldeRimosse(new Set())
-                setLayoutModuli(null)
+                setLayoutsPerFalda({})
                 return
               }
               setAnalisi(esito.data)
               setPoligoni(poligoniDaAnalisi(esito.data.falde))
               setFaldaSelezionata(null)
               setFaldeRimosse(new Set())
-              setLayoutModuli(null)
+              setLayoutsPerFalda({})
               setScegliTetto(false)
               avvisa('Tetto analizzato. Preparazione quote in corso…')
             })
@@ -426,26 +467,25 @@ export function LaboratorioSolar({
             </label>
           </div>
           <div className="mt-4 text-sm tabular-nums" style={{ color: 'var(--testo-tenue)' }}>
-            {layoutModuli && analisi ? (
+            {layoutsLista.length > 0 && analisi ? (
               <>
-                {layoutModuli.moduli.length} moduli ·{' '}
-                {layoutModuli.kWp.toFixed(2)} kWp · ~{' '}
+                {contaModuli(layoutsLista)} moduli ·{' '}
+                {kWpDaLayouts(layoutsLista).toFixed(2)} kWp ·{' '}
+                {layoutsLista.length} falda
+                {layoutsLista.length === 1 ? '' : 'e'} (
+                {layoutsLista
+                  .map((l) => `F${l.faldaIndice + 1}:${l.moduli.length}`)
+                  .join(', ')}
+                ) · ~{' '}
                 {stimaProduzioneDaStudio({
                   analisi,
                   faldeRimosse: [...faldeRimosse],
-                  layout: {
-                    faldaIndice: layoutModuli.faldaIndice,
-                    formatoId: layoutModuli.formatoId,
-                    wattPicco: layoutModuli.wattPicco,
-                    quantitaRichiesta: layoutModuli.quantitaRichiesta,
-                    landscape: layoutModuli.landscape,
-                    moduli: layoutModuli.moduli,
-                  },
+                  layouts: layoutsLista,
                 }).toLocaleString('it-IT')}{' '}
-                kWh/anno (da esposizione, inclinazione e zona)
+                kWh/anno (somma per falda: esposizione, inclinazione, zona)
               </>
             ) : (
-              'Posiziona i moduli sulla falda per stimare kWp e produzione.'
+              'Posiziona i moduli su una o più falde per stimare kWp e produzione.'
             )}
           </div>
           {anteprimaEnergia ? (
@@ -497,7 +537,7 @@ export function LaboratorioSolar({
             </button>
             <button
               type="button"
-              disabled={inCorso || !analisi || !layoutModuli}
+              disabled={inCorso || !analisi || layoutsLista.length === 0}
               onClick={() => salvaStudio(true)}
               className="bottone-oro rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50"
               style={{
@@ -527,7 +567,12 @@ export function LaboratorioSolar({
           faldeRimosse={faldeRimosse}
           scegliTetto={scegliTetto}
           ripresaInCorso={inCorso}
-          onLayoutChange={setLayoutModuli}
+          onLayoutChange={onLayoutChangeFalda}
+          layoutInizialeFalda={
+            faldaSelezionata != null
+              ? (layoutsPerFalda[faldaSelezionata] ?? null)
+              : null
+          }
           onSeleziona={setFaldaSelezionata}
           onScegliTettoChange={setScegliTetto}
           onPuntoTetto={(punto) => {
@@ -550,6 +595,7 @@ export function LaboratorioSolar({
               setPoligoni(poligoniDaAnalisi(esito.data.falde))
               setFaldaSelezionata(null)
               setFaldeRimosse(new Set())
+              setLayoutsPerFalda({})
               avvisa('Tetto aggiornato. Preparazione quote in corso…')
             })
           }}
@@ -567,6 +613,11 @@ export function LaboratorioSolar({
           onEliminaFalda={(indice) => {
             setFaldeRimosse((prev) => new Set([...prev, indice]))
             setPoligoni((prev) => {
+              const next = { ...prev }
+              delete next[indice]
+              return next
+            })
+            setLayoutsPerFalda((prev) => {
               const next = { ...prev }
               delete next[indice]
               return next
@@ -602,6 +653,7 @@ function Risultato({
   scegliTetto,
   ripresaInCorso,
   onLayoutChange,
+  layoutInizialeFalda,
   onSeleziona,
   onScegliTettoChange,
   onPuntoTetto,
@@ -617,6 +669,7 @@ function Risultato({
   scegliTetto: boolean
   ripresaInCorso: boolean
   onLayoutChange?: (layout: LayoutModuliCorrente | null) => void
+  layoutInizialeFalda?: LayoutModuliCorrente | null
   onSeleziona: (indice: number | null) => void
   onScegliTettoChange: (attivo: boolean) => void
   onPuntoTetto: (punto: Coordinate) => void
@@ -760,6 +813,7 @@ function Risultato({
                 key={falda?.indice ?? 'nessuna'}
                 falda={falda}
                 poligono={verticiSelezionati}
+                layoutIniziale={layoutInizialeFalda}
                 onLayoutChange={onLayoutChange}
               />
             </div>
