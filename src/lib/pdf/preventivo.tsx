@@ -421,6 +421,78 @@ const stili = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: P.carta,
   },
+  designTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1.2,
+    borderBottomColor: P.blu,
+    paddingBottom: 7,
+    marginBottom: 12,
+  },
+  designBrand: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: P.bluScuro,
+    letterSpacing: 0.3,
+  },
+  designBrandSub: {
+    fontSize: 7.5,
+    color: P.oro,
+    fontWeight: 700,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginTop: 1,
+  },
+  designMeta: {
+    fontSize: 7.5,
+    color: P.inchiostroMorbido,
+    textAlign: 'right',
+  },
+  designCliente: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: P.linea,
+    borderRadius: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+    backgroundColor: P.cartaSoft,
+  },
+  designClienteNome: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: P.inchiostro,
+    textTransform: 'uppercase',
+  },
+  designClienteMeta: {
+    fontSize: 8,
+    color: P.inchiostroMorbido,
+    marginTop: 2,
+  },
+  tettoRelativo: {
+    width: '100%',
+    height: 260,
+    position: 'relative',
+    backgroundColor: P.cartaSoft,
+  },
+  tettoFotoAbs: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: 260,
+    // fill: stesso rettangolo dell’SVG → moduli allineati ai pixel dell’ortofoto
+    objectFit: 'fill',
+  },
+  tettoSvgAbs: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+  },
 })
 
 function Enfasi({ children }: { children: ReactNode }) {
@@ -448,6 +520,122 @@ function TrustStrip() {
           <Text style={stili.trustTesto}>{voce}</Text>
         </View>
       ))}
+    </View>
+  )
+}
+
+/**
+ * Ortofoto (o schema) con moduli dello studio tetto sovrapposti.
+ * Prima mostravamo solo la foto satellitare senza overlay → tetto “vuoto”.
+ */
+function VistaTettoConModuli({
+  planimetria,
+  altezza = 260,
+  mostraLegenda = true,
+}: {
+  readonly planimetria: NonNullable<DatiPdfPreventivo['planimetria']>
+  readonly altezza?: number
+  readonly mostraLegenda?: boolean
+}) {
+  const haFoto = Boolean(planimetria.fotoDataUri)
+  const vb = planimetria.viewBox || '0 0 640 640'
+  const overlay = (
+    <Svg
+      width="100%"
+      height={altezza}
+      viewBox={vb}
+      style={haFoto ? stili.tettoSvgAbs : undefined}
+    >
+      {planimetria.poligoniPaths.map((d, i) => (
+        <Path
+          key={`p-${i}`}
+          d={d}
+          stroke={P.oro}
+          strokeWidth={haFoto ? 3 : 1.5}
+          fill={haFoto ? 'rgba(217,164,65,0.12)' : 'rgba(63,127,196,0.12)'}
+        />
+      ))}
+      {planimetria.moduliPaths.map((d, i) => (
+        <Path
+          key={`m-${i}`}
+          d={d}
+          fill="#1a4f8c"
+          stroke="#0a2744"
+          strokeWidth={haFoto ? 1.2 : 0.5}
+          fillOpacity={0.92}
+        />
+      ))}
+    </Svg>
+  )
+
+  return (
+    <View style={{ marginBottom: 8 }}>
+      <View
+        style={[
+          stili.tettoRelativo,
+          { height: altezza },
+          ...(haFoto ? [] : [{ borderWidth: 1, borderColor: P.linea }]),
+        ]}
+      >
+        {haFoto ? (
+          <Image
+            src={planimetria.fotoDataUri!}
+            style={[stili.tettoFotoAbs, { height: altezza }]}
+          />
+        ) : null}
+        {overlay}
+      </View>
+      {mostraLegenda && planimetria.legenda ? (
+        <Text
+          style={{
+            fontSize: 7.5,
+            color: P.inchiostroMorbido,
+            marginTop: 4,
+            textAlign: 'center',
+          }}
+        >
+          {planimetria.legenda} · layout dallo studio tetto EcoSolare
+        </Text>
+      ) : null}
+    </View>
+  )
+}
+
+function HeaderEcoSolareDesign({
+  logoSrc,
+  codice,
+}: {
+  logoSrc: string
+  codice: string
+}) {
+  return (
+    <View style={stili.designTop}>
+      <View>
+        <Text style={stili.designBrand}>EcoSolare Design</Text>
+        <Text style={stili.designBrandSub}>Simulazione impianto</Text>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Image src={logoSrc} style={{ width: 88, height: 26, objectFit: 'contain' }} />
+        <Text style={stili.designMeta}>{codice}</Text>
+      </View>
+    </View>
+  )
+}
+
+function BoxClienteDesign({ dati }: { dati: DatiPdfPreventivo }) {
+  return (
+    <View style={stili.designCliente}>
+      <View>
+        <Text style={stili.designClienteNome}>{dati.clienteNome}</Text>
+        <Text style={stili.designClienteMeta}>
+          {dati.immobileIndirizzo ?? dati.immobileEtichetta ?? '—'}
+        </Text>
+      </View>
+      <Text style={[stili.designClienteMeta, { textAlign: 'right' }]}>
+        {dati.dataDocumento}
+        {'\n'}
+        {dati.titolo || 'Impianto fotovoltaico'}
+      </Text>
     </View>
   )
 }
@@ -490,31 +678,12 @@ function PlanimetriaHero({
   const kpi = dati.copertinaKpi
   return (
     <View style={stili.heroWrap}>
-      {p?.fotoDataUri ? (
-        <Image src={p.fotoDataUri} style={stili.heroFoto} />
-      ) : p ? (
-        <View style={stili.heroSvgWrap}>
-          <Svg width={440} height={190} viewBox={p.viewBox}>
-            {p.poligoniPaths.map((d, i) => (
-              <Path
-                key={`p-${i}`}
-                d={d}
-                stroke={P.blu}
-                strokeWidth={1.2}
-                fill="rgba(63,127,196,0.12)"
-              />
-            ))}
-            {p.moduliPaths.map((d, i) => (
-              <Path
-                key={`m-${i}`}
-                d={d}
-                fill="#1e4d8c"
-                stroke="#0d2d54"
-                strokeWidth={0.4}
-              />
-            ))}
-          </Svg>
-        </View>
+      {p ? (
+        <VistaTettoConModuli
+          planimetria={p}
+          altezza={248}
+          mostraLegenda={false}
+        />
       ) : (
         <View style={[stili.heroSvgWrap, { height: 150 }]}>
           <Text style={{ color: P.inchiostroMorbido, fontSize: 9 }}>
@@ -650,6 +819,17 @@ export function DocumentoPreventivo({
         )}
 
         <Text style={stili.h2}>Producibilità attesa per l’impianto</Text>
+        <Text style={stili.paragrafo}>
+          La producibilità prevista è calcolata sulle condizioni rilevate nello
+          studio tetto e sul layout moduli posizionati in fase di sviluppo.
+        </Text>
+        {dati.planimetria ? (
+          <VistaTettoConModuli
+            planimetria={dati.planimetria}
+            altezza={210}
+            mostraLegenda
+          />
+        ) : null}
         {det && det.falde.length > 0 ? (
           <View style={{ marginBottom: 8 }}>
             {det.falde.map((f) => (
@@ -663,19 +843,6 @@ export function DocumentoPreventivo({
                 ) : null}
               </Text>
             ))}
-          </View>
-        ) : null}
-
-        {sim && sim.produzioneMensileKwh.length === 12 ? (
-          <View style={stili.chartFrame}>
-            <Text style={stili.chartCaption}>Energia mensile stimata</Text>
-            <BarreMensili valori={sim.produzioneMensileKwh} />
-            {det ? (
-              <Text style={[stili.paragrafo, { marginTop: 8, marginBottom: 0 }]}>
-                Produzione annua complessiva stimata:{' '}
-                <Enfasi>{det.produzioneKwh}</Enfasi>.
-              </Text>
-            ) : null}
           </View>
         ) : null}
 
@@ -882,12 +1049,31 @@ export function DocumentoPreventivo({
         </Page>
       ))}
 
-      {/* ——— 06 Report finanziario ——— */}
+      {/* ——— EcoSolare Design (cuore del preventivo, ex “SolarEdge Design”) ——— */}
       {sim && eco ? (
         <>
+          {/* D1 — Vista tetto + panoramica finanziaria */}
           <Page size="A4" style={stili.pagina}>
-            <HeaderLogo logoSrc={logoSrc} />
-            <TitoloH1>Panoramica finanziaria</TitoloH1>
+            <HeaderEcoSolareDesign logoSrc={logoSrc} codice={dati.codice} />
+            <BoxClienteDesign dati={dati} />
+
+            <Text style={stili.h2}>Vista impianto — studio tetto</Text>
+            {dati.planimetria ? (
+              <VistaTettoConModuli
+                planimetria={dati.planimetria}
+                altezza={255}
+                mostraLegenda
+              />
+            ) : (
+              <View style={stili.box}>
+                <Text style={stili.paragrafo}>
+                  Layout moduli non disponibile: completa lo studio tetto in
+                  Sviluppo per mostrare ortofoto e pannelli.
+                </Text>
+              </View>
+            )}
+
+            <Text style={stili.h2}>Panoramica finanziaria</Text>
             <View style={stili.kpiFinGriglia}>
               <View style={stili.kpiFinCella}>
                 <Text style={stili.etichetta}>Pagamenti netti</Text>
@@ -905,71 +1091,72 @@ export function DocumentoPreventivo({
               </View>
             </View>
 
-            {dati.copertinaKpi || det ? (
-              <View style={stili.box}>
-                <Text style={stili.etichetta}>Risultati della simulazione</Text>
-                <View style={stili.rigaDue}>
-                  <Text style={[stili.paragrafo, stili.col]}>
-                    Potenza CC{'\n'}
-                    <Enfasi>{det?.potenzaKwp ?? '—'}</Enfasi>
-                  </Text>
-                  <Text style={[stili.paragrafo, stili.col]}>
-                    Produzione annua{'\n'}
-                    <Enfasi>{sim.flussi.produzione}</Enfasi>
-                  </Text>
-                  <Text style={[stili.paragrafo, stili.col]}>
-                    Moduli{'\n'}
-                    <Enfasi>{String(det?.moduli ?? dati.copertinaKpi?.moduli ?? '—')}</Enfasi>
-                  </Text>
-                </View>
-                <Text style={[stili.paragrafo, { fontSize: 8, color: P.inchiostroMorbido }]}>
-                  {sim.tariffe}
+            <View style={stili.box}>
+              <Text style={stili.etichetta}>Risultati della simulazione</Text>
+              <View style={stili.rigaDue}>
+                <Text style={[stili.paragrafo, stili.col]}>
+                  Potenza CC{'\n'}
+                  <Enfasi>{det?.potenzaKwp ?? '—'}</Enfasi>
+                </Text>
+                <Text style={[stili.paragrafo, stili.col]}>
+                  Produzione annua{'\n'}
+                  <Enfasi>{sim.flussi.produzione}</Enfasi>
+                </Text>
+                <Text style={[stili.paragrafo, stili.col]}>
+                  Moduli FV{'\n'}
+                  <Enfasi>
+                    {String(det?.moduli ?? dati.copertinaKpi?.moduli ?? '—')}
+                    {det?.wattPicco != null ? ` × ${det.wattPicco} Wp` : ''}
+                  </Enfasi>
                 </Text>
               </View>
-            ) : null}
-
-            {dati.planimetria?.fotoDataUri ? (
-              <Image
-                src={dati.planimetria.fotoDataUri}
-                style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 4 }}
-              />
-            ) : null}
+              <Text
+                style={[
+                  stili.paragrafo,
+                  { fontSize: 8, color: P.inchiostroMorbido, marginBottom: 0 },
+                ]}
+              >
+                {sim.tariffe}
+              </Text>
+            </View>
 
             <FooterChiaro logoSrc={logoSrc} />
             <NumeroPagina />
           </Page>
 
+          {/* D2 — Energia + tabella moduli + bolletta */}
           <Page size="A4" style={stili.pagina}>
-            <HeaderLogo logoSrc={logoSrc} />
-            <TitoloH1>Consumo annuale e risultati produzione</TitoloH1>
+            <HeaderEcoSolareDesign logoSrc={logoSrc} codice={dati.codice} />
+            <BoxClienteDesign dati={dati} />
 
+            <Text style={stili.h2}>Consumo annuale e produzione</Text>
             <View style={stili.chartFrame}>
-            <Text style={stili.chartCaption}>
-              Produzione {sim.flussi.produzione}
-            </Text>
-            <BarraStackedOrizzontale
-              a={sim.flussiNum.autoconsumo}
-              b={sim.flussiNum.exportRete}
-              coloreA={P.verde}
-              coloreB={P.teal}
-              width={460}
-            />
-            <View style={{ marginTop: 8, marginBottom: 4 }}>
-              <View style={stili.legendaRiga}>
-                <View style={[stili.legendaDot, { backgroundColor: P.verde }]} />
-                <Text style={stili.legendaTesto}>
-                  Verso la casa {sim.flussi.autoconsumo} (
-                  {pct(sim.flussiNum.autoconsumo, sim.flussiNum.produzione)})
-                </Text>
+              <Text style={stili.chartCaption}>
+                Produzione {sim.flussi.produzione}
+              </Text>
+              <BarraStackedOrizzontale
+                a={sim.flussiNum.autoconsumo}
+                b={sim.flussiNum.exportRete}
+                coloreA={P.verde}
+                coloreB={P.teal}
+                width={460}
+              />
+              <View style={{ marginTop: 8, marginBottom: 4 }}>
+                <View style={stili.legendaRiga}>
+                  <View style={[stili.legendaDot, { backgroundColor: P.verde }]} />
+                  <Text style={stili.legendaTesto}>
+                    Verso la casa {sim.flussi.autoconsumo} (
+                    {pct(sim.flussiNum.autoconsumo, sim.flussiNum.produzione)})
+                  </Text>
+                </View>
+                <View style={stili.legendaRiga}>
+                  <View style={[stili.legendaDot, { backgroundColor: P.teal }]} />
+                  <Text style={stili.legendaTesto}>
+                    Alla rete {sim.flussi.exportRete} (
+                    {pct(sim.flussiNum.exportRete, sim.flussiNum.produzione)})
+                  </Text>
+                </View>
               </View>
-              <View style={stili.legendaRiga}>
-                <View style={[stili.legendaDot, { backgroundColor: P.teal }]} />
-                <Text style={stili.legendaTesto}>
-                  Alla rete {sim.flussi.exportRete} (
-                  {pct(sim.flussiNum.exportRete, sim.flussiNum.produzione)})
-                </Text>
-              </View>
-            </View>
             </View>
 
             {sim.flussiNum.consumo > 0 ? (
@@ -993,7 +1180,9 @@ export function DocumentoPreventivo({
                     </Text>
                   </View>
                   <View style={stili.legendaRiga}>
-                    <View style={[stili.legendaDot, { backgroundColor: P.arancio }]} />
+                    <View
+                      style={[stili.legendaDot, { backgroundColor: P.arancio }]}
+                    />
                     <Text style={stili.legendaTesto}>
                       Dalla rete {sim.flussi.daRete} (
                       {pct(sim.flussiNum.daRete, sim.flussiNum.consumo)})
@@ -1003,11 +1192,59 @@ export function DocumentoPreventivo({
               </View>
             ) : null}
 
-            <Text style={stili.h2}>Risparmi stimati in bolletta — anno 1</Text>
+            <Text style={stili.h2}>Configurazione moduli</Text>
+            <View style={stili.tabella}>
+              <View style={stili.thead}>
+                <Text style={[stili.th, { flex: 2 }]}>Campo fotovoltaico</Text>
+                <Text style={[stili.th, { width: 55, textAlign: 'right' }]}>
+                  Moduli
+                </Text>
+                <Text style={[stili.th, { width: 70, textAlign: 'right' }]}>
+                  Wp
+                </Text>
+                <Text style={[stili.th, { width: 80, textAlign: 'right' }]}>
+                  Potenza
+                </Text>
+              </View>
+              <View style={stili.riga} wrap={false}>
+                <Text style={[stili.td, { flex: 2 }]}>
+                  <Enfasi>Layout da studio tetto</Enfasi>
+                  {det && det.falde.length > 0 ? (
+                    <Text style={{ color: P.inchiostroMorbido }}>
+                      {'\n'}
+                      {det.falde
+                        .map(
+                          (f) =>
+                            `${f.etichetta}: ${f.inclinazione}, ${f.esposizione}`,
+                        )
+                        .join(' · ')}
+                    </Text>
+                  ) : null}
+                </Text>
+                <Text style={[stili.td, { width: 55, textAlign: 'right' }]}>
+                  {det?.moduli ?? '—'}
+                </Text>
+                <Text style={[stili.td, { width: 70, textAlign: 'right' }]}>
+                  {det?.wattPicco ?? '—'}
+                </Text>
+                <Text
+                  style={[
+                    stili.td,
+                    { width: 80, textAlign: 'right', fontWeight: 700 },
+                  ]}
+                >
+                  {det?.potenzaKwp ?? '—'}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={stili.h2}>Risparmi in bolletta — anno 1</Text>
             <View style={stili.kpiFinGriglia}>
               <View style={stili.kpiFinCella}>
                 <Text style={stili.etichetta}>Bolletta mensile attuale</Text>
-                <Text style={stili.valoreArancio}>{eco.bollettaAttualeMensile}</Text>
+                <Text style={stili.valoreArancio}>
+                  {eco.bollettaAttualeMensile}
+                </Text>
               </View>
               <View style={stili.kpiFinCella}>
                 <Text style={stili.etichetta}>Con impianto FV</Text>
@@ -1019,35 +1256,30 @@ export function DocumentoPreventivo({
               </View>
             </View>
             <Text style={[stili.paragrafo, { textAlign: 'center' }]}>
-              Risparmi in bolletta netti a vita stimati (NPV):{' '}
+              Risparmi netti a vita stimati (NPV):{' '}
               <Text style={stili.valoreVerde}>{sim.npv}</Text>
-            </Text>
-            <Text
-              style={[
-                stili.paragrafo,
-                { fontSize: 8, color: P.inchiostroMorbido, textAlign: 'center' },
-              ]}
-            >
-              {sim.tariffe}
             </Text>
 
             <FooterChiaro logoSrc={logoSrc} />
             <NumeroPagina />
           </Page>
 
+          {/* D3 — Cashflow */}
           <Page size="A4" style={stili.pagina}>
-            <HeaderLogo logoSrc={logoSrc} />
-            <TitoloH1>Flusso di cassa annuale</TitoloH1>
+            <HeaderEcoSolareDesign logoSrc={logoSrc} codice={dati.codice} />
+            <BoxClienteDesign dati={dati} />
+
+            <Text style={stili.h2}>Analisi flusso di cassa</Text>
             <View style={stili.chartFrame}>
-            <Text style={stili.chartCaption}>
-              Risparmio netto + detrazione (primi {sim.cashflow.length} anni)
-            </Text>
-            <BarreCashflow
-              valoriCents={sim.cashflow.map((r) => r.flussoCents)}
-            />
+              <Text style={stili.chartCaption}>
+                Risparmio netto + detrazione (primi {sim.cashflow.length} anni)
+              </Text>
+              <BarreCashflow
+                valoriCents={sim.cashflow.map((r) => r.flussoCents)}
+              />
             </View>
 
-            <View style={[stili.tabella, { marginTop: 16 }]}>
+            <View style={[stili.tabella, { marginTop: 12 }]}>
               <View style={stili.thead}>
                 <Text style={[stili.th, { width: 40 }]}>Anno</Text>
                 <Text style={[stili.th, { flex: 1, textAlign: 'right' }]}>
@@ -1086,14 +1318,64 @@ export function DocumentoPreventivo({
                 { fontSize: 8, color: P.inchiostroMorbido, marginTop: 10 },
               ]}
             >
-              Simulazione calcolata sui dati dello studio tetto del cliente. Non
-              sostituisce un progetto esecutivo né una certificazione di
-              producibilità. Orizzonte modello: {sim.orizzonteAnni} anni.
+              Simulazione EcoSolare Design calcolata sullo studio tetto del
+              cliente. Non sostituisce un progetto esecutivo né una
+              certificazione di producibilità. Orizzonte modello:{' '}
+              {sim.orizzonteAnni} anni.
             </Text>
 
             <FooterChiaro logoSrc={logoSrc} />
             <NumeroPagina />
           </Page>
+
+          {/* D4 — Energia mensile dedicata */}
+          {sim.produzioneMensileKwh.length === 12 ? (
+            <Page size="A4" style={stili.pagina}>
+              <HeaderEcoSolareDesign logoSrc={logoSrc} codice={dati.codice} />
+              <BoxClienteDesign dati={dati} />
+
+              <Text style={stili.h2}>Energia mensile stimata</Text>
+              <View style={stili.chartFrame}>
+                <Text style={stili.chartCaption}>
+                  Produzione mensile (kWh) — profilo annuale
+                </Text>
+                <BarreMensili
+                  valori={sim.produzioneMensileKwh}
+                  width={480}
+                  height={220}
+                />
+                {det ? (
+                  <Text
+                    style={[stili.paragrafo, { marginTop: 10, marginBottom: 0 }]}
+                  >
+                    Produzione annua complessiva stimata:{' '}
+                    <Enfasi>{det.produzioneKwh}</Enfasi>
+                    {det.resaSpecifica ? (
+                      <>
+                        {' '}
+                        · resa specifica <Enfasi>{det.resaSpecifica}</Enfasi>
+                      </>
+                    ) : null}
+                    .
+                  </Text>
+                ) : null}
+              </View>
+
+              {dati.planimetria ? (
+                <>
+                  <Text style={stili.h2}>Layout moduli sul tetto</Text>
+                  <VistaTettoConModuli
+                    planimetria={dati.planimetria}
+                    altezza={220}
+                    mostraLegenda
+                  />
+                </>
+              ) : null}
+
+              <FooterChiaro logoSrc={logoSrc} />
+              <NumeroPagina />
+            </Page>
+          ) : null}
         </>
       ) : null}
     </Document>

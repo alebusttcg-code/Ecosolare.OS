@@ -42,10 +42,10 @@ export const ECOSOLARE = {
     teal: '#2a9d8f',
   },
   trust: [
-    '+2000 impianti realizzati',
-    '+500 impianti monitorati ogni giorno',
+    'EcoSolare: +2000 Impianti Realizzati',
+    '+500 impianti monitorati da remoto ogni giorno',
     '+2000 clienti soddisfatti',
-    '€ 200.000 capitale sociale versato',
+    '€ 200.000 capitale sociale interamente versato',
   ] as const,
   sedi: [
     {

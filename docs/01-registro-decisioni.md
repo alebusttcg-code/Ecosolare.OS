@@ -439,8 +439,11 @@ schema SVG se Maps non disponibile) e blocco termico opzionale
 **Redesign template commerciale PDF** (11 agosto 2026): base **carta chiara**
 blu/oro EcoSolare (niente hero/footer abisso), tipografia unica DM Sans con
 grassetti sui numeri, sezioni fisse identiche per tutti i preventivi, grafici
-SVG (produzione mensile, stacked energia, cashflow). Schede prodotto catalogo
-restano miglioramento successivo.
+SVG (produzione mensile, stacked energia, cashflow). Dopo le pagine marketing
+segue il blocco **EcoSolare Design** (ex “SolarEdge Design”): ortofoto con
+overlay moduli dallo studio tetto, KPI finanziari, energia, tabella moduli,
+cashflow ed energia mensile. Schede prodotto catalogo restano miglioramento
+successivo.
 
 **Multi-falda** (11 agosto 2026): i moduli possono stare su più falde nello
 stesso studio (`layouts[]`); la produzione è la somma delle stime per falda.
