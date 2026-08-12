@@ -15,6 +15,26 @@ const nextConfig: NextConfig = {
   // Playwright e Chromium serverless non vanno nel bundle webpack: sono pesanti
   // e `@sparticuz/chromium` espone binari nativi.
   serverExternalPackages: ['playwright-core', '@sparticuz/chromium'],
+  /*
+   * I due pacchetti del PDF vanno inclusi per intero nella funzione.
+   *
+   * Il tracciamento automatico segue gli `import`, e questi due caricano a
+   * runtime file che nessun import nomina: `playwright-core` legge
+   * `browsers.json` da dentro il proprio bundle, `@sparticuz/chromium` apre gli
+   * archivi in `bin/`. Senza, in produzione la funzione parte e fallisce solo
+   * al momento della stampa, con «Cannot find module
+   * playwright-core/browsers.json» — un 500 che in locale non si riproduce mai,
+   * perché in locale i file ci sono comunque.
+   *
+   * La chiave è il percorso della rotta: `*` copre il segmento dinamico senza
+   * dover proteggere le parentesi quadre dal glob.
+   */
+  outputFileTracingIncludes: {
+    '/api/preventivi/*/pdf': [
+      './node_modules/playwright-core/**/*',
+      './node_modules/@sparticuz/chromium/**/*',
+    ],
+  },
   // Foto di cantiere e scansioni: il default Next è 1 MB e su Vercel i POST
   // sopra quella soglia falliscono con 413 senza arrivare alla validazione.
   experimental: {

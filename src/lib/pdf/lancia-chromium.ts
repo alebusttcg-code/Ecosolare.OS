@@ -1,8 +1,14 @@
 import path from 'node:path'
-import {
-  chromium as playwrightChromium,
-  type Browser,
-} from 'playwright-core'
+/*
+ * Solo il tipo: `playwright-core` si carica quando serve davvero.
+ *
+ * Con l'import statico il pacchetto veniva risolto al caricamento del modulo,
+ * cioè prima che la rotta entrasse nel proprio try/catch: un problema di
+ * impacchettamento usciva come 500 nudo del runtime invece che come il 503 con
+ * il motivo scritto dentro. Chi scarica il preventivo merita di sapere perché
+ * non è uscito.
+ */
+import type { Browser } from 'playwright-core'
 
 /** Vercel e Lambda non hanno il browser Playwright preinstallato. */
 export function ambienteServerlessPdf(): boolean {
@@ -25,6 +31,7 @@ export async function lanciaChromiumPerPdf(): Promise<Browser> {
     // Su Lambda/Vercel le shared library stanno accanto all'eseguibile.
     process.env.LD_LIBRARY_PATH = path.dirname(executablePath)
 
+    const { chromium: playwrightChromium } = await import('playwright-core')
     return playwrightChromium.launch({
       args: [...sparticuz.args, '--disable-dev-shm-usage', '--disable-gpu'],
       executablePath,
