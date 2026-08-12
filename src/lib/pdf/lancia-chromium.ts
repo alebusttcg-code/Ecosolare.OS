@@ -1,4 +1,3 @@
-import path from 'node:path'
 /*
  * Solo il tipo: `playwright-core` si carica quando serve davvero.
  *
@@ -26,10 +25,18 @@ export async function lanciaChromiumPerPdf(): Promise<Browser> {
     const sparticuz = (await import('@sparticuz/chromium')).default
     sparticuz.setGraphicsMode = false
 
+    /*
+     * `executablePath()` scompatta l'eseguibile in `/tmp/chromium` **e** le
+     * librerie condivise in `/tmp/al2023/lib`, dove `LD_LIBRARY_PATH` punta già:
+     * ci pensa il pacchetto, all'import.
+     *
+     * Qui c'era una riga che lo reimpostava sulla cartella dell'eseguibile
+     * (`/tmp`), cancellando quel percorso. Le librerie restavano scompattate
+     * dov'erano e Chromium moriva subito con «error while loading shared
+     * libraries: libnss3.so», exit 127 — un errore che sembra un binario
+     * mancante e invece è un percorso buttato via.
+     */
     const executablePath = await sparticuz.executablePath()
-
-    // Su Lambda/Vercel le shared library stanno accanto all'eseguibile.
-    process.env.LD_LIBRARY_PATH = path.dirname(executablePath)
 
     const { chromium: playwrightChromium } = await import('playwright-core')
     return playwrightChromium.launch({
