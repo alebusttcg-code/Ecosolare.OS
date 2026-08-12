@@ -6,6 +6,7 @@ import {
   nomeComponente,
   normalizzaRiga,
   prezzoTermicoEffettivoCents,
+  scopEffettivo,
   quantitaEComponente,
   type RigaComponente,
 } from './componenti-impianto'
@@ -337,5 +338,49 @@ describe('quale prezzo termico usa il preventivo', () => {
   it('senza né righe né valore salvato resta zero', () => {
     expect(prezzoTermicoEffettivoCents({ prezzoTermicoLordoCents: 0 }, 0)).toBe(0)
     expect(prezzoTermicoEffettivoCents({ prezzoTermicoLordoCents: 0 }, -100)).toBe(0)
+  })
+})
+
+describe('SCOP della pompa di calore', () => {
+  const pompa = (scop: number | null): RigaComponente => ({
+    descrizione: 'Pompa di calore 8 kW',
+    quantita: 1,
+    ruolo: 'pompa_calore',
+    potenzaModuloW: null,
+    potenzaCaKw: null,
+    capacitaKwh: null,
+    scop,
+    marca: null,
+    modello: null,
+    importoLordoCents: 700_000,
+  })
+
+  it('lo legge dal catalogo', () => {
+    expect(leggiConfigurazione([pompa(4.2)]).scopPompaCalore).toBe(4.2)
+  })
+
+  it('con due macchine prende la peggiore', () => {
+    // Promettere il rendimento della migliore quando in casa ce n'è anche una
+    // peggiore è un risparmio che non si verificherà.
+    expect(leggiConfigurazione([pompa(4.5), pompa(3.4)]).scopPompaCalore).toBe(3.4)
+  })
+
+  it('resta nullo se il catalogo non lo dichiara', () => {
+    expect(leggiConfigurazione([pompa(null)]).scopPompaCalore).toBeNull()
+  })
+
+  it('il catalogo vince sul valore scritto a mano', () => {
+    expect(scopEffettivo({ scopPompaCalore: 4.2 }, 3.0)).toBe(4.2)
+  })
+
+  it('senza catalogo ripiega su quello scritto a mano', () => {
+    expect(scopEffettivo({ scopPompaCalore: null }, 3.8)).toBe(3.8)
+  })
+
+  it('senza né l’uno né l’altro resta zero, e il termico non entra nel piano', () => {
+    // Zero è il segnale che `simulaImpiantoFv` legge per lasciare il capitolo
+    // descrittivo invece di inventare un risparmio.
+    expect(scopEffettivo({ scopPompaCalore: null }, null)).toBe(0)
+    expect(scopEffettivo({ scopPompaCalore: null }, 0)).toBe(0)
   })
 })

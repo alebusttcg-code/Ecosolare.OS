@@ -169,6 +169,13 @@
       "when": 1786533060664,
       "tag": "0023_jazzy_blacklash",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786575139015,
+      "tag": "0024_absurd_tusk",
+      "breakpoints": true
     }
   ]
 }

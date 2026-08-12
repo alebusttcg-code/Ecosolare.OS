@@ -165,6 +165,12 @@ const CONFIGURAZIONI = [
     description: 'Tariffa export / RID di default (€/kWh).',
   },
   {
+    key: 'energia.prezzo_gas_eur_smc',
+    value: { valore: 1.1, validoDal: '2026-01-01', nota: 'Prezzo medio gas domestico' },
+    description:
+      'Prezzo del gas (€/Smc) usato quando il preventivo con pompa di calore non ne porta uno proprio.',
+  },
+  {
     key: 'energia.frazione_autoconsumo_default',
     value: { valore: 0.4, validoDal: '2024-01-01' },
     description:

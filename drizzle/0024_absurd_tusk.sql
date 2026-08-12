@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "scop" numeric(4, 2);

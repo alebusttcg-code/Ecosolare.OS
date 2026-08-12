@@ -31,6 +31,8 @@ export interface RigaComponente {
   readonly potenzaModuloW: number | null
   readonly potenzaCaKw: number | null
   readonly capacitaKwh: number | null
+  /** Rendimento stagionale, per le pompe di calore. */
+  readonly scop?: number | null
   readonly marca: string | null
   readonly modello: string | null
   /**
@@ -74,6 +76,16 @@ export interface ConfigurazioneImpianto {
    * Zero quando nessuna riga è riconosciuta come termica.
    */
   readonly prezzoTermicoLordoCents: number
+  /**
+   * SCOP della pompa di calore, dal catalogo. `null` quando il prodotto non lo
+   * dichiara: allora il preventivo ripiega sul valore scritto a mano, e se non
+   * c'e' nemmeno quello il risparmio sul riscaldamento non entra nel piano.
+   *
+   * Con piu' pompe di calore si prende il minore: promettere il rendimento
+   * della macchina migliore quando in casa ce n'e' anche una peggiore sarebbe
+   * un risparmio che non si verifichera'.
+   */
+  readonly scopPompaCalore: number | null
 
   readonly moduliDescritti: readonly ComponenteDescritto[]
   readonly inverterDescritti: readonly ComponenteDescritto[]
@@ -216,6 +228,12 @@ export function leggiConfigurazione(
     capacitaAccumuloKwh: capacita,
     haAccumulo: capacita > 0,
     haPompaCalore: pompeCalore.length > 0,
+    scopPompaCalore: (() => {
+      const valori = pompeCalore
+        .map((riga) => riga.scop)
+        .filter((valore): valore is number => Number.isFinite(valore) && (valore ?? 0) > 0)
+      return valori.length > 0 ? Math.min(...valori) : null
+    })(),
     prezzoTermicoLordoCents: pompeCalore.reduce(
       (somma, riga) => somma + Math.max(0, Math.round(numero(riga.importoLordoCents))),
       0,
@@ -289,4 +307,13 @@ export function prezzoTermicoEffettivoCents(
     return configurazione.prezzoTermicoLordoCents
   }
   return Math.max(0, Math.round(ripiegoCents))
+}
+
+/** Lo SCOP da usare: quello del catalogo, o il valore scritto a mano. */
+export function scopEffettivo(
+  configurazione: Pick<ConfigurazioneImpianto, 'scopPompaCalore'>,
+  ripiego: number | null | undefined,
+): number {
+  if (configurazione.scopPompaCalore != null) return configurazione.scopPompaCalore
+  return Number.isFinite(ripiego) && (ripiego ?? 0) > 0 ? (ripiego as number) : 0
 }

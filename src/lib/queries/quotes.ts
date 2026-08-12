@@ -21,6 +21,7 @@ import {
   nomeComponente,
   prezzoTermicoEffettivoCents,
   quantitaEComponente,
+  scopEffettivo,
 } from '@/lib/domain/componenti-impianto'
 import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
 import {
@@ -223,6 +224,7 @@ export async function getQuoteVersionPerPdf(
       ratedPowerW: products.ratedPowerW,
       acPowerKw: products.acPowerKw,
       capacityKwh: products.capacityKwh,
+      scop: products.scop,
       brand: products.brand,
       model: products.model,
     })
@@ -284,6 +286,7 @@ export async function getQuoteVersionPerPdf(
       potenzaModuloW: r.ratedPowerW,
       potenzaCaKw: r.acPowerKw ? Number.parseFloat(r.acPowerKw) : null,
       capacitaKwh: r.capacityKwh ? Number.parseFloat(r.capacityKwh) : null,
+      scop: r.scop ? Number.parseFloat(r.scop) : null,
       marca: r.brand,
       modello: r.model,
       /*
@@ -329,8 +332,14 @@ export async function getQuoteVersionPerPdf(
               ...(payload.gasNonSostituitoSmc != null
                 ? { gasNonSostituitoSmc: payload.gasNonSostituitoSmc }
                 : {}),
-              scop: dossier.termico.scop ?? 0,
-              prezzoGasEurSmc: dossier.termico.prezzoGasEurSmc ?? 0,
+              // Lo SCOP e' una proprieta' della macchina, non del preventivo:
+              // il catalogo vince, il valore scritto a mano resta da ripiego.
+              scop: scopEffettivo(configurazione, dossier.termico.scop),
+              // Il prezzo del gas e' del cliente, dalla sua bolletta; quando
+              // manca si usa quello configurato in azienda invece di spegnere
+              // in silenzio il calcolo del risparmio.
+              prezzoGasEurSmc:
+                dossier.termico.prezzoGasEurSmc ?? parametri.prezzoGasEurSmc,
               /*
                * Il prezzo del termico si deduce dalle righe, non si riscrive.
                * Era un campo a mano nel blocco termico: lo stesso importo in

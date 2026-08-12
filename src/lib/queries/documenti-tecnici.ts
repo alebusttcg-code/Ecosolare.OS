@@ -86,6 +86,14 @@ export interface ProdottoConSchede {
   readonly brand: string | null
   readonly model: string | null
   readonly componentRole: string | null
+  /** Potenza di picco del singolo modulo, in Watt. */
+  readonly ratedPowerW: number | null
+  /** Potenza nominale in alternata dell'inverter, in kW. */
+  readonly acPowerKw: string | null
+  /** Capacita' di targa dell'accumulo, in kWh. */
+  readonly capacityKwh: string | null
+  /** Rendimento stagionale della pompa di calore. */
+  readonly scop: string | null
   readonly schede: readonly SchedaProdotto[]
 }
 
@@ -108,6 +116,10 @@ export async function getCatalogoConSchede(
       brand: products.brand,
       model: products.model,
       componentRole: products.componentRole,
+      ratedPowerW: products.ratedPowerW,
+      acPowerKw: products.acPowerKw,
+      capacityKwh: products.capacityKwh,
+      scop: products.scop,
     })
     .from(products)
     .where(eq(products.isActive, true))

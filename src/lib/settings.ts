@@ -43,6 +43,14 @@ export const CHIAVI_MARGINE = {
 export const CHIAVI_SIMULAZIONE = {
   tariffaImportEurKwh: 'energia.tariffa_import_eur_kwh',
   tariffaExportEurKwh: 'energia.tariffa_export_eur_kwh',
+  /**
+   * Prezzo del gas usato quando il preventivo non ne porta uno proprio.
+   *
+   * Senza, un preventivo con pompa di calore in cui nessuno aveva compilato il
+   * campo usciva con il termico come pura voce di spesa: il costo dentro, il
+   * risparmio fuori, e il rientro peggiore del vero senza un avviso.
+   */
+  prezzoGasEurSmc: 'energia.prezzo_gas_eur_smc',
   frazioneAutoconsumoDefault: 'energia.frazione_autoconsumo_default',
   detrazioneFvPct: 'incentivi.detrazione_fv_pct',
   detrazioneFvAnni: 'incentivi.detrazione_fv_anni',

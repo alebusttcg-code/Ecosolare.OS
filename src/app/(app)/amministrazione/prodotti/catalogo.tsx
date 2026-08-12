@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
+import { aggiornaDatiTecniciProdotto } from '@/lib/actions/catalogo'
 import {
   caricaSchedaTecnica,
   ripristinaSchedaTecnica,
@@ -96,6 +97,7 @@ function RigaProdotto({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {prodotto.componentRole ? null : <Badge tone="attenzione">senza ruolo</Badge>}
           {attive.length === 0 ? (
             <Badge tone="neutro">nessun allegato</Badge>
           ) : (
@@ -115,7 +117,13 @@ function RigaProdotto({
       </div>
 
       {aperto ? (
-        <div className="mt-4 space-y-4 border-t pt-4" style={{ borderColor: 'var(--bordo-tenue)' }}>
+        <div className="mt-4 space-y-5 border-t pt-4" style={{ borderColor: 'var(--bordo-tenue)' }}>
+          <DatiTecnici prodotto={prodotto} />
+
+          <div className="border-t pt-4" style={{ borderColor: 'var(--bordo-tenue)' }}>
+            <h3 className="mb-3 text-xs font-semibold tracking-wide" style={{ color: 'var(--testo-fioco)' }}>
+              DOCUMENTI DA ALLEGARE AL PREVENTIVO
+            </h3>
           {prodotto.schede.length === 0 ? (
             <p className="text-xs" style={{ color: 'var(--testo-fioco)' }}>
               Nessun documento caricato: i preventivi che contengono questo prodotto escono senza
@@ -129,10 +137,149 @@ function RigaProdotto({
             </ul>
           )}
 
-          <ModuloCaricamento productId={prodotto.id} prodotto={prodotto.name} />
+            <div className="mt-4">
+              <ModuloCaricamento productId={prodotto.id} prodotto={prodotto.name} />
+            </div>
+          </div>
         </div>
       ) : null}
     </Card>
+  )
+}
+
+const RUOLI: readonly { value: string; label: string }[] = [
+  { value: '', label: 'Non classificato' },
+  { value: 'modulo', label: 'Modulo fotovoltaico' },
+  { value: 'inverter', label: 'Inverter' },
+  { value: 'accumulo', label: 'Accumulo' },
+  { value: 'pompa_calore', label: 'Pompa di calore' },
+  { value: 'struttura', label: 'Struttura' },
+  { value: 'quadro', label: 'Quadro elettrico' },
+  { value: 'altro', label: 'Altro' },
+]
+
+/**
+ * I dati tecnici del prodotto.
+ *
+ * Sono ciò che rende il preventivo calcolato invece che raccontato: la
+ * capacità dell'accumulo qui dentro decide il risparmio stampato sul PDF.
+ * Finché restano vuoti il sistema ripiega sulla descrizione — «Batteria di
+ * accumulo 10 kWh» letta con un'espressione regolare — e basta che qualcuno
+ * scriva la riga diversamente perché l'accumulo sparisca dai calcoli senza
+ * che niente lo dica.
+ *
+ * I campi compaiono in base al ruolo: a un modulo non si chiede lo SCOP.
+ */
+function DatiTecnici({ prodotto }: { prodotto: ProdottoConSchede }) {
+  const [ruolo, setRuolo] = useState(prodotto.componentRole ?? '')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [salvato, setSalvato] = useState(false)
+  const { inCorso, esegui } = useAzioneServer()
+
+  function invia(formData: FormData) {
+    setErrors({})
+    setSalvato(false)
+    esegui(async () => {
+      const esito = await aggiornaDatiTecniciProdotto(formData)
+      if (esito.ok) setSalvato(true)
+      else setErrors(esito.errors)
+    })
+  }
+
+  return (
+    <form action={invia} className="space-y-3">
+      <input type="hidden" name="productId" value={prodotto.id} />
+      <h3
+        className="text-xs font-semibold tracking-wide"
+        style={{ color: 'var(--testo-fioco)' }}
+      >
+        DATI TECNICI — ENTRANO NEI CALCOLI DEL PREVENTIVO
+      </h3>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium">Ruolo nell’impianto</span>
+          <select
+            name="componentRole"
+            value={ruolo}
+            onChange={(e) => setRuolo(e.target.value)}
+            className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+            style={{ background: 'rgba(5,10,20,0.6)', borderColor: 'var(--bordo)' }}
+          >
+            {RUOLI.map((voce) => (
+              <option key={voce.value} value={voce.value}>
+                {voce.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <CampoTesto label="Marca" name="brand" defaultValue={prodotto.brand ?? ''} errore={errors.brand} />
+        <CampoTesto label="Modello" name="model" defaultValue={prodotto.model ?? ''} errore={errors.model} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {ruolo === 'modulo' ? (
+          <CampoTesto
+            label="Potenza di picco (Wp)"
+            name="ratedPowerW"
+            defaultValue={prodotto.ratedPowerW != null ? String(prodotto.ratedPowerW) : ''}
+            errore={errors.ratedPowerW}
+          />
+        ) : null}
+        {ruolo === 'inverter' ? (
+          <CampoTesto
+            label="Potenza CA (kW)"
+            name="acPowerKw"
+            defaultValue={prodotto.acPowerKw ?? ''}
+            errore={errors.acPowerKw}
+          />
+        ) : null}
+        {ruolo === 'accumulo' ? (
+          <CampoTesto
+            label="Capacità (kWh)"
+            name="capacityKwh"
+            defaultValue={prodotto.capacityKwh ?? ''}
+            errore={errors.capacityKwh}
+          />
+        ) : null}
+        {ruolo === 'pompa_calore' ? (
+          <CampoTesto
+            label="SCOP"
+            name="scop"
+            defaultValue={prodotto.scop ?? ''}
+            errore={errors.scop}
+          />
+        ) : null}
+      </div>
+
+      {ruolo === 'pompa_calore' ? (
+        <p className="text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+          Senza SCOP il risparmio sul riscaldamento non entra nel piano economico:
+          la pompa di calore resta una voce di spesa e il rientro esce peggiore
+          del vero.
+        </p>
+      ) : null}
+
+      {errors._ ? (
+        <p className="text-xs" style={{ color: 'var(--color-eco-red-400)' }}>
+          {errors._}
+        </p>
+      ) : null}
+      {salvato ? (
+        <p className="text-xs" style={{ color: 'var(--color-eco-green-400)' }}>
+          Salvato. I preventivi nuovi useranno questi valori.
+        </p>
+      ) : null}
+
+      <button
+        type="submit"
+        disabled={inCorso}
+        className="bottone-fantasma rounded-lg border px-3 py-1.5 text-xs"
+        style={{ borderColor: 'var(--bordo)' }}
+      >
+        {inCorso ? 'Salvataggio…' : 'Salva dati tecnici'}
+      </button>
+    </form>
   )
 }
 

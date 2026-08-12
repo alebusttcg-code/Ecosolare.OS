@@ -849,6 +849,15 @@ export const products = pgTable(
     acPowerKw: numeric('ac_power_kw', { precision: 8, scale: 2 }),
     /** Capacita' nominale di targa dell'accumulo, in kWh. */
     capacityKwh: numeric('capacity_kwh', { precision: 8, scale: 2 }),
+    /**
+     * Rendimento stagionale della pompa di calore (SCOP).
+     *
+     * E' una proprieta' del prodotto come la capacita' lo e' della batteria.
+     * Prima si digitava a mano in ogni preventivo: lo stesso dato riscritto
+     * ogni volta, e chi lo dimenticava mandava un piano economico in cui la
+     * pompa di calore era solo un costo.
+     */
+    scop: numeric('scop', { precision: 4, scale: 2 }),
 
     /** Marca e modello: compaiono nella narrativa tecnica del preventivo. */
     brand: text('brand'),

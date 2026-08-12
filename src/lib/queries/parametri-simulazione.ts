@@ -8,9 +8,12 @@ import { CHIAVI_SIMULAZIONE, getSetting } from '@/lib/settings'
 const FALLBACK: ParametriSimulazioneFv & {
   tariffaImportEurKwh: number
   tariffaExportEurKwh: number
+  prezzoGasEurSmc: number
 } = {
   tariffaImportEurKwh: 0.3,
   tariffaExportEurKwh: 0.1,
+  /** Prezzo medio del gas domestico: si affina da configurazione. */
+  prezzoGasEurSmc: 1.1,
   frazioneAutoconsumoDefault: 0.4,
   detrazionePct: 50,
   detrazioneAnni: 10,
@@ -37,11 +40,13 @@ export async function getParametriSimulazioneFv(): Promise<
   ParametriSimulazioneFv & {
     tariffaImportEurKwh: number
     tariffaExportEurKwh: number
+    prezzoGasEurSmc: number
   }
 > {
   const [
     tariffaImportEurKwh,
     tariffaExportEurKwh,
+    prezzoGasEurSmc,
     frazioneAutoconsumoDefault,
     detrazionePct,
     detrazioneAnni,
@@ -52,6 +57,7 @@ export async function getParametriSimulazioneFv(): Promise<
   ] = await Promise.all([
     getSetting(CHIAVI_SIMULAZIONE.tariffaImportEurKwh, FALLBACK.tariffaImportEurKwh),
     getSetting(CHIAVI_SIMULAZIONE.tariffaExportEurKwh, FALLBACK.tariffaExportEurKwh),
+    getSetting(CHIAVI_SIMULAZIONE.prezzoGasEurSmc, FALLBACK.prezzoGasEurSmc),
     getSetting(
       CHIAVI_SIMULAZIONE.frazioneAutoconsumoDefault,
       FALLBACK.frazioneAutoconsumoDefault,
@@ -73,6 +79,7 @@ export async function getParametriSimulazioneFv(): Promise<
   return {
     tariffaImportEurKwh: numero(tariffaImportEurKwh, FALLBACK.tariffaImportEurKwh),
     tariffaExportEurKwh: numero(tariffaExportEurKwh, FALLBACK.tariffaExportEurKwh),
+    prezzoGasEurSmc: numero(prezzoGasEurSmc, FALLBACK.prezzoGasEurSmc),
     frazioneAutoconsumoDefault: numero(
       frazioneAutoconsumoDefault,
       FALLBACK.frazioneAutoconsumoDefault,
