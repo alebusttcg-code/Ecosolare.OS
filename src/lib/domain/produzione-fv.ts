@@ -20,39 +20,124 @@ export type InputProduzioneFalda = {
 export type RisultatoProduzioneFalda = {
   readonly produzioneKwh: number
   readonly resaSpecificaKwhKwp: number
+  /** Resa al punto ottimo per quella latitudine, prima dell'orientamento. */
   readonly resaBaseKwhKwp: number
-  readonly fattoreAzimut: number
-  readonly fattoreTilt: number
+  /** Quanto rende questa giacitura rispetto al punto ottimo, in [0, 1]. */
+  readonly fattoreOrientamento: number
   readonly fattoreSunshine: number
 }
 
 /**
- * Resa specifica di riferimento (kWh/kWp·anno) da latitudine in Italia.
- * Ancorata empiricamente ai dossier (~1300–1450 nel centro-nord).
+ * Resa specifica al **punto ottimo** per la latitudine (kWh/kWp·anno).
+ *
+ * Il livello è ancorato ai tre dossier di riferimento: con il fattore di
+ * orientamento qui sotto, Riboldi, Ricci e Tarantola implicano 1.476, 1.429 e
+ * 1.432 kWh/kWp al punto ottimo — tre tetti diversi, un solo numero, scarto
+ * massimo 2,1%. La media è 1.446, che a 45°N è il valore di questa formula.
+ *
+ * È più alto dei ~1.350 che PVGIS dà per Milano perché **EcoSolare installa
+ * moduli bifacciali**, che rendono il 5–10% in più. Se un giorno si vendessero
+ * monofacciali, questo livello va abbassato di altrettanto: è una proprietà
+ * degli impianti che facciamo, non della latitudine.
+ *
+ * La pendenza (−35 per grado) non è tarata sui dossier — stanno tutti fra 44,8
+ * e 45,2°N, non c'è nessuna escursione su cui tarare — ma tenuta dal modello
+ * precedente perché coerente con l'escursione nord-sud italiana (~350 kWh/kWp
+ * fra Milano e Palermo).
  */
 export function resaBaseDaLatitudine(latitudine: number): number {
   const lat = Math.min(47.5, Math.max(36.5, latitudine))
-  // 45°N ≈ 1285; 41°N ≈ 1420; 38°N ≈ 1520
-  return Math.round(2860 - lat * 35)
+  return Math.round(3021 - lat * 35)
 }
 
-/** 1.0 a sud (180°), cala verso est/ovest/nord. */
-export function fattoreAzimut(azimuthDegrees: number): number {
+/**
+ * Quanto rende una giacitura rispetto al punto ottimo.
+ *
+ * ## Perché una tabella e non due fattori moltiplicati
+ *
+ * Il modello precedente moltiplicava un fattore di esposizione per uno di
+ * inclinazione, come se fossero indipendenti. **Non lo sono.** Su un tetto
+ * piano l'esposizione non conta nulla — il piano dei moduli è orizzontale,
+ * verso dove «guarda» la falda è irrilevante — mentre su una parete verticale
+ * conta moltissimo. Un modello separabile non può dire entrambe le cose.
+ *
+ * Il costo di quell'errore era misurabile sui casi di taratura: Tarantola,
+ * falda di 7° esposta a sud-ovest, si prendeva una penalità di orientamento del
+ * 20% che su un tetto quasi piano non esiste. Il modello sottostimava i tre
+ * dossier del 21%, 23% e 34% — e nessun test se n'era accorto, perché
+ * verificavano solo che il sud rendesse più del nord.
+ *
+ * ## La tabella
+ *
+ * Righe: inclinazione della falda. Colonne: scostamento dell'esposizione da sud.
+ * I valori sono l'irraggiamento annuo sul piano dei moduli rispetto al punto
+ * ottimo, per l'Italia settentrionale. Fra i nodi si interpola linearmente.
+ *
+ * Due proprietà da non perdere se qualcuno la ritocca:
+ *
+ *  - la riga a 0° è **costante**: un tetto piano rende uguale in ogni
+ *    direzione, e questo è fisica, non taratura;
+ *  - lungo ogni riga i valori non crescono mai allontanandosi da sud.
+ */
+const INCLINAZIONI = [0, 15, 30, 45, 60, 90] as const
+const SCOSTAMENTI = [0, 30, 60, 90, 120, 150, 180] as const
+
+const RESA_RELATIVA: readonly (readonly number[])[] = [
+  [0.89, 0.89, 0.89, 0.89, 0.89, 0.89, 0.89],
+  [0.97, 0.96, 0.94, 0.90, 0.86, 0.83, 0.82],
+  [1.0, 0.99, 0.94, 0.86, 0.77, 0.7, 0.67],
+  [0.98, 0.96, 0.9, 0.79, 0.67, 0.58, 0.54],
+  [0.92, 0.9, 0.83, 0.7, 0.56, 0.46, 0.41],
+  [0.7, 0.68, 0.61, 0.49, 0.36, 0.27, 0.23],
+]
+
+/** Di quanto una falda guarda lontano da sud, in gradi [0, 180]. */
+export function scostamentoDaSud(azimuthDegrees: number): number {
   const az = ((azimuthDegrees % 360) + 360) % 360
-  const delta = Math.min(Math.abs(az - 180), 360 - Math.abs(az - 180))
-  return 0.58 + 0.42 * Math.cos((delta * Math.PI) / 180)
+  const delta = Math.abs(az - 180)
+  return Math.min(delta, 360 - delta)
 }
 
-/** Ottimale ~ lat−15° (tipico Italia); tetti piatti o molto ripidi perdono. */
-export function fattoreTilt(pitchDegrees: number, latitudine: number): number {
-  const ottimale = Math.min(38, Math.max(22, latitudine - 15))
-  const pitch = Math.min(60, Math.max(0, pitchDegrees))
-  const diff = Math.abs(pitch - ottimale)
-  return Math.max(0.75, 1 - diff * 0.007)
+/** Indice del nodo immediatamente sotto il valore, senza uscire dalla tabella. */
+function nodoInferiore(nodi: readonly number[], valore: number): number {
+  for (let i = nodi.length - 2; i >= 0; i -= 1) {
+    if (valore >= nodi[i]!) return i
+  }
+  return 0
+}
+
+export function fattoreOrientamento(
+  pitchDegrees: number,
+  azimuthDegrees: number,
+): number {
+  const pitch = Math.min(90, Math.max(0, pitchDegrees))
+  const scostamento = scostamentoDaSud(azimuthDegrees)
+
+  const i = nodoInferiore(INCLINAZIONI, pitch)
+  const j = nodoInferiore(SCOSTAMENTI, scostamento)
+
+  const pesoPitch =
+    (pitch - INCLINAZIONI[i]!) / (INCLINAZIONI[i + 1]! - INCLINAZIONI[i]!)
+  const pesoScostamento =
+    (scostamento - SCOSTAMENTI[j]!) / (SCOSTAMENTI[j + 1]! - SCOSTAMENTI[j]!)
+
+  const sopra =
+    RESA_RELATIVA[i]![j]! * (1 - pesoScostamento) +
+    RESA_RELATIVA[i]![j + 1]! * pesoScostamento
+  const sotto =
+    RESA_RELATIVA[i + 1]![j]! * (1 - pesoScostamento) +
+    RESA_RELATIVA[i + 1]![j + 1]! * pesoScostamento
+
+  return sopra * (1 - pesoPitch) + sotto * pesoPitch
 }
 
 /**
  * Fattore relativo tra falde dello stesso tetto. Neutro se i dati mancano.
+ *
+ * Nota: è un rapporto **interno al tetto**, limitato a ±12%, quindi non porta
+ * dentro l'ombreggiamento assoluto misurato da Google (un tetto all'ombra di un
+ * palazzo riceve oggi la stessa stima di uno libero). Usarlo come fattore
+ * assoluto è il punto 9 della pagella.
  */
 export function fattoreSunshineRelativo(
   sunshineMedio: number | null | undefined,
@@ -78,28 +163,27 @@ export function stimaProduzioneFalda(
       produzioneKwh: 0,
       resaSpecificaKwhKwp: 0,
       resaBaseKwhKwp: 0,
-      fattoreAzimut: 0,
-      fattoreTilt: 0,
+      fattoreOrientamento: 0,
       fattoreSunshine: 1,
     }
   }
 
   const resaBaseKwhKwp = resaBaseDaLatitudine(input.latitudine)
-  const fa = fattoreAzimut(input.azimuthDegrees)
-  const ft = fattoreTilt(input.pitchDegrees, input.latitudine)
+  const orientamento = fattoreOrientamento(
+    input.pitchDegrees,
+    input.azimuthDegrees,
+  )
   const fs = fattoreSunshineRelativo(
     input.sunshineMedio,
     input.sunshineMedioTetto,
   )
-  const resaSpecificaKwhKwp = Math.round(resaBaseKwhKwp * fa * ft * fs)
-  const produzioneKwh = Math.round(input.kWp * resaSpecificaKwhKwp)
+  const resaSpecificaKwhKwp = Math.round(resaBaseKwhKwp * orientamento * fs)
 
   return {
-    produzioneKwh,
+    produzioneKwh: Math.round(input.kWp * resaSpecificaKwhKwp),
     resaSpecificaKwhKwp,
     resaBaseKwhKwp,
-    fattoreAzimut: fa,
-    fattoreTilt: ft,
+    fattoreOrientamento: orientamento,
     fattoreSunshine: fs,
   }
 }

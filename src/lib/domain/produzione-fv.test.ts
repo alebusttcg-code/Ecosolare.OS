@@ -1,71 +1,143 @@
 import { describe, expect, it } from 'vitest'
 import {
   distribuisciProduzioneMensile,
-  fattoreAzimut,
-  fattoreTilt,
+  fattoreOrientamento,
   PESI_MENSILI_FV_ITALIA,
   resaBaseDaLatitudine,
+  scostamentoDaSud,
   stimaProduzioneFalda,
 } from './produzione-fv'
 
-describe('produzione FV sito-specifica', () => {
-  it('a sud rende più che a nord, a parità di tutto', () => {
-    const sud = stimaProduzioneFalda({
-      kWp: 6,
-      latitudine: 45.1,
-      pitchDegrees: 20,
-      azimuthDegrees: 180,
-    })
-    const nord = stimaProduzioneFalda({
-      kWp: 6,
-      latitudine: 45.1,
-      pitchDegrees: 20,
-      azimuthDegrees: 0,
-    })
-    expect(sud.produzioneKwh).toBeGreaterThan(nord.produzioneKwh)
-    expect(fattoreAzimut(180)).toBeGreaterThan(fattoreAzimut(0))
+/**
+ * I test di prima erano tutti ordinali — «sud rende più di nord», «latitudine
+ * bassa rende più di alta» — e restavano verdi mentre il modello sottostimava
+ * i tre dossier di riferimento del 21%, 23% e 34%. Un test che verifica solo
+ * l'ordine non sorveglia un modello numerico: sorveglia il segno.
+ *
+ * Qui i valori sono fissati. Se qualcuno ritocca la tabella, questi test
+ * dicono di quanto e su quale caso.
+ */
+
+describe('scostamento da sud', () => {
+  it('misura la distanza angolare, in entrambi i versi', () => {
+    expect(scostamentoDaSud(180)).toBe(0)
+    expect(scostamentoDaSud(90)).toBe(90)
+    expect(scostamentoDaSud(270)).toBe(90)
+    expect(scostamentoDaSud(0)).toBe(180)
+    expect(scostamentoDaSud(360)).toBe(180)
+    expect(scostamentoDaSud(-90)).toBe(90)
+  })
+})
+
+describe('fattore di orientamento', () => {
+  it('su un tetto piano l’esposizione non conta', () => {
+    // Non è taratura, è fisica: il piano dei moduli è orizzontale, e verso
+    // dove «guarda» la falda non cambia nulla. Il modello separabile di prima
+    // penalizzava del 20% un tetto quasi piano esposto a sud-ovest.
+    const piano = [0, 90, 180, 270].map((az) => fattoreOrientamento(0, az))
+    expect(new Set(piano).size).toBe(1)
   })
 
-  it('a latitudini più basse rende di più', () => {
-    const nord = resaBaseDaLatitudine(45.5)
-    const sud = resaBaseDaLatitudine(40.5)
-    expect(sud).toBeGreaterThan(nord)
+  it('riproduce i valori di riferimento per l’Italia settentrionale', () => {
+    // Rispetto al punto ottimo (sud, ~30°).
+    expect(fattoreOrientamento(30, 180)).toBeCloseTo(1.0, 2)
+    expect(fattoreOrientamento(30, 90)).toBeCloseTo(0.86, 2) // est
+    expect(fattoreOrientamento(30, 270)).toBeCloseTo(0.86, 2) // ovest
+    expect(fattoreOrientamento(30, 0)).toBeCloseTo(0.67, 2) // nord
+    expect(fattoreOrientamento(90, 180)).toBeCloseTo(0.7, 2) // parete a sud
   })
 
-  it('tilt vicino all’ottimo batte un tetto piatto', () => {
-    const ottimo = fattoreTilt(30, 45)
-    const piatto = fattoreTilt(4, 45)
-    expect(ottimo).toBeGreaterThan(piatto)
+  it('est e ovest si equivalgono', () => {
+    for (const pitch of [0, 15, 30, 45]) {
+      expect(fattoreOrientamento(pitch, 90)).toBeCloseTo(
+        fattoreOrientamento(pitch, 270),
+        6,
+      )
+    }
   })
 
-  it('differenzia i tre profili dossier (stesso kWp, geometrie diverse)', () => {
-    // Profili tipici Riboldi / Ricci / Tarantola (falda principale)
-    const riboldi = stimaProduzioneFalda({
+  it('non cresce mai allontanandosi da sud', () => {
+    for (const pitch of [0, 10, 20, 30, 45, 60, 90]) {
+      let precedente = Infinity
+      for (let dev = 0; dev <= 180; dev += 10) {
+        const valore = fattoreOrientamento(pitch, 180 - dev)
+        expect(valore).toBeLessThanOrEqual(precedente + 1e-9)
+        precedente = valore
+      }
+    }
+  })
+
+  it('interpola fra i nodi invece di saltare', () => {
+    const a = fattoreOrientamento(20, 180)
+    const b = fattoreOrientamento(25, 180)
+    expect(a).toBeGreaterThan(fattoreOrientamento(15, 180))
+    expect(b).toBeGreaterThan(a)
+    expect(b).toBeLessThan(fattoreOrientamento(30, 180))
+  })
+
+  it('regge i valori fuori scala senza rompersi', () => {
+    expect(fattoreOrientamento(-10, 180)).toBe(fattoreOrientamento(0, 180))
+    expect(fattoreOrientamento(120, 180)).toBe(fattoreOrientamento(90, 180))
+  })
+})
+
+describe('resa di base per latitudine', () => {
+  it('è ancorata a 1.446 kWh/kWp a 45°N', () => {
+    // È la media implicata dai tre dossier con il fattore di orientamento.
+    expect(resaBaseDaLatitudine(45)).toBe(1446)
+  })
+
+  it('a latitudini più basse rende di più, entro l’escursione italiana', () => {
+    expect(resaBaseDaLatitudine(37)).toBeGreaterThan(resaBaseDaLatitudine(46))
+    expect(resaBaseDaLatitudine(36.5) - resaBaseDaLatitudine(47.5)).toBeCloseTo(385, 0)
+  })
+
+  it('non estrapola fuori dall’Italia', () => {
+    expect(resaBaseDaLatitudine(10)).toBe(resaBaseDaLatitudine(36.5))
+    expect(resaBaseDaLatitudine(60)).toBe(resaBaseDaLatitudine(47.5))
+  })
+})
+
+/**
+ * La verifica che conta: il modello deve riprodurre i tre impianti che abbiamo
+ * davvero venduto, con le loro geometrie vere.
+ */
+describe('riproduzione dei dossier di riferimento', () => {
+  const CASI = [
+    { nome: 'Riboldi', kWp: 6, lat: 45.2, pitch: 4, azimut: 174, dichiarata: 8066 },
+    { nome: 'Ricci', kWp: 6, lat: 45.0, pitch: 8, azimut: 203, dichiarata: 7960 },
+    { nome: 'Tarantola', kWp: 4, lat: 44.8, pitch: 7, azimut: 239, dichiarata: 5235 },
+  ] as const
+
+  for (const caso of CASI) {
+    it(`${caso.nome} entro il 5% del dossier consegnato`, () => {
+      const stima = stimaProduzioneFalda({
+        kWp: caso.kWp,
+        latitudine: caso.lat,
+        pitchDegrees: caso.pitch,
+        azimuthDegrees: caso.azimut,
+      })
+      const scarto = Math.abs(stima.produzioneKwh / caso.dichiarata - 1)
+      expect(scarto).toBeLessThan(0.05)
+    })
+  }
+
+  it('un tetto a est non viene punito come se fosse a nord', () => {
+    // Il difetto che costava vendite: 6 kWp a est davano 4.515 kWh/anno,
+    // circa il 28% meno del vero, e il rientro si allungava di anni.
+    const est = stimaProduzioneFalda({
       kWp: 6,
-      latitudine: 45.2,
-      pitchDegrees: 4,
-      azimuthDegrees: 174,
+      latitudine: 44.5,
+      pitchDegrees: 30,
+      azimuthDegrees: 90,
     })
-    const ricci = stimaProduzioneFalda({
-      kWp: 6,
-      latitudine: 45.0,
-      pitchDegrees: 8,
-      azimuthDegrees: 203,
-    })
-    const tarantola = stimaProduzioneFalda({
-      kWp: 4,
-      latitudine: 44.8,
-      pitchDegrees: 7,
-      azimuthDegrees: 239,
-    })
-    expect(riboldi.produzioneKwh).not.toBe(ricci.produzioneKwh)
-    expect(tarantola.produzioneKwh).toBeLessThan(riboldi.produzioneKwh)
-    // Ordine di grandezza dei dossier (~5–8 MWh), non costante 1320×kWp
-    expect(riboldi.resaSpecificaKwhKwp).toBeGreaterThan(1000)
-    expect(riboldi.resaSpecificaKwhKwp).toBeLessThan(1600)
+    expect(est.produzioneKwh).toBeGreaterThan(7000)
+    expect(est.produzioneKwh).toBeLessThan(7900)
   })
+})
 
-  it('ripartisce la produzione mensile con pesi che sommano 1', () => {
+describe('ripartizione mensile', () => {
+  it('usa pesi che sommano 1 e conserva il totale', () => {
     const sommaPesi = PESI_MENSILI_FV_ITALIA.reduce((a, b) => a + b, 0)
     expect(sommaPesi).toBeCloseTo(1, 3)
     const mesi = distribuisciProduzioneMensile(7890)
