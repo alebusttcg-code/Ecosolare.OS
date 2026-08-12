@@ -21,12 +21,14 @@ const A4_CSS = {
 } as const
 
 export type OpzioniGeneraPdf = {
-  /** HTML completo del preventivo: evita il round-trip HTTP autenticato su Vercel. */
+  /** HTML completo del preventivo (solo script locali). */
   readonly html?: string
-  /** URL assoluto della stessa anteprima HTML mostrata nel CRM (script di verifica). */
+  /** URL assoluto della stessa anteprima HTML mostrata nel CRM. */
   readonly renderUrl?: string
   /** Sessione della richiesta corrente, inoltrata esclusivamente allo stesso origin. */
   readonly cookieHeader?: string | null
+  /** Header aggiuntivi per la route di stampa interna. */
+  readonly extraHeaders?: Readonly<Record<string, string>>
   readonly documentiTecnici?: readonly DocumentoTecnicoPreventivo[]
 }
 
@@ -48,7 +50,7 @@ interface CorpoStampato {
 }
 
 async function stampaHtmlConChromium(
-  opzioni: Pick<OpzioniGeneraPdf, 'html' | 'renderUrl' | 'cookieHeader'>,
+  opzioni: Pick<OpzioniGeneraPdf, 'html' | 'renderUrl' | 'cookieHeader' | 'extraHeaders'>,
 ): Promise<CorpoStampato> {
   const browser = await lanciaChromiumPerPdf()
   try {
@@ -61,6 +63,7 @@ async function stampaHtmlConChromium(
       extraHTTPHeaders: {
         'Accept-Language': 'it-IT,it;q=0.9',
         ...(opzioni.cookieHeader ? { Cookie: opzioni.cookieHeader } : {}),
+        ...opzioni.extraHeaders,
       },
     })
     const page = await context.newPage()
@@ -136,6 +139,7 @@ export async function generaPdfPreventivo(
     html: opzioni.html,
     renderUrl: opzioni.renderUrl,
     cookieHeader: opzioni.cookieHeader,
+    extraHeaders: opzioni.extraHeaders,
   })
 
   // Le pagine tecniche sono in coda: il corpo e' tutto quello che le precede.

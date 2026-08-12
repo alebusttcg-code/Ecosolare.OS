@@ -32,6 +32,6 @@ export async function lanciaChromiumPerPdf(): Promise<Browser> {
     })
   }
 
-  const { chromium } = await import('playwright')
+  const { chromium } = await import(/* webpackIgnore: true */ 'playwright')
   return chromium.launch({ headless: true })
 }

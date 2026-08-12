@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { AuthorizationError } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
-import { renderDocumentoPreventivoCompleto } from '@/lib/pdf/html/render-documento-completo'
+import { env } from '@/env'
 import { nomeFilePreventivo } from '@/lib/pdf/dati-preventivo'
 import { generaPdfPreventivo } from '@/lib/pdf/genera-preventivo'
-import { preparaRenderPreventivo } from '@/lib/pdf/prepara-render-preventivo'
 import { getQuoteVersionPerPdf } from '@/lib/queries/quotes'
 
 export const runtime = 'nodejs'
@@ -26,6 +25,14 @@ export async function GET(
   try {
     await guard('read', 'quote')
 
+    const tokenInterno = env().MAINTENANCE_TOKEN
+    if (!tokenInterno) {
+      return NextResponse.json(
+        { errore: 'Stampa PDF non configurata: manca MAINTENANCE_TOKEN.' },
+        { status: 503 },
+      )
+    }
+
     const bundle = await getQuoteVersionPerPdf(id)
     if (!bundle) {
       return NextResponse.json(
@@ -34,15 +41,9 @@ export async function GET(
       )
     }
 
-    const preparato = await preparaRenderPreventivo(bundle)
-    const html = renderDocumentoPreventivoCompleto(
-      preparato.dati,
-      preparato.pagineTecniche,
-      request.url,
-    )
-
-    const pdf = await generaPdfPreventivo(preparato.dati, {
-      html,
+    const pdf = await generaPdfPreventivo(bundle.dati, {
+      renderUrl: new URL(`/pdf-render/interno/preventivi/${id}`, request.url).toString(),
+      extraHeaders: { 'x-pdf-interno': tokenInterno },
       documentiTecnici: bundle.documentiTecnici,
     })
     const nome = nomeFilePreventivo(bundle.dati.codice, bundle.dati.versione)

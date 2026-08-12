@@ -1,32 +1,22 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { DatiPdfPreventivo } from '@/lib/pdf/dati-preventivo'
 import { baseUrlApplicazione } from '@/lib/pdf/base-url-applicazione'
 import { QuoteDocument, type PaginaTecnicaHtml } from './preventivo-documento'
 
-const FONT_FILES = [
-  'Manrope-Regular.ttf',
-  'Manrope-SemiBold.ttf',
-  'Manrope-Bold.ttf',
-  'BodoniModa-Regular.ttf',
-  'BodoniModa-Bold.ttf',
-] as const
+const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
 
-/** Font embedded nel CSS: la stampa non dipende da richieste HTTP aggiuntive. */
-function cssPreventivoEmbedded(): string {
-  const cssPath = path.join(process.cwd(), 'src/app/pdf-render/preventivo.css')
-  let css = readFileSync(cssPath, 'utf8')
-  for (const file of FONT_FILES) {
-    const bytes = readFileSync(path.join(process.cwd(), 'public/brand/fonts', file))
-    const data = `url(data:font/ttf;base64,${bytes.toString('base64')})`
-    css = css.replaceAll(`url('/brand/fonts/${file}')`, data)
-  }
-  return css
+let cssCache: string | null = null
+
+/** CSS co-locato al modulo così il file tracing di Next lo include nel deploy. */
+function cssPreventivoPerStampa(): string {
+  if (cssCache) return cssCache
+  cssCache = readFileSync(path.join(DIRNAME, 'preventivo-stampa.css'), 'utf8')
+  return cssCache
 }
-
-const CSS = cssPreventivoEmbedded()
 
 /** Replica client-side di PdfReadySignal, eseguita in pagina prima della stampa. */
 const SCRIPT_READY = String.raw`(async () => {
@@ -80,7 +70,7 @@ export function renderDocumentoPreventivoCompleto(
 <head>
   <meta charset="utf-8" />
   <base href="${base}/" />
-  <style>${CSS}</style>
+  <style>${cssPreventivoPerStampa()}</style>
 </head>
 <body>
   ${markup}

@@ -16,7 +16,15 @@ import type { NextRequest } from 'next/server'
 
 const COOKIE = 'ecosolare.sessione'
 
-function percorsoPubblico(pathname: string): boolean {
+function percorsoPubblico(pathname: string, request: NextRequest): boolean {
+  if (
+    pathname.startsWith('/pdf-render/interno/') &&
+    process.env.MAINTENANCE_TOKEN &&
+    request.headers.get('x-pdf-interno') === process.env.MAINTENANCE_TOKEN
+  ) {
+    return true
+  }
+
   return (
     pathname === '/accedi' ||
     pathname.startsWith('/accedi/') ||
@@ -33,7 +41,7 @@ function percorsoPubblico(pathname: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (percorsoPubblico(pathname)) {
+  if (percorsoPubblico(pathname, request)) {
     return NextResponse.next()
   }
 
