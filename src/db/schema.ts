@@ -554,6 +554,41 @@ export const inboundSubmissions = pgTable(
   ],
 )
 
+/**
+ * Contatori per la limitazione di frequenza degli endpoint pubblici.
+ *
+ * Sta nel database e non in memoria per una ragione precisa: in produzione
+ * l'applicazione gira su piu' istanze effimere e una viene creata a ogni
+ * richiesta. Un contatore in memoria si azzererebbe di continuo, cioe' non
+ * limiterebbe nulla mentre sembrerebbe di si' — il tipo di difesa peggiore,
+ * perche' toglie la voglia di metterne una vera.
+ *
+ * Una riga per finestra temporale: la finestra si azzera aggiornando
+ * `window_start`, senza cancellare (ADR-012 riguarda i dati, non i contatori,
+ * ma tanto vale non accumulare storia inutile).
+ */
+export const rateLimits = pgTable(
+  'rate_limits',
+  {
+    /** Che cosa si sta limitando: `intake:ip`, `intake:globale`, `intake:token`. */
+    bucket: text('bucket').notNull(),
+    /** Chi: l'indirizzo IP, oppure una costante per i contatori globali. */
+    key: text('key').notNull(),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull().defaultNow(),
+    count: integer('count').notNull().default(0),
+    /**
+     * Conteggio della finestra precedente, per la stima scorrevole: senza,
+     * una finestra fissa lascia passare il doppio del limite a cavallo fra
+     * due finestre, che e' esattamente il momento che un attaccante sceglie.
+     */
+    previousCount: integer('previous_count').notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.bucket, table.key] }),
+    index('rate_limits_window_idx').on(table.windowStart),
+  ],
+)
+
 /* -------------------------------------------------------------------------- */
 /*  Pipeline                                                                   */
 /* -------------------------------------------------------------------------- */

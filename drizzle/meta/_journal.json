@@ -162,6 +162,13 @@
       "when": 1786484686551,
       "tag": "0022_gray_bruce_banner",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1786533060664,
+      "tag": "0023_jazzy_blacklash",
+      "breakpoints": true
     }
   ]
 }

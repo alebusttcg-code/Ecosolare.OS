@@ -68,6 +68,7 @@ curl -X POST https://<dominio>/api/intake \
 | **202** | `ricevuto_non_interpretabile` | Payload salvato ma non trasformabile in lead (manca nominativo o recapito) |
 | **202** | `ricevuto_non_assegnato` | Nessun utente attivo a cui assegnarlo |
 | **401** | — | Token mancante o errato |
+| **429** | — | Troppe richieste: vedere *Limiti di frequenza* |
 | **503** | — | `INTAKE_TOKEN` non configurato |
 
 La risposta **non restituisce mai dati di contatto**: conferma solo la ricezione.
@@ -107,11 +108,46 @@ correggibile dal commerciale.
 
 ---
 
+## Limiti di frequenza
+
+Il token da solo non basta. È condiviso con integrazioni che non controlliamo, e
+se una di quelle lo espone nessuno se ne accorge: i limiti servono perché un
+token uscito costi volume, non il database.
+
+| Contatore | Soglia | Che cosa ferma |
+|---|---|---|
+| Per indirizzo | 20 all'ora | Un singolo mittente che apre il rubinetto |
+| Complessivo | 200 all'ora | Lo stesso, distribuito su molti indirizzi |
+| Token errato | 10 all'ora per indirizzo | Chi il token lo sta cercando |
+
+Oltre la soglia si riceve **429** con l'intestazione `Retry-After` in secondi e
+un corpo `{"errore": "…", "riprovaTra": <secondi>}`. Il client corretto aspetta e
+riprova: non è un rifiuto definitivo.
+
+Tre cose che vale la pena sapere:
+
+- **Le soglie sono larghe di proposito.** Il primo obbligo dell'endpoint è non
+  perdere un lead: un modulo che ritenta tre volte non è un attacco. Duecento
+  lead in un'ora sarebbero un record aziendale storico.
+- **Il contatore complessivo non dipende da nessuna intestazione.** L'indirizzo
+  del chiamante si legge da `x-forwarded-for` e simili, che il client può
+  scrivere come vuole: serve a *distribuire* il limite, non a garantirlo.
+- **La finestra è scorrevole.** Una finestra fissa lascerebbe passare il doppio
+  della soglia a cavallo fra due intervalli, che è il momento che un attaccante
+  sceglie.
+
+I tentativi con token errato che superano la soglia finiscono nell'audit log: è
+il solo modo per accorgersi che qualcuno sta cercando il segreto.
+
+---
+
 ## Cosa manca ancora
 
-- **Rate limiting.** L'endpoint è protetto da token ma non limitato in frequenza:
-  chi conoscesse il token potrebbe generare volume. Da aggiungere prima di
-  esporre l'endpoint su un dominio pubblico ad alto traffico.
+- **Dove vive il token.** Il limite di frequenza c'è (sopra), ma protegge dal
+  volume, non dalla fuga del segreto: se il modulo del sito chiama l'endpoint
+  da JavaScript nel browser, il token è leggibile da chiunque apra il sorgente
+  della pagina. Va verificato integrazione per integrazione, e dove serve la
+  chiamata va spostata su una funzione server del sito.
 - **Notifica immediata al proprietario.** Oggi il lead compare fra le attività;
   l'avviso in tempo reale (email o WhatsApp) arriva con il motore di automazione
   della Fase 2, che è ciò che rende davvero raggiungibile il target di

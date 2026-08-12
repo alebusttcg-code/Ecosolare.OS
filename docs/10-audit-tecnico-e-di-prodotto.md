@@ -161,7 +161,21 @@ che non è né l'una né l'altra cosa. Alla prima richiesta di un cliente si ris
 (JSON + documenti in uno zip) e `anonimizzaContatto` (sostituisce nome, contatti e
 indirizzo con segnaposto, lascia intatti gli importi, che hanno obbligo fiscale).
 
-#### D5 · L'endpoint di intake non ha limiti
+#### D5 · L'endpoint di intake non ha limiti — **risolto il 12 agosto 2026**
+
+> Tre limiti a finestra scorrevole su tabella (`rate_limits`, un solo
+> `INSERT … ON CONFLICT` atomico, quindi esatto anche con richieste simultanee):
+> 20 all'ora per indirizzo, 200 all'ora complessive, 10 all'ora per chi manda un
+> token sbagliato — e quel caso finisce nell'audit log. Risposta 429 con
+> `Retry-After`. Il contatore complessivo esiste perché l'indirizzo si legge da
+> un'intestazione HTTP, che il chiamante può scrivere come vuole: è il freno che
+> regge anche quando il primo non regge.
+>
+> **Resta da verificare la seconda metà del punto**, che non è codice: se il
+> modulo del sito chiama l'endpoint da JavaScript nel browser, il token è
+> pubblico e va spostato dietro una funzione server del sito. Il limite riduce
+> il danno di un token uscito, non lo annulla.
+
 
 `/api/intake` è pubblico e protetto solo dal token condiviso. Non ha alcun rate limit:
 chi conosce il token può creare lead all'infinito e riempire il database. E il token è
@@ -441,7 +455,7 @@ fa guadagnare, poi ciò che rende il codice più solido.
 | ~~1~~ | ~~Avvisi sugli eventi falliti (D2)~~ | Fatto l'11 agosto 2026 | — |
 | ~~2~~ | ~~Backup dello Storage + soft delete sui file (D1)~~ | Fatto l'11 agosto 2026 | — |
 | ~~3~~ | ~~Cron ogni 5 minuti (D6)~~ | Mitigato l'11 agosto 2026 | — |
-| 4 | Rate limit intake + verifica del token (D5) | Endpoint pubblico senza freni | 1 giorno |
+| ~~4~~ | ~~Rate limit intake (D5)~~ | Fatto il 12 agosto 2026 — resta da verificare dove vive il token | — |
 | 5 | Registrazione ore (M2) | Senza, il margine mostrato non è vero | 3–4 giorni |
 | ~~6~~ | ~~Gating costi in `getProjectDetail` (D7)~~ | Fatto l'11 agosto 2026 | — |
 | ~~7~~ | ~~Pagina pubblica di stato per il cliente (M8)~~ | Fatto l'11 agosto 2026 | — |

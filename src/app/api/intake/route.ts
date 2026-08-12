@@ -15,6 +15,14 @@ import { env } from '@/env'
 import { recordAudit } from '@/lib/audit'
 import { findDuplicates } from '@/lib/domain/dedup'
 import { parseIntakePayload, SOGLIA_COLLEGAMENTO } from '@/lib/domain/intake'
+import { consumaLimite } from '@/lib/limiti/contatore'
+import { indirizzoChiamante } from '@/lib/limiti/indirizzo'
+import {
+  LIMITE_GLOBALE,
+  LIMITE_PER_IP,
+  LIMITE_TOKEN_ERRATO,
+  type EsitoLimite,
+} from '@/lib/limiti/politica'
 import { CHIAVI, getSetting } from '@/lib/settings'
 
 /**
@@ -30,7 +38,22 @@ import { CHIAVI, getSetting } from '@/lib/settings'
  *     perche' l'utente ha premuto due volte — non deve creare due opportunita'.
  *  3. **Non diventare un canale di ingresso.** Risponde solo con un token
  *     condiviso valido, e non restituisce mai dati di altri contatti.
+ *  4. **Reggere anche se il token esce.** Il segreto e' condiviso con i form
+ *     del sito: se una di quelle integrazioni lo mette in una pagina, il token
+ *     e' pubblico e nessuno se ne accorge. Da solo non basta, quindi c'e' un
+ *     limite di frequenza sopra — per indirizzo, complessivo, e uno piu' stretto
+ *     per chi il token lo sta cercando.
  */
+
+function troppoFrequente(esito: EsitoLimite, motivo: string): NextResponse {
+  // 429 e non 403: al modulo del sito si sta dicendo «più tardi», non «mai»,
+  // e `Retry-After` è l'unica parte della risposta che un client automatico
+  // legge davvero.
+  return NextResponse.json(
+    { errore: motivo, riprovaTra: esito.riprovaTraSecondi },
+    { status: 429, headers: { 'Retry-After': String(esito.riprovaTraSecondi) } },
+  )
+}
 
 function confrontoSicuro(a: string, b: string): boolean {
   const bufferA = Buffer.from(a)
@@ -97,8 +120,61 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ errore: 'Intake non configurato.' }, { status: 503 })
   }
 
+  const db = getDb()
+  const indirizzo = indirizzoChiamante(request.headers)
+
+  /*
+   * I limiti si applicano prima di leggere il corpo: chi sta inondando
+   * l'endpoint non deve poterci far allocare megabyte di JSON per scoprire
+   * poi che la richiesta andava rifiutata.
+   *
+   * Prima quello globale, perché è l'unico che non dipende da un'intestazione
+   * che il chiamante può scrivere come vuole.
+   */
+  const globale = await consumaLimite(db, {
+    bucket: 'intake:globale',
+    chiave: 'tutti',
+    finestra: LIMITE_GLOBALE,
+  })
+  if (!globale.consentito) {
+    return troppoFrequente(globale, 'Troppe richieste verso questo endpoint.')
+  }
+
+  const perIndirizzo = await consumaLimite(db, {
+    bucket: 'intake:ip',
+    chiave: indirizzo,
+    finestra: LIMITE_PER_IP,
+  })
+  if (!perIndirizzo.consentito) {
+    return troppoFrequente(perIndirizzo, 'Troppe richieste da questo indirizzo.')
+  }
+
   const fornito = request.headers.get('x-intake-token') ?? ''
   if (!confrontoSicuro(fornito, atteso)) {
+    /*
+     * Il tentativo con token sbagliato ha un contatore suo, molto più stretto:
+     * qui non c'è alcun uso legittimo da proteggere, e senza questo il limite
+     * per indirizzo lascerebbe comunque venti tentativi all'ora a chi prova a
+     * indovinare il segreto.
+     */
+    const tentativi = await consumaLimite(db, {
+      bucket: 'intake:token',
+      chiave: indirizzo,
+      finestra: LIMITE_TOKEN_ERRATO,
+    })
+    if (!tentativi.consentito) {
+      // Vale la pena registrarlo: è il segnale che qualcuno sta cercando il
+      // token, e senza traccia nessuno lo saprebbe mai.
+      await recordAudit({
+        actorType: 'system',
+        actorLabel: 'intake-web',
+        action: 'access_denied',
+        entityType: 'lead_intake',
+        context: { motivo: 'token_errato', tentativiStimati: tentativi.usate },
+        ipAddress: indirizzo,
+      })
+      return troppoFrequente(tentativi, 'Troppi tentativi non autorizzati.')
+    }
     return NextResponse.json({ errore: 'Non autorizzato.' }, { status: 401 })
   }
 
@@ -109,7 +185,6 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ errore: 'Corpo della richiesta non valido.' }, { status: 400 })
   }
 
-  const db = getDb()
   const canale = 'sito' as const
   const interpretato = parseIntakePayload(payload)
   const externalId = interpretato.ok ? interpretato.lead.externalId : null
