@@ -36,7 +36,7 @@ import {
 } from '@/lib/solar'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { EditorModuli, type LayoutModuliCorrente } from './editor-moduli'
-import { catturaAnteprimaModuli } from './anteprima-moduli'
+import { catturaAnteprimeTetto } from './anteprima-moduli'
 import { CampoIndirizzo } from './campo-indirizzo'
 import { MappaTetto } from './mappa-tetto'
 import { SezioneFalda } from './sezione-falda'
@@ -322,13 +322,17 @@ export function LaboratorioSolar({
         layouts,
       })
       let anteprimaModuliDataUri: string | undefined
+      let anteprimaTettoDataUri: string | undefined
       if (contaModuli(layouts) > 0) {
         try {
-          const jpeg = await catturaAnteprimaModuli({
+          const anteprime = await catturaAnteprimeTetto({
             poligoni: poligoniJson,
             layouts,
           })
-          if (jpeg) anteprimaModuliDataUri = jpeg
+          if (anteprime) {
+            anteprimaTettoDataUri = anteprime.senzaModuliDataUri
+            anteprimaModuliDataUri = anteprime.conModuliDataUri
+          }
         } catch {
           // Il salvataggio non dipende dall’anteprima PDF.
         }
@@ -361,6 +365,7 @@ export function LaboratorioSolar({
             ? { gasNonSostituitoSmc: numeroOpzionale(gasCucinaSmc)! }
             : {}),
           ...(anteprimaModuliDataUri ? { anteprimaModuliDataUri } : {}),
+          ...(anteprimaTettoDataUri ? { anteprimaTettoDataUri } : {}),
         },
       })
       if (!esito.ok) {

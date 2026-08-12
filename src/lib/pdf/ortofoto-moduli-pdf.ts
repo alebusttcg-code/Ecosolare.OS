@@ -115,8 +115,9 @@ function legendaStudio(snapshot: SnapshotStudioTetto): string {
 }
 
 /**
- * Sovrascrive la planimetria schema con path in pixel + foto satellitare.
- * Se la mappa non è disponibile, restituisce `base` invariata (foto null).
+ * Aggiunge l'ortofoto pulita e i path in pixel. Se è già presente la cattura
+ * dell'editor con i moduli, la conserva come vista progetto; in caso contrario
+ * usa l'ortofoto come base e lascia che il renderer sovrapponga i moduli.
  */
 export async function arricchisciPlanimetriaConOrtofoto(
   base: PlanimetriaPdfDto,
@@ -165,14 +166,20 @@ export async function arricchisciPlanimetriaConOrtofoto(
   const mime = mappa.contentType.includes('jpeg')
     ? 'image/jpeg'
     : 'image/png'
-  const fotoDataUri = `data:${mime};base64,${mappa.bytes.toString('base64')}`
+  const fotoSenzaModuliDataUri = `data:${mime};base64,${mappa.bytes.toString('base64')}`
+  const conservaAnteprimaEditor =
+    base.fotoConModuliIntegrati === true && Boolean(base.fotoDataUri)
 
   return {
     viewBox: `0 0 ${pixelW} ${pixelH}`,
     poligoniPaths,
     moduliPaths,
     legenda: base.legenda || legendaStudio(snapshot),
-    fotoDataUri,
+    fotoDataUri: conservaAnteprimaEditor
+      ? base.fotoDataUri
+      : fotoSenzaModuliDataUri,
+    fotoSenzaModuliDataUri,
+    fotoConModuliIntegrati: conservaAnteprimaEditor,
     fotoPixelW: pixelW,
     fotoPixelH: pixelH,
     focusXPct: base.focusXPct ?? snapshot.focusTettoXPct ?? 50,

@@ -20,23 +20,27 @@ export async function preparaMfa(): Promise<
 export async function attivaMfa(
   _input: { codice: string },
 ): Promise<ActionResult<{ codiciRecupero: string[] }>> {
+  void _input
   return { ok: false, errors: { _: DISATTIVATA } }
 }
 
 export async function disattivaMfa(
   _input: { password: string },
 ): Promise<ActionResult<{ ok: true }>> {
+  void _input
   return { ok: false, errors: { _: DISATTIVATA } }
 }
 
 export async function rigeneraCodiciRecuperoMfa(
   _input: { password: string },
 ): Promise<ActionResult<{ codiciRecupero: string[] }>> {
+  void _input
   return { ok: false, errors: { _: DISATTIVATA } }
 }
 
 export async function azzeraMfaUtente(
   _input: { userId: string },
 ): Promise<ActionResult<{ ok: true }>> {
+  void _input
   return { ok: false, errors: { _: DISATTIVATA } }
 }

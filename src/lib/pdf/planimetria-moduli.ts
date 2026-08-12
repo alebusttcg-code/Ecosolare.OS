@@ -25,6 +25,8 @@ export type PlanimetriaPdf = {
   readonly moduliPaths: readonly string[]
   readonly legenda: string
   readonly fotoDataUri: string | null
+  readonly fotoSenzaModuliDataUri?: string | null
+  readonly fotoConModuliIntegrati?: boolean
   readonly focusXPct?: number
   readonly focusYPct?: number
 }
@@ -47,6 +49,8 @@ export function planimetriaDaStudio(
       moduliPaths: [],
       legenda,
       fotoDataUri: anteprima,
+      fotoSenzaModuliDataUri: snapshot.anteprimaTettoDataUri ?? null,
+      fotoConModuliIntegrati: true,
       focusXPct: snapshot.focusTettoXPct ?? 50,
       focusYPct: snapshot.focusTettoYPct ?? 50,
     }
@@ -115,6 +119,8 @@ export function planimetriaDaStudio(
     moduliPaths,
     legenda,
     fotoDataUri: null,
+    fotoSenzaModuliDataUri: null,
+    fotoConModuliIntegrati: false,
     focusXPct: snapshot.focusTettoXPct ?? 50,
     focusYPct: snapshot.focusTettoYPct ?? 50,
   }

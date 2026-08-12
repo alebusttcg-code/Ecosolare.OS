@@ -49,6 +49,8 @@ export interface SnapshotStudioTetto {
    * Se presente, il PDF la usa al posto dell’overlay SVG sull’ortofoto.
    */
   readonly anteprimaModuliDataUri?: string
+  /** JPEG della stessa vista prima del disegno dei pannelli. */
+  readonly anteprimaTettoDataUri?: string
   /** Punto focale percentuale usato dal ritaglio fotografico del preventivo. */
   readonly focusTettoXPct?: number
   readonly focusTettoYPct?: number

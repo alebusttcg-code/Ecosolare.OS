@@ -33,6 +33,8 @@ import {
   type DatiPdfPreventivo,
 } from '@/lib/pdf/dati-preventivo'
 import {
+  ATTIVITA_TERMICO,
+  TITOLO_TERMICO,
   ESCLUSO_OFFERTA,
   GARANZIE_TESTI,
   INCLUSO_FV,
@@ -426,12 +428,19 @@ export async function getQuoteVersionPerPdf(
           },
         ]
       : []),
+    /*
+     * Il blocco termico compare solo se il cliente lo compra. Non è una scelta
+     * estetica: le sue voci parlano di caldaia da smontare, lavaggio impianto
+     * e iscrizione FGAS, e su un preventivo di solo fotovoltaico
+     * descriverebbero un lavoro che nessuno farà.
+     */
     ...(dossier.termico?.presente
       ? [
           {
-            titolo: 'Impianto termico',
+            titolo: TITOLO_TERMICO[dossier.termico.tipo],
             voci: [
               dossier.termico.descrizione,
+              ...ATTIVITA_TERMICO[dossier.termico.tipo],
               ...(dossier.termico.scop
                 ? [`Rendimento stagionale dichiarato (SCOP): ${dossier.termico.scop.toLocaleString('it-IT')}.`]
                 : []),

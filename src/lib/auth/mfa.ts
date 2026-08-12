@@ -8,6 +8,7 @@ import type { Role } from './policy'
  * resta per non rompere i call-site; restituisce sempre `false`.
  */
 export function mfaObbligatoria(_ruolo: Role): boolean {
+  void _ruolo
   return false
 }
 

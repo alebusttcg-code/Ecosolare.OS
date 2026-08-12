@@ -68,6 +68,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export async function requireUser(_opzioni?: {
   readonly consentitoSenzaMfa?: boolean
 }): Promise<CurrentUser> {
+  void _opzioni
   const utente = await getCurrentUser()
   if (!utente) throw new AuthorizationError('read', 'contact')
   return utente

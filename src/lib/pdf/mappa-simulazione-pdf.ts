@@ -229,7 +229,7 @@ export function mappaSimulazionePerPdf(sim: RisultatoSimulazioneFv): {
     npv: euroCents(eco.npvCents),
     npvCents: eco.npvCents,
     paybackAnni: condizioniEconomiche.paybackAnni,
-    cashflow: eco.cashflow.slice(0, 12).map((r) => ({
+    cashflow: eco.cashflow.map((r) => ({
       anno: String(r.anno),
       risparmio: euroCents(r.risparmioEnergiaCents),
       risparmioTermico:

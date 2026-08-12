@@ -63,7 +63,11 @@ export const PAGINE_MARKETING: readonly PaginaMarketing[] = [
       'Ecosolare, nell’ambito del più importante gruppo d’acquisto organizzato da Altroconsumo, è stata selezionata in Emilia Romagna, Liguria e alta Toscana, venendo successivamente premiata a Milano durante la fiera delle energie rinnovabili come azienda partecipante con il più alto numero di progetti realizzati.',
     ],
     immagini: [
-      'preventivo/assets/altroconsumo-logo.png',
+      /*
+       * Solo la foto: il pannello di destra porta già il marchio Altroconsumo,
+       * e ripeterlo isolato sopra lo faceva comparire due volte nella stessa
+       * pagina.
+       */
       'preventivo/assets/altroconsumo-foto.jpg',
     ],
     disposizione: 'foto',

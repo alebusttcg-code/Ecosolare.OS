@@ -1,3 +1,9 @@
+import {
+  ATTIVITA_TERMICO,
+  ESCLUSO_OFFERTA,
+  INCLUSO_FV,
+  TITOLO_TERMICO,
+} from '@/lib/pdf/dossier-testi'
 import type { DatiPdfPreventivo } from '@/lib/pdf/dati-preventivo'
 
 export const WALTER_RICCI_HTML_FIXTURE: DatiPdfPreventivo = {
@@ -48,19 +54,43 @@ export const WALTER_RICCI_HTML_FIXTURE: DatiPdfPreventivo = {
   bloccoTermico: {
     tipoEtichetta: 'Caldaia ibrida',
     descrizione: 'Sistema ibrido ad alta efficienza per riscaldamento e acqua calda sanitaria.',
-    prezzoLordo: '€ 9.290,91',
+    // IVA inclusa davvero: 9.290,91 di imponibile + 10% = 10.220,00.
+    prezzoLordo: '€ 10.220,00',
     incentivoEtichetta: 'Conto Termico 3.0',
     incentivoImporto: '€ 2.950,00',
     notaIncentivo: 'Il piano utilizza soltanto l’agevolazione selezionata.',
-    nettoIndicativo: '€ 6.340,91',
+    nettoIndicativo: '€ 7.270,00',
   },
+  /*
+   * Le stesse costanti che usa `quotes.ts`: se la dimostrazione mostrasse voci
+   * scritte a mano, non proverebbe niente sul documento vero — e le differenze
+   * di copy si scoprirebbero davanti al cliente.
+   */
   configurazioneTecnica: [
-    { titolo: 'Impianto fotovoltaico', voci: ['12 moduli fotovoltaici Viessmann Vitovolt bifacciali da 500 Wp.', '1 inverter ibrido Viessmann / Solplanet da 6 kW.', 'Struttura certificata e protezioni elettriche complete.'] },
-    { titolo: 'Impianto termico', voci: ['Sistema ibrido ad alta efficienza.', 'Regolazione climatica e collegamenti idraulici previsti in offerta.'] },
+    {
+      titolo: 'Impianto fotovoltaico',
+      voci: [
+        '12 Pannelli FV Viessmann Vitovolt 500 Wp M-WT Bifacciali, Monocristallino Alto Rendimento.',
+        '1 Inverter Viessmann / Solplanet Hybrid Inverter da 6 kW.',
+        'Struttura di montaggio certificata Wurth, fissaggi in acciaio inox.',
+        'Fornitura e posa linea in Corrente Continua fra moduli e quadro inverter, dimensionata in base al progetto.',
+        'Fornitura e posa linea in Corrente Alternata fino al quadro esistente, dimensionata in base al progetto.',
+        'Cavo solare a doppia schermatura.',
+        'Quadri, centralini, sezionatori e scaricatori di sovratensione Schneider / ABB.',
+      ],
+    },
+    {
+      titolo: TITOLO_TERMICO.ibrido,
+      voci: [
+        'Caldaia Ibrida Daikin HPU Hybrid 8 kW, con bruciatore gas 33 kW e pompa di calore per riscaldamento e acqua calda sanitaria.',
+        ...ATTIVITA_TERMICO.ibrido,
+        'Rendimento stagionale dichiarato (SCOP): 4.',
+      ],
+    },
   ],
   dossierTestuale: {
-    incluso: ['Progettazione e pratiche autorizzative.', 'Fornitura, installazione, collaudo e messa in servizio.', 'Connessione alla rete e assistenza per le agevolazioni.', 'Monitoraggio dell’impianto e formazione del cliente.'],
-    escluso: ['Opere murarie non espressamente indicate.', 'Adeguamenti dell’impianto elettrico esistente non rilevabili in sopralluogo.', 'Lavorazioni aggiuntive richieste dopo l’accettazione.'],
+    incluso: INCLUSO_FV,
+    escluso: ESCLUSO_OFFERTA,
     garanzie: [{ titolo: 'Garanzie di prodotto e installazione', punti: ['10 anni sull’installazione EcoSolare.', '25 anni sulla resa dei moduli fotovoltaici.', 'Garanzia ufficiale dei produttori sui singoli componenti.'] }],
     notaGaranzia: 'Le condizioni complete sono riportate nella documentazione tecnica allegata al preventivo.',
   },
@@ -70,6 +100,15 @@ export const WALTER_RICCI_HTML_FIXTURE: DatiPdfPreventivo = {
     moduliPaths: [],
     legenda: '12 moduli fotovoltaici - layout dallo studio tetto EcoSolare',
     fotoDataUri: '/preventivo/reference/walter-hero.jpg',
+    // Nel CRM reale è la cattura gemella senza pannelli; la fixture riusa la
+    // reference solo per verificare la composizione a due colonne.
+    /*
+     * Volutamente assente: per questa dimostrazione non esiste una cattura del
+     * tetto senza moduli, e riusare la stessa foto farebbe apparire un
+     * confronto «prima/dopo» fra due immagini identiche.
+     */
+    fotoSenzaModuliDataUri: null,
+    fotoConModuliIntegrati: true,
     fotoPixelW: 934,
     fotoPixelH: 447,
     focusXPct: 50,
@@ -83,7 +122,7 @@ export const WALTER_RICCI_HTML_FIXTURE: DatiPdfPreventivo = {
     npv: '€ 36.250,00',
     npvCents: 3625000,
     paybackAnni: '3,8 anni',
-    cashflow: Array.from({ length: 10 }, (_, indice) => ({ anno: String(indice + 1), risparmio: `€ ${Math.round(1535 * (1 + indice * .02)).toLocaleString('it-IT')}`, risparmioTermico: null, detrazione: '€ 590', contoTermico: null, flusso: `€ ${Math.round(2125 * (1 + indice * .015)).toLocaleString('it-IT')}`, flussoCents: Math.round(212500 * (1 + indice * .015)) })),
+    cashflow: Array.from({ length: 25 }, (_, indice) => ({ anno: String(indice + 1), risparmio: `€ ${Math.round(1535 * (1 + indice * .02)).toLocaleString('it-IT')}`, risparmioTermico: null, detrazione: indice < 10 ? '€ 590' : '€ 0', contoTermico: null, flusso: `€ ${Math.round((1535 + (indice < 10 ? 590 : 0)) * (1 + indice * .015)).toLocaleString('it-IT')}`, flussoCents: Math.round((153500 + (indice < 10 ? 59000 : 0)) * (1 + indice * .015)) })),
     cumulato: Array.from({ length: 26 }, (_, indice) => ({ anno: indice, cumulatoEur: -15450 + indice * 2050 })),
     indicatori: [
       { icona: 'co2', etichetta: 'Emissioni CO₂ evitate', valore: '2,04', unita: 't/anno' },

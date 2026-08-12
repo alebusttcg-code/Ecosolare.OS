@@ -60,6 +60,12 @@ const snapshotSchema = z.object({
     .max(800_000)
     .regex(/^data:image\/jpeg;base64,/)
     .optional(),
+  /** Stessa ortofoto e stessa inquadratura, senza moduli. */
+  anteprimaTettoDataUri: z
+    .string()
+    .max(800_000)
+    .regex(/^data:image\/jpeg;base64,/)
+    .optional(),
   focusTettoXPct: z.number().min(0).max(100).optional(),
   focusTettoYPct: z.number().min(0).max(100).optional(),
 })
@@ -111,6 +117,9 @@ function normalizzaSnapshot(
       : {}),
     ...(grezzo.anteprimaModuliDataUri
       ? { anteprimaModuliDataUri: grezzo.anteprimaModuliDataUri }
+      : {}),
+    ...(grezzo.anteprimaTettoDataUri
+      ? { anteprimaTettoDataUri: grezzo.anteprimaTettoDataUri }
       : {}),
     ...(grezzo.focusTettoXPct != null
       ? { focusTettoXPct: grezzo.focusTettoXPct }

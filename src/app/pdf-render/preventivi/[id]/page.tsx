@@ -29,7 +29,11 @@ export default async function PreventivoHtmlPage({
   if (!bundle) notFound()
 
   let planimetria = bundle.dati.planimetria
-  if (planimetria && bundle.studio && !planimetria.fotoDataUri) {
+  if (
+    planimetria &&
+    bundle.studio &&
+    !planimetria.fotoSenzaModuliDataUri
+  ) {
     planimetria = await arricchisciPlanimetriaConOrtofoto(
       planimetria,
       bundle.studio,

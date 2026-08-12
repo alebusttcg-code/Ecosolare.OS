@@ -183,6 +183,10 @@ export interface PlanimetriaPdfDto {
    * null = solo schema geometrico (fallback senza Static Maps).
    */
   readonly fotoDataUri: string | null
+  /** Ortofoto identica a `fotoDataUri`, prima del posizionamento dei moduli. */
+  readonly fotoSenzaModuliDataUri?: string | null
+  /** true quando i pannelli sono già rasterizzati dentro `fotoDataUri`. */
+  readonly fotoConModuliIntegrati?: boolean
   readonly fotoPixelW?: number
   readonly fotoPixelH?: number
   readonly focusXPct?: number

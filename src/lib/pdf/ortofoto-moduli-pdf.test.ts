@@ -172,11 +172,44 @@ describe('ortofoto moduli PDF', () => {
       'fake-key',
     )
     expect(out.fotoDataUri).toMatch(/^data:image\/png;base64,/)
+    expect(out.fotoSenzaModuliDataUri).toMatch(/^data:image\/png;base64,/)
+    expect(out.fotoConModuliIntegrati).toBe(false)
     expect(out.fotoPixelW).toBe(1280)
     expect(out.fotoPixelH).toBe(1280)
     expect(out.viewBox).toBe('0 0 1280 1280')
     expect(out.moduliPaths.length).toBe(2)
     expect(out.poligoniPaths.length).toBe(1)
     expect(out.moduliPaths[0]).toMatch(/^M /)
+  })
+
+  it('preserva la cattura editor con pannelli e aggiunge l’ortofoto pulita', async () => {
+    const pngFake = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...Array(40).fill(0)])
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'image/png' },
+        arrayBuffer: async () =>
+          pngFake.buffer.slice(
+            pngFake.byteOffset,
+            pngFake.byteOffset + pngFake.byteLength,
+          ),
+      }),
+    )
+    const fotoEditor = 'data:image/jpeg;base64,/9j/4AAQ'
+    const out = await arricchisciPlanimetriaConOrtofoto(
+      {
+        ...schemaBase(),
+        fotoDataUri: fotoEditor,
+        fotoConModuliIntegrati: true,
+      },
+      snapshotMini(),
+      'fake-key',
+    )
+
+    expect(out.fotoDataUri).toBe(fotoEditor)
+    expect(out.fotoSenzaModuliDataUri).toMatch(/^data:image\/png;base64,/)
+    expect(out.fotoConModuliIntegrati).toBe(true)
   })
 })

@@ -116,9 +116,12 @@ describe('planimetria multi-falda', () => {
     const p = planimetriaDaStudio({
       ...snapshotDueFalde(),
       anteprimaModuliDataUri: jpeg,
+      anteprimaTettoDataUri: 'data:image/jpeg;base64,clean',
     })
     expect(p).not.toBeNull()
     expect(p!.fotoDataUri).toBe(jpeg)
+    expect(p!.fotoSenzaModuliDataUri).toBe('data:image/jpeg;base64,clean')
+    expect(p!.fotoConModuliIntegrati).toBe(true)
     expect(p!.moduliPaths).toHaveLength(0)
     expect(p!.poligoniPaths).toHaveLength(0)
     expect(p!.legenda).toContain('moduli')

@@ -43,6 +43,21 @@ async function inserisciPassi(
   }
 
   for (const passo of input.passi) {
+    // Idempotenza: il vincolo univoco (lead, fase, step) resta anche sui passi
+    // già chiusi — un secondo salvataggio non deve far crashare la chiusura.
+    const [gia] = await tx
+      .select({ id: activities.id })
+      .from(activities)
+      .where(
+        and(
+          eq(activities.opportunityId, input.opportunityId),
+          eq(activities.followUpPhase, passo.phase),
+          eq(activities.followUpStep, passo.step),
+        ),
+      )
+      .limit(1)
+    if (gia) continue
+
     await tx.insert(activities).values({
       kind: passo.kind,
       subject: passo.subject,
@@ -58,13 +73,34 @@ async function inserisciPassi(
   }
 
   if (input.promuoviPrimo && input.passi[0]) {
-    await tx
-      .update(opportunities)
-      .set({
-        nextActionDueAt: input.passi[0].dueAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(opportunities.id, input.opportunityId))
+    // Se lo step 1 esisteva già, assicuriamo comunque la next action aperta.
+    const [primo] = await tx
+      .select({ id: activities.id, dueAt: activities.dueAt })
+      .from(activities)
+      .where(
+        and(
+          eq(activities.opportunityId, input.opportunityId),
+          eq(activities.followUpPhase, input.passi[0].phase),
+          eq(activities.followUpStep, 1),
+          isNull(activities.completedAt),
+        ),
+      )
+      .limit(1)
+
+    if (primo) {
+      await tx
+        .update(activities)
+        .set({ isNextAction: true, updatedAt: new Date() })
+        .where(eq(activities.id, primo.id))
+
+      await tx
+        .update(opportunities)
+        .set({
+          nextActionDueAt: primo.dueAt ?? input.passi[0].dueAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(opportunities.id, input.opportunityId))
+    }
   }
 }
 

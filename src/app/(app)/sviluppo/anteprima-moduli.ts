@@ -73,13 +73,21 @@ function caricaImmagine(url: string): Promise<HTMLImageElement> {
   })
 }
 
+export type AnteprimeTetto = {
+  /** La stessa ortofoto, con la stessa inquadratura, prima del disegno dei moduli. */
+  readonly senzaModuliDataUri: string
+  /** Ortofoto con falde e moduli disegnati dall’editor. */
+  readonly conModuliDataUri: string
+}
+
 /**
- * Screenshot pulito della vista Moduli (tutte le falde con pannelli).
- * Stessi colori dell’editor; niente selezione/UI.
+ * Cattura la coppia usata nel preventivo: tetto esistente e progetto FV.
+ * Le due immagini nascono dallo stesso canvas e hanno quindi ritaglio,
+ * risoluzione e punto di vista perfettamente identici.
  */
-export async function catturaAnteprimaModuli(
+export async function catturaAnteprimeTetto(
   input: InputAnteprimaModuli,
-): Promise<string | null> {
+): Promise<AnteprimeTetto | null> {
   if (typeof document === 'undefined') return null
 
   const punti = puntiDaInput(input)
@@ -122,6 +130,13 @@ export async function catturaAnteprimaModuli(
   ctx.fillStyle = '#050a14'
   ctx.fillRect(0, 0, w, h)
   ctx.drawImage(img, ox, oy, dw, dh)
+
+  let senzaModuliDataUri: string
+  try {
+    senzaModuliDataUri = canvas.toDataURL('image/jpeg', 0.82)
+  } catch {
+    return null
+  }
 
   for (const layout of input.layouts) {
     if (layout.moduli.length === 0) continue
@@ -170,8 +185,18 @@ export async function catturaAnteprimaModuli(
   }
 
   try {
-    return canvas.toDataURL('image/jpeg', 0.82)
+    return {
+      senzaModuliDataUri,
+      conModuliDataUri: canvas.toDataURL('image/jpeg', 0.82),
+    }
   } catch {
     return null
   }
+}
+
+/** Compatibilità per eventuali chiamanti che richiedono solo il progetto. */
+export async function catturaAnteprimaModuli(
+  input: InputAnteprimaModuli,
+): Promise<string | null> {
+  return (await catturaAnteprimeTetto(input))?.conModuliDataUri ?? null
 }
