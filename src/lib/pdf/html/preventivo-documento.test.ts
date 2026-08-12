@@ -3,8 +3,16 @@ import path from 'node:path'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { SLOGAN_COPERTINA } from '@/lib/pdf/testi-marketing'
 import { WALTER_RICCI_HTML_FIXTURE } from './fixture-walter'
 import { QuoteDocument } from './preventivo-documento'
+
+/** Solo la copertina: l'importo esiste altrove nel documento, ed è giusto. */
+function soloCopertina(html: string): string {
+  const inizio = html.indexOf('data-page-id="sintesi"')
+  const dopo = html.indexOf('data-page-id=', inizio + 1)
+  return dopo === -1 ? html.slice(inizio) : html.slice(inizio, dopo)
+}
 
 describe('template HTML del preventivo', () => {
   it('mantiene ordine, metadati e quattordici pagine base', () => {
@@ -118,6 +126,32 @@ describe('template HTML del preventivo', () => {
     expect(html).toContain('pricing-thermal')
     expect(html).toContain(termico.tipoEtichetta)
     expect(html).toContain(termico.prezzoLordo)
+  })
+
+  /*
+   * La prima pagina racconta il progetto; il prezzo ha la sua pagina e ci
+   * arriva dopo le ragioni. L'importo in copertina lo anticipava a chiunque
+   * aprisse il documento, prima di qualunque argomento.
+   */
+  it('non mette l’importo in copertina', () => {
+    const html = renderToStaticMarkup(
+      createElement(QuoteDocument, { dati: WALTER_RICCI_HTML_FIXTURE }),
+    )
+    const copertina = soloCopertina(html)
+
+    expect(copertina).not.toContain(WALTER_RICCI_HTML_FIXTURE.totaleLordo)
+    expect(copertina).not.toMatch(/Investimento/i)
+    // Ma nel documento c'è, al suo posto.
+    expect(html).toContain(WALTER_RICCI_HTML_FIXTURE.totaleLordo)
+  })
+
+  it('chiude la copertina con lo slogan, parola per parola', () => {
+    const copertina = soloCopertina(
+      renderToStaticMarkup(createElement(QuoteDocument, { dati: WALTER_RICCI_HTML_FIXTURE })),
+    )
+
+    expect(copertina).toContain(SLOGAN_COPERTINA.apertura)
+    for (const riga of SLOGAN_COPERTINA.righe) expect(copertina).toContain(riga)
   })
 
   /*

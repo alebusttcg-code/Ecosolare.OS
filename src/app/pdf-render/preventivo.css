@@ -293,22 +293,34 @@ body:has(.pdf-document)::before {
 .cover-kpi-icon svg { width: 100%; height: 100%; }
 .cover-kpi-label { margin-top: 2.5mm; color: var(--navy); font-size: 8pt; font-weight: 600; }
 .cover-kpi-rule { width: 10mm; border-top: .55mm solid var(--blue); margin: 2.5mm 0 3mm; }
-.cover-kpi-value { color: var(--gold); font-family: 'Bodoni Moda', serif; font-size: 27pt; line-height: 1; white-space: nowrap; }
-.cover-kpi-value small { margin-left: 2mm; color: var(--navy); font-family: 'Manrope', sans-serif; font-size: 8.5pt; }
-.cover-summary { height: 34mm; margin-top: 4mm; border: .25mm solid #cacdce; border-radius: 2.5mm; display: grid; grid-template-columns: 16mm 1fr .25mm 16mm 1.2fr; gap: 5mm; align-items: center; padding: 5mm 9mm; }
+/*
+ * I numeri della copertina si leggono, non si ammirano.
+ *
+ * Erano oro (#f4b800) in Bodoni Moda corpo 27: un carattere da titoli, con
+ * aste sottilissime, in un colore che su carta bianca ha meno contrasto di una
+ * matita. «6144» si leggeva «6|44». Il Bodoni resta dov'è nato per stare — il
+ * titolo di copertina e i numeri di pagina — e i dati passano al Manrope in
+ * blu notte. L'oro sopravvive come filetto sotto l'etichetta: accento, non
+ * testo.
+ */
+.cover-kpi-value { color: var(--navy); font-family: 'Manrope', sans-serif; font-size: 23pt; font-weight: 600; letter-spacing: -.01em; line-height: 1; white-space: nowrap; }
+.cover-kpi-value small { margin-left: 2mm; color: var(--muted); font-family: 'Manrope', sans-serif; font-size: 9pt; font-weight: 500; }
+.cover-summary { height: 34mm; margin-top: 4mm; border: .25mm solid #cacdce; border-radius: 2.5mm; display: grid; grid-template-columns: 16mm auto .25mm 1fr; gap: 6mm; align-items: center; padding: 5mm 9mm; }
 .cover-summary > i { height: 25mm; background: #bdc2c9; }
-/* Senza simulazione resta il solo investimento: due colonne, non cinque. */
-.cover-summary-sola { grid-template-columns: 16mm 1fr; }
+/* Senza simulazione non c'e' la CO2: resta il solo slogan, a tutta larghezza. */
+.cover-summary-sola { grid-template-columns: 1fr; }
 .summary-icon { width: 15mm; height: 15mm; padding: 2mm; border: .35mm dashed currentColor; border-radius: 50%; }
 .summary-icon svg { width: 100%; height: 100%; }
 .summary-icon.green { color: var(--green); }
-.summary-icon.blue { color: var(--blue); border: 0; border-radius: 0; }
-.cover-summary span { display: block; color: var(--navy); font-size: 8pt; }
-.cover-summary strong { display: block; margin-top: 2mm; color: var(--gold); font-family: 'Bodoni Moda', serif; font-size: 25pt; line-height: 1; font-weight: 400; white-space: nowrap; }
-.cover-summary small { color: var(--navy); font-family: 'Manrope', sans-serif; font-size: 8.5pt; }
-.trust-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; margin-top: 3mm; color: var(--muted); font-size: 5.4pt; text-align: center; }
-.trust-strip span { white-space: nowrap; }
-.trust-strip b { color: var(--blue); }
+.cover-summary span { display: block; color: var(--muted); font-size: 8pt; }
+.cover-summary strong { display: block; margin-top: 2mm; color: var(--navy); font-family: 'Manrope', sans-serif; font-size: 21pt; font-weight: 600; line-height: 1; white-space: nowrap; }
+.cover-summary small { margin-left: 1.5mm; color: var(--muted); font-family: 'Manrope', sans-serif; font-size: 9pt; font-weight: 500; }
+/*
+ * Il biglietto da visita dell'azienda. Prima erano quattro voci in corpo 5,4
+ * schiacciate su una riga sola: quattro numeri importanti ridotti a didascalia.
+ */
+.cover-slogan strong { margin: 0 0 1.6mm; color: var(--navy); font-family: 'Manrope', sans-serif; font-size: 10.5pt; font-weight: 700; line-height: 1.25; white-space: normal; }
+.cover-slogan span { color: var(--ink); font-size: 8.4pt; line-height: 1.5; }
 
 /* Pagine 2-4 */
 .intro-columns { margin-bottom: 7mm; }
@@ -399,7 +411,19 @@ body:has(.pdf-document)::before {
 .signature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15mm; margin-top: 12mm; }
 .signature-row div { padding-top: 3mm; border-top: .4mm solid var(--blue); color: var(--muted); font-size: 7pt; }
 .commercial-closing { margin: 6mm 0 0 !important; color: var(--muted); font-size: 7pt; line-height: 1.45; }
-.commercial-closing + .signature-row { margin-top: 7mm; }
+/*
+ * Le firme vanno in fondo alla pagina, come su un'offerta di carta.
+ *
+ * Stavano incollate sotto il commiato, con un palmo di bianco sotto: sembrava
+ * che il documento fosse finito prima del previsto. `margin-top: auto` le
+ * spinge giu' solo se avanza spazio, quindi un preventivo con molte righe non
+ * le fa sfondare — si limita a riavvicinarle al testo.
+ *
+ * La colonna flex vive solo qui: le altre pagine hanno impaginazioni diverse e
+ * non c'e' ragione di cambiarle.
+ */
+.pdf-page[data-page-id="spesa"] .page-content { display: flex; flex-direction: column; }
+.pdf-page[data-page-id="spesa"] .signature-row { margin-top: auto; padding-bottom: 4mm; }
 
 /* EcoSolare Design */
 .client-box { height: 18mm; padding: 4mm; display: flex; justify-content: space-between; background: #f5f8fc; border: .25mm solid #cdd8e7; border-radius: 2mm; }

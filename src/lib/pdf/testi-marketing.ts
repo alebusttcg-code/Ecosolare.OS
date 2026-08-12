@@ -113,3 +113,27 @@ export const CHIUSURA_GARANZIA = {
   premessa: 'Ecosolare può permettersi di fornire',
   claim: '10 anni di Garanzia sull’installazione dei propri impianti',
 } as const
+
+/* -------------------------------------------------------------------------- */
+/*  Firma di copertina                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Le quattro righe che chiudono la copertina.
+ *
+ * Prima erano una riga sola di quattro voci in corpo 5,4: quattro numeri
+ * importanti ridotti a didascalia, che nessuno legge. Sono il biglietto da
+ * visita dell'azienda e vanno letti come tale.
+ *
+ * **Il testo è quello dato dal commerciale, parola per parola.** «+2000» senza
+ * punto delle migliaia e «Impianti Realizzati» con le maiuscole sono scelte
+ * sue, non refusi: qui non si normalizza niente.
+ */
+export const SLOGAN_COPERTINA = {
+  apertura: 'Ecosolare: +2000 Impianti Realizzati',
+  righe: [
+    '+500 impianti monitorati da remoto ogni giorno',
+    '+2000 clienti soddisfatti',
+    '€ 200.000 capitale sociale interamente versato',
+  ],
+} as const

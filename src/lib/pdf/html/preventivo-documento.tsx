@@ -10,6 +10,7 @@ import {
   CHIUSURA_GARANZIA,
   MOTIVI_GARANZIA,
   PAGINE_MARKETING,
+  SLOGAN_COPERTINA,
 } from '@/lib/pdf/testi-marketing'
 import { TERMINI_PAGAMENTO } from '@/lib/pdf/dossier-testi'
 import { BarraEnergia, GraficoCashflow, GraficoMensile } from './grafici'
@@ -218,7 +219,12 @@ function Copertina({ dati }: { readonly dati: DatiPdfPreventivo }) {
           <KpiCard icona="autonomia" label="Autonomia energetica" value={autonomia != null ? String(autonomia) : '—'} unit="%" />
         </div>
       ) : null}
-      <div className={sim ? 'cover-summary' : 'cover-summary cover-summary-sola'}>
+      {/*
+        * L'importo non sta in copertina: la prima pagina racconta il progetto,
+        * il prezzo ha la sua pagina e ci arriva dopo le ragioni. Al suo posto,
+        * dove l'occhio andava a cercare il numero, c'è chi lo propone.
+        */}
+      <div className={co2 ? 'cover-summary' : 'cover-summary cover-summary-sola'}>
         {co2 ? (
           <>
             <div className="summary-icon green"><Icona tipo="foglia" /></div>
@@ -226,10 +232,11 @@ function Copertina({ dati }: { readonly dati: DatiPdfPreventivo }) {
             <i />
           </>
         ) : null}
-        <div className="summary-icon blue"><Icona tipo="investimento" /></div>
-        <div><span>Investimento</span><strong>{dati.totaleLordo}</strong></div>
+        <div className="cover-slogan">
+          <strong>{SLOGAN_COPERTINA.apertura}</strong>
+          {SLOGAN_COPERTINA.righe.map((riga) => <span key={riga}>{riga}</span>)}
+        </div>
       </div>
-      <div className="trust-strip"><span><b>+2.000</b> impianti realizzati</span><span><b>+500</b> monitorati ogni giorno</span><span><b>+2.000</b> clienti soddisfatti</span><span><b>€ 200.000</b> capitale versato</span></div>
     </PageShell>
   )
 }
