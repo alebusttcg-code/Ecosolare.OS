@@ -12,6 +12,9 @@ import type { NextConfig } from 'next'
  * delle rotte allineate alle etichette di menu.
  */
 const nextConfig: NextConfig = {
+  // Playwright e Chromium serverless non vanno nel bundle webpack: sono pesanti
+  // e `@sparticuz/chromium` espone binari nativi.
+  serverExternalPackages: ['playwright-core', '@sparticuz/chromium', 'playwright'],
   // Foto di cantiere e scansioni: il default Next è 1 MB e su Vercel i POST
   // sopra quella soglia falliscono con 413 senza arrivare alla validazione.
   experimental: {

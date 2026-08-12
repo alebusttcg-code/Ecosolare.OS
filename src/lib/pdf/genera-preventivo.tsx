@@ -1,5 +1,5 @@
-import { chromium } from 'playwright'
 import type { DatiPdfPreventivo } from '@/lib/pdf/dati-preventivo'
+import { lanciaChromiumPerPdf } from '@/lib/pdf/lancia-chromium'
 import {
   assemblaPreventivoConDocumentiTecnici,
   caricaDocumentiTecnici,
@@ -50,7 +50,7 @@ async function stampaHtmlConChromium(
   cookieHeader?: string | null,
 ): Promise<CorpoStampato> {
   const url = verificaUrlRender(renderUrl)
-  const browser = await chromium.launch({ headless: true })
+  const browser = await lanciaChromiumPerPdf()
   try {
     const context = await browser.newContext({
       locale: 'it-IT',

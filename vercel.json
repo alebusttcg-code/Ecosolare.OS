@@ -2,6 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["fra1"],
   "framework": "nextjs",
+  "env": {
+    "AWS_LAMBDA_JS_RUNTIME": "nodejs22.x"
+  },
+  "functions": {
+    "src/app/api/preventivi/[id]/pdf/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/manutenzione/outbox",

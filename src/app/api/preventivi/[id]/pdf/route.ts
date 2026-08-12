@@ -6,6 +6,8 @@ import { generaPdfPreventivo } from '@/lib/pdf/genera-preventivo'
 import { getQuoteVersionPerPdf } from '@/lib/queries/quotes'
 
 export const runtime = 'nodejs'
+/** Playwright + stampa A4 possono superare i 10s del piano Hobby. */
+export const maxDuration = 60
 
 /**
  * Download del PDF cliente per una versione di preventivo.
@@ -36,21 +38,32 @@ export async function GET(
     )
   }
 
-  const pdf = await generaPdfPreventivo(bundle.dati, {
-    renderUrl: new URL(`/pdf-render/preventivi/${id}`, request.url).toString(),
-    cookieHeader: request.headers.get('cookie'),
-    documentiTecnici: bundle.documentiTecnici,
-  })
-  const nome = nomeFilePreventivo(bundle.dati.codice, bundle.dati.versione)
+  try {
+    const pdf = await generaPdfPreventivo(bundle.dati, {
+      renderUrl: new URL(`/pdf-render/preventivi/${id}`, request.url).toString(),
+      cookieHeader: request.headers.get('cookie'),
+      documentiTecnici: bundle.documentiTecnici,
+    })
+    const nome = nomeFilePreventivo(bundle.dati.codice, bundle.dati.versione)
 
-  return new NextResponse(new Uint8Array(pdf), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Length': String(pdf.byteLength),
-      'Content-Disposition': `attachment; filename="${nome}"; filename*=UTF-8''${encodeURIComponent(nome)}`,
-      'Cache-Control': 'private, no-store',
-      'X-Content-Type-Options': 'nosniff',
-    },
-  })
+    return new NextResponse(new Uint8Array(pdf), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Length': String(pdf.byteLength),
+        'Content-Disposition': `attachment; filename="${nome}"; filename*=UTF-8''${encodeURIComponent(nome)}`,
+        'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    })
+  } catch (errore) {
+    console.error('[preventivo-pdf]', errore)
+    return NextResponse.json(
+      {
+        errore:
+          'Generazione PDF non riuscita. Se il problema persiste, contattare il supporto tecnico.',
+      },
+      { status: 503 },
+    )
+  }
 }

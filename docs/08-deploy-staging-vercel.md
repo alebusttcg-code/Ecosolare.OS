@@ -71,6 +71,7 @@ opzionalmente **Production**:
 | `TELEGRAM_WEBHOOK_SECRET` | `openssl rand -hex 32` | Stesso secret in `setWebhook` |
 | `TELEGRAM_BOT_USERNAME` | es. `EcoSolareOSBot` | Senza `@` |
 | `APP_BASE_URL` | URL staging `https://….vercel.app` | Link nelle notifiche Telegram |
+| `AWS_LAMBDA_JS_RUNTIME` | `nodejs22.x` | **Obbligatoria** per la stampa PDF con Chromium su Vercel (`@sparticuz/chromium`) |
 
 Dopo il deploy, registra il webhook Telegram (una volta):
 
