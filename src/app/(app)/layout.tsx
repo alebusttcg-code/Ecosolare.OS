@@ -69,6 +69,7 @@ const VOCI: readonly (VoceMenu & {
   { href: '/approvazioni', label: 'Approvazioni', icona: '⚑', gruppo: 'lavoro', resource: 'quote_approval' },
 
   { href: '/amministrazione/utenti', label: 'Utenti', icona: '◇', gruppo: 'amministrazione', resource: 'user' },
+  { href: '/amministrazione/prodotti', label: 'Schede prodotto', icona: '▤', gruppo: 'amministrazione', resource: 'settings', azione: 'update' },
   { href: '/amministrazione/impostazioni', label: 'Impostazioni', icona: '⚙', gruppo: 'amministrazione', resource: 'settings' },
 ]
 
