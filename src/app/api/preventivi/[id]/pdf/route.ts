@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { AuthorizationError } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
+import { renderDocumentoPreventivoCompleto } from '@/lib/pdf/html/render-documento-completo'
 import { nomeFilePreventivo } from '@/lib/pdf/dati-preventivo'
 import { generaPdfPreventivo } from '@/lib/pdf/genera-preventivo'
+import { preparaRenderPreventivo } from '@/lib/pdf/prepara-render-preventivo'
 import { getQuoteVersionPerPdf } from '@/lib/queries/quotes'
 
 export const runtime = 'nodejs'
@@ -23,25 +25,24 @@ export async function GET(
 
   try {
     await guard('read', 'quote')
-  } catch (errore) {
-    if (errore instanceof AuthorizationError) {
-      return NextResponse.json({ errore: 'Accesso non consentito.' }, { status: 403 })
+
+    const bundle = await getQuoteVersionPerPdf(id)
+    if (!bundle) {
+      return NextResponse.json(
+        { errore: 'Preventivo non trovato o senza righe da stampare.' },
+        { status: 404 },
+      )
     }
-    throw errore
-  }
 
-  const bundle = await getQuoteVersionPerPdf(id)
-  if (!bundle) {
-    return NextResponse.json(
-      { errore: 'Preventivo non trovato o senza righe da stampare.' },
-      { status: 404 },
+    const preparato = await preparaRenderPreventivo(bundle)
+    const html = renderDocumentoPreventivoCompleto(
+      preparato.dati,
+      preparato.pagineTecniche,
+      request.url,
     )
-  }
 
-  try {
-    const pdf = await generaPdfPreventivo(bundle.dati, {
-      renderUrl: new URL(`/pdf-render/preventivi/${id}`, request.url).toString(),
-      cookieHeader: request.headers.get('cookie'),
+    const pdf = await generaPdfPreventivo(preparato.dati, {
+      html,
       documentiTecnici: bundle.documentiTecnici,
     })
     const nome = nomeFilePreventivo(bundle.dati.codice, bundle.dati.versione)
@@ -57,6 +58,10 @@ export async function GET(
       },
     })
   } catch (errore) {
+    if (errore instanceof AuthorizationError) {
+      return NextResponse.json({ errore: 'Accesso non consentito.' }, { status: 403 })
+    }
+
     console.error('[preventivo-pdf]', errore)
     return NextResponse.json(
       {

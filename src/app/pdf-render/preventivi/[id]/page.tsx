@@ -1,13 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { env } from '@/env'
 import { guard } from '@/lib/auth/session'
 import { QuoteDocument } from '@/lib/pdf/html/preventivo-documento'
-import { arricchisciPlanimetriaConOrtofoto } from '@/lib/pdf/ortofoto-moduli-pdf'
-import {
-  caricaDocumentiTecnici,
-  espandiPagineTecniche,
-} from '@/lib/pdf/premium/documenti-tecnici'
+import { preparaRenderPreventivo } from '@/lib/pdf/prepara-render-preventivo'
 import { getQuoteVersionPerPdf } from '@/lib/queries/quotes'
 
 export const runtime = 'nodejs'
@@ -28,26 +23,12 @@ export default async function PreventivoHtmlPage({
   const bundle = await getQuoteVersionPerPdf(id)
   if (!bundle) notFound()
 
-  let planimetria = bundle.dati.planimetria
-  if (
-    planimetria &&
-    bundle.studio &&
-    !planimetria.fotoSenzaModuliDataUri
-  ) {
-    planimetria = await arricchisciPlanimetriaConOrtofoto(
-      planimetria,
-      bundle.studio,
-      env().GOOGLE_MAPS_API_KEY,
-    )
-  }
-
-  const documentiCaricati = await caricaDocumentiTecnici(bundle.documentiTecnici)
-  const pagineTecniche = await espandiPagineTecniche(documentiCaricati)
+  const preparato = await preparaRenderPreventivo(bundle)
 
   return (
     <QuoteDocument
-      dati={{ ...bundle.dati, planimetria }}
-      pagineTecniche={pagineTecniche}
+      dati={preparato.dati}
+      pagineTecniche={preparato.pagineTecniche}
     />
   )
 }

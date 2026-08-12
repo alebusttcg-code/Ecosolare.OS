@@ -21,8 +21,10 @@ const A4_CSS = {
 } as const
 
 export type OpzioniGeneraPdf = {
-  /** URL assoluto della stessa anteprima HTML mostrata nel CRM. */
-  readonly renderUrl: string
+  /** HTML completo del preventivo: evita il round-trip HTTP autenticato su Vercel. */
+  readonly html?: string
+  /** URL assoluto della stessa anteprima HTML mostrata nel CRM (script di verifica). */
+  readonly renderUrl?: string
   /** Sessione della richiesta corrente, inoltrata esclusivamente allo stesso origin. */
   readonly cookieHeader?: string | null
   readonly documentiTecnici?: readonly DocumentoTecnicoPreventivo[]
@@ -46,10 +48,8 @@ interface CorpoStampato {
 }
 
 async function stampaHtmlConChromium(
-  renderUrl: string,
-  cookieHeader?: string | null,
+  opzioni: Pick<OpzioniGeneraPdf, 'html' | 'renderUrl' | 'cookieHeader'>,
 ): Promise<CorpoStampato> {
-  const url = verificaUrlRender(renderUrl)
   const browser = await lanciaChromiumPerPdf()
   try {
     const context = await browser.newContext({
@@ -60,25 +60,39 @@ async function stampaHtmlConChromium(
       colorScheme: 'light',
       extraHTTPHeaders: {
         'Accept-Language': 'it-IT,it;q=0.9',
-        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+        ...(opzioni.cookieHeader ? { Cookie: opzioni.cookieHeader } : {}),
       },
     })
     const page = await context.newPage()
-    const risposta = await page.goto(url.toString(), { waitUntil: 'networkidle' })
-    if (!risposta?.ok()) {
-      throw new Error(
-        `Anteprima HTML non disponibile (${risposta?.status() ?? 'nessuna risposta'}).`,
-      )
-    }
-    const destinazione = new URL(page.url())
-    if (destinazione.origin !== url.origin || destinazione.pathname !== url.pathname) {
-      throw new Error('La route HTML del preventivo ha reindirizzato la generazione PDF.')
+
+    if (opzioni.html) {
+      await page.setContent(opzioni.html, {
+        waitUntil: 'load',
+        timeout: 120_000,
+      })
+    } else if (opzioni.renderUrl) {
+      const url = verificaUrlRender(opzioni.renderUrl)
+      const risposta = await page.goto(url.toString(), {
+        waitUntil: 'load',
+        timeout: 120_000,
+      })
+      if (!risposta?.ok()) {
+        throw new Error(
+          `Anteprima HTML non disponibile (${risposta?.status() ?? 'nessuna risposta'}).`,
+        )
+      }
+      const destinazione = new URL(page.url())
+      if (destinazione.origin !== url.origin || destinazione.pathname !== url.pathname) {
+        throw new Error('La route HTML del preventivo ha reindirizzato la generazione PDF.')
+      }
+    } else {
+      throw new Error('Serve html o renderUrl per generare il PDF.')
     }
 
     await page.waitForFunction(() => {
       const body = document.body
       return body.dataset.pdfReady === 'true' || Boolean(body.dataset.pdfError)
-    })
+    }, { timeout: 120_000 })
     const erroreReady = await page.locator('body').getAttribute('data-pdf-error')
     if (erroreReady) throw new Error(`Anteprima HTML non pronta: ${erroreReady}`)
 
@@ -118,10 +132,11 @@ export async function generaPdfPreventivo(
 ): Promise<Buffer> {
   const documenti = opzioni.documentiTecnici ?? []
   const caricati = await caricaDocumentiTecnici(documenti)
-  const corpo = await stampaHtmlConChromium(
-    opzioni.renderUrl,
-    opzioni.cookieHeader,
-  )
+  const corpo = await stampaHtmlConChromium({
+    html: opzioni.html,
+    renderUrl: opzioni.renderUrl,
+    cookieHeader: opzioni.cookieHeader,
+  })
 
   // Le pagine tecniche sono in coda: il corpo e' tutto quello che le precede.
   const pagineAllegate = await espandiPagineTecniche(caricati)

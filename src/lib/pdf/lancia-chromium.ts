@@ -18,6 +18,8 @@ export function ambienteServerlessPdf(): boolean {
 export async function lanciaChromiumPerPdf(): Promise<Browser> {
   if (ambienteServerlessPdf()) {
     const sparticuz = (await import('@sparticuz/chromium')).default
+    sparticuz.setGraphicsMode = false
+
     const executablePath = await sparticuz.executablePath()
 
     // Su Lambda/Vercel le shared library stanno accanto all'eseguibile.
