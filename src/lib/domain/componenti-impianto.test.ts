@@ -5,6 +5,7 @@ import {
   leggiConfigurazione,
   nomeComponente,
   normalizzaRiga,
+  quantitaEComponente,
   type RigaComponente,
 } from './componenti-impianto'
 
@@ -199,5 +200,58 @@ describe('come si nomina un componente', () => {
         descrizione: 'Modulo fotovoltaico 500 W',
       }),
     ).toBe('Modulo fotovoltaico 500 W')
+  })
+})
+
+describe('quantità e componente nella frase del preventivo', () => {
+  const moduli = { uno: 'modulo', molti: 'moduli' } as const
+  const accumulo = { uno: 'sistema di accumulo', molti: 'sistemi di accumulo' } as const
+
+  it('con marca e modello scrive la frase come la scriverebbe un commerciale', () => {
+    expect(
+      quantitaEComponente(12, moduli, {
+        quantita: 12,
+        marca: 'Viessmann',
+        modello: 'Vitovolt 500',
+        descrizione: 'Modulo fotovoltaico',
+      }),
+    ).toBe('12 moduli Viessmann Vitovolt 500')
+  })
+
+  it('accorda il singolare', () => {
+    expect(
+      quantitaEComponente(1, accumulo, {
+        quantita: 1,
+        marca: 'BYD',
+        modello: 'HVM 11.0',
+        descrizione: 'Accumulo',
+      }),
+    ).toBe('1 sistema di accumulo BYD HVM 11.0')
+  })
+
+  it('senza marca lascia parlare la descrizione, senza anteporre il sostantivo', () => {
+    // «5 moduli Modulo fotovoltaico 450 W» è come lo scriverebbe una macchina,
+    // e finché il catalogo non ha marca e modello è quello che il cliente legge.
+    expect(
+      quantitaEComponente(5, moduli, {
+        quantita: 5,
+        marca: null,
+        modello: null,
+        descrizione: 'Modulo fotovoltaico 450 W',
+      }),
+    ).toBe('5 × Modulo fotovoltaico 450 W')
+  })
+
+  it('regge anche quando il catalogo sceglie un altro sostantivo', () => {
+    // Il listino dice «Batteria», noi diremmo «sistema di accumulo»: nessuno
+    // dei due deve finire incollato all'altro.
+    expect(
+      quantitaEComponente(1, accumulo, {
+        quantita: 1,
+        marca: null,
+        modello: null,
+        descrizione: 'Batteria di accumulo 10 kWh',
+      }),
+    ).toBe('1 × Batteria di accumulo 10 kWh')
   })
 })

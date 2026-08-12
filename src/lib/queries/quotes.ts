@@ -19,6 +19,7 @@ import { formattaImporto, importoDaEuro } from '@/lib/domain/money'
 import {
   leggiConfigurazione,
   nomeComponente,
+  quantitaEComponente,
 } from '@/lib/domain/componenti-impianto'
 import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
 import {
@@ -399,11 +400,11 @@ export async function getQuoteVersionPerPdf(
       : null,
     ...configurazione.moduliDescritti.map(
       (c) =>
-        `${c.quantita.toLocaleString('it-IT')} moduli ${nomeComponente(c)}${configurazione.wattPicco ? ` da ${configurazione.wattPicco.toLocaleString('it-IT')} Wp` : ''}.`,
+        `${quantitaEComponente(c.quantita, { uno: 'modulo', molti: 'moduli' }, c)}${configurazione.wattPicco ? ` da ${configurazione.wattPicco.toLocaleString('it-IT')} Wp` : ''}.`,
     ),
     ...configurazione.inverterDescritti.map(
       (c) =>
-        `${c.quantita.toLocaleString('it-IT')} inverter ${nomeComponente(c)}${configurazione.potenzaCaKw ? ` - potenza CA complessiva ${configurazione.potenzaCaKw.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kW` : ''}.`,
+        `${quantitaEComponente(c.quantita, { uno: 'inverter', molti: 'inverter' }, c)}${configurazione.potenzaCaKw ? ` - potenza CA complessiva ${configurazione.potenzaCaKw.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kW` : ''}.`,
     ),
     ...configurazione.struttureDescritte.map(
       (c) => `${c.quantita.toLocaleString('it-IT')} ${nomeComponente(c)}.`,
@@ -423,7 +424,7 @@ export async function getQuoteVersionPerPdf(
             titolo: 'Sistema di accumulo',
             voci: configurazione.accumuliDescritti.map(
               (c) =>
-                `${c.quantita.toLocaleString('it-IT')} ${nomeComponente(c)} - capacità complessiva ${configurazione.capacitaAccumuloKwh.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWh.`,
+                `${quantitaEComponente(c.quantita, { uno: 'sistema di accumulo', molti: 'sistemi di accumulo' }, c)} - capacità complessiva ${configurazione.capacitaAccumuloKwh.toLocaleString('it-IT', { maximumFractionDigits: 2 })} kWh.`,
             ),
           },
         ]

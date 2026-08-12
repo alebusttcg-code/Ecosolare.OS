@@ -20,8 +20,6 @@ export interface PaginaTecnicaHtml {
   readonly paginaDocumento: number
 }
 
-const BASE_PAGES = 14
-
 function Logo() {
   return <img className="pdf-logo" src="/brand/ecosolare-logo.png" alt="EcoSolare" />
 }
@@ -207,15 +205,27 @@ function Copertina({ dati }: { readonly dati: DatiPdfPreventivo }) {
       ) : (
         <RoofView planimetria={dati.planimetria} className="cover-roof cover-roof-singola" />
       )}
-      <div className="cover-kpis">
-        <KpiCard icona="moduli" label="Potenza impianto" value={kpi?.kWp ?? '—'} unit="kWp" />
-        <KpiCard icona="produzione" label="Produzione annua stimata" value={dati.dettagliImpianto?.produzioneKwhNumero.toLocaleString('it-IT') ?? '—'} unit="kWh" />
-        <KpiCard icona="autonomia" label="Autonomia energetica" value={autonomia != null ? String(autonomia) : '—'} unit="%" />
-      </div>
-      <div className="cover-summary">
-        <div className="summary-icon green"><Icona tipo="foglia" /></div>
-        <div><span>Riduzione CO₂</span><strong>{co2?.valore ?? '—'} <small>{co2?.unita ?? 't/anno'}</small></strong></div>
-        <i />
+      {/*
+        * I riquadri escono solo se i numeri ci sono. Un cartiglio che dice
+        * «Potenza impianto —» non informa di niente: dichiara al cliente, in
+        * prima pagina e in caratteri grandi, che i conti non li abbiamo
+        * ancora fatti.
+        */}
+      {sim ? (
+        <div className="cover-kpis">
+          <KpiCard icona="moduli" label="Potenza impianto" value={kpi?.kWp ?? '—'} unit="kWp" />
+          <KpiCard icona="produzione" label="Produzione annua stimata" value={dati.dettagliImpianto?.produzioneKwhNumero.toLocaleString('it-IT') ?? '—'} unit="kWh" />
+          <KpiCard icona="autonomia" label="Autonomia energetica" value={autonomia != null ? String(autonomia) : '—'} unit="%" />
+        </div>
+      ) : null}
+      <div className={sim ? 'cover-summary' : 'cover-summary cover-summary-sola'}>
+        {co2 ? (
+          <>
+            <div className="summary-icon green"><Icona tipo="foglia" /></div>
+            <div><span>Riduzione CO₂</span><strong>{co2.valore} <small>{co2.unita}</small></strong></div>
+            <i />
+          </>
+        ) : null}
         <div className="summary-icon blue"><Icona tipo="investimento" /></div>
         <div><span>Investimento</span><strong>{dati.totaleLordo}</strong></div>
       </div>
@@ -260,45 +270,68 @@ function Indicatori({ indicatori }: { readonly indicatori: readonly IndicatorePd
   return <div className="indicator-grid">{indicatori.map((i) => <div key={i.etichetta}><span>{i.etichetta}</span><strong>{i.valore}<small>{i.unita}</small></strong></div>)}</div>
 }
 
-function PaginaPanoramica({ dati }: { readonly dati: DatiPdfPreventivo }) {
+function PaginaPanoramica({ dati, numero }: { readonly dati: DatiPdfPreventivo; readonly numero: number }) {
   const sim = dati.simulazione
-  return <PageShell dati={dati} numero={10} id="report-panoramica" design><BoxCliente dati={dati} /><h2 className="design-section-title">Vista impianto - studio tetto</h2><RoofView planimetria={dati.planimetria} className="design-roof" /><h2 className="design-section-title">Risultati della simulazione</h2>{sim ? <><div className="finance-kpis">{sim.kpiFinanziari.map((kpi) => <div className={`tone-${kpi.tono}`} key={kpi.etichetta}><span>{kpi.etichetta}</span><strong>{kpi.valore}</strong></div>)}</div><Indicatori indicatori={sim.indicatori} /></> : <div className="empty-box">Simulazione non disponibile.</div>}</PageShell>
+  return <PageShell dati={dati} numero={numero} id="report-panoramica" design><BoxCliente dati={dati} /><h2 className="design-section-title">Vista impianto - studio tetto</h2><RoofView planimetria={dati.planimetria} className="design-roof" /><h2 className="design-section-title">Risultati della simulazione</h2>{sim ? <><div className="finance-kpis">{sim.kpiFinanziari.map((kpi) => <div className={`tone-${kpi.tono}`} key={kpi.etichetta}><span>{kpi.etichetta}</span><strong>{kpi.valore}</strong></div>)}</div><Indicatori indicatori={sim.indicatori} /></> : <div className="empty-box">Simulazione non disponibile.</div>}</PageShell>
 }
 
 function LegendaEnergia({ colore, children }: { readonly colore: string; readonly children: ReactNode }) {
   return <div className="energy-legend"><i style={{ background: colore }} />{children}</div>
 }
 
-function PaginaEnergia({ dati }: { readonly dati: DatiPdfPreventivo }) {
+function PaginaEnergia({ dati, numero }: { readonly dati: DatiPdfPreventivo; readonly numero: number }) {
   const sim = dati.simulazione
   const det = dati.dettagliImpianto
   const eco = dati.condizioniEconomiche
-  return <PageShell dati={dati} numero={11} id="report-energia" design><BoxCliente dati={dati} /><h2 className="design-section-title">Consumo annuale e produzione</h2>{sim ? <><div className="energy-card"><span>Produzione {sim.flussi.produzione}</span><BarraEnergia valoreA={sim.flussiNum.autoconsumo} valoreB={sim.flussiNum.exportRete} coloreA="#2f9f70" coloreB="#2c9e9a" /><LegendaEnergia colore="#2f9f70">Verso la casa {sim.flussi.autoconsumo}</LegendaEnergia><LegendaEnergia colore="#2c9e9a">Alla rete {sim.flussi.exportRete}</LegendaEnergia></div><div className="energy-card"><span>Consumo {sim.flussiNum.consumo.toLocaleString('it-IT')} kWh</span><BarraEnergia valoreA={sim.flussiNum.autoconsumo} valoreB={sim.flussiNum.daRete} coloreA="#347fca" coloreB="#e47834" /><LegendaEnergia colore="#347fca">Dal solare {sim.flussi.autoconsumo}</LegendaEnergia><LegendaEnergia colore="#e47834">Dalla rete {sim.flussi.daRete}</LegendaEnergia></div></> : null}<h2 className="design-section-title compact">Configurazione moduli</h2><div className="module-row"><div><span>Campo fotovoltaico</span><strong>Layout da studio tetto</strong></div><div><span>Moduli</span><strong>{det?.moduli ?? '—'}</strong></div><div><span>Wp</span><strong>{det?.wattPicco ?? '—'}</strong></div><div><span>Potenza</span><strong>{det?.potenzaKwp ?? '—'}</strong></div></div><h2 className="design-section-title compact">Risparmi in bolletta - anno 1</h2><div className="bill-kpis"><div><span>Bolletta mensile attuale</span><strong>{eco?.bollettaAttualeMensile ?? '—'}</strong></div><div><span>Con impianto FV</span><strong>{eco?.bollettaConFvMensile ?? '—'}</strong></div><div><span>Risparmio mensile</span><strong>{eco?.risparmioMensile ?? '—'}</strong></div></div></PageShell>
+  return <PageShell dati={dati} numero={numero} id="report-energia" design><BoxCliente dati={dati} /><h2 className="design-section-title">Consumo annuale e produzione</h2>{sim ? <><div className="energy-card"><span>Produzione {sim.flussi.produzione}</span><BarraEnergia valoreA={sim.flussiNum.autoconsumo} valoreB={sim.flussiNum.exportRete} coloreA="#2f9f70" coloreB="#2c9e9a" /><LegendaEnergia colore="#2f9f70">Verso la casa {sim.flussi.autoconsumo}</LegendaEnergia><LegendaEnergia colore="#2c9e9a">Alla rete {sim.flussi.exportRete}</LegendaEnergia></div><div className="energy-card"><span>Consumo {sim.flussiNum.consumo.toLocaleString('it-IT')} kWh</span><BarraEnergia valoreA={sim.flussiNum.autoconsumo} valoreB={sim.flussiNum.daRete} coloreA="#347fca" coloreB="#e47834" /><LegendaEnergia colore="#347fca">Dal solare {sim.flussi.autoconsumo}</LegendaEnergia><LegendaEnergia colore="#e47834">Dalla rete {sim.flussi.daRete}</LegendaEnergia></div></> : null}<h2 className="design-section-title compact">Configurazione moduli</h2><div className="module-row"><div><span>Campo fotovoltaico</span><strong>Layout da studio tetto</strong></div><div><span>Moduli</span><strong>{det?.moduli ?? '—'}</strong></div><div><span>Wp</span><strong>{det?.wattPicco ?? '—'}</strong></div><div><span>Potenza</span><strong>{det?.potenzaKwp ?? '—'}</strong></div></div><h2 className="design-section-title compact">Risparmi in bolletta - anno 1</h2><div className="bill-kpis"><div><span>Bolletta mensile attuale</span><strong>{eco?.bollettaAttualeMensile ?? '—'}</strong></div><div><span>Con impianto FV</span><strong>{eco?.bollettaConFvMensile ?? '—'}</strong></div><div><span>Risparmio mensile</span><strong>{eco?.risparmioMensile ?? '—'}</strong></div></div></PageShell>
 }
 
-function PaginaFinanza({ dati }: { readonly dati: DatiPdfPreventivo }) {
+function PaginaFinanza({ dati, numero }: { readonly dati: DatiPdfPreventivo; readonly numero: number }) {
   const sim = dati.simulazione
   const eco = dati.condizioniEconomiche
-  return <PageShell dati={dati} numero={12} id="report-finanza" design><BoxCliente dati={dati} /><h2 className="design-section-title">Analisi finanziaria dettagliata</h2><div className="finance-kpis large">{sim?.kpiFinanziari.map((kpi) => <div className={`tone-${kpi.tono}`} key={kpi.etichetta}><span>{kpi.etichetta}</span><strong>{kpi.valore}</strong></div>)}</div><div className="finance-split compact"><div><span>Investimento complessivo</span><strong>{eco?.totaleLordo ?? dati.totaleLordo}</strong><p>IVA inclusa, prima delle agevolazioni selezionate.</p></div><div><span>Beneficio stimato anno 1</span><strong>{eco?.risparmioAnnuo ?? '—'}</strong><p>Risparmio e valorizzazione dell’energia ceduta.</p></div></div><div className="chart-card finance-chart"><span>Flusso di cassa cumulativo</span><GraficoCashflow punti={sim?.cumulato ?? []} /></div>{sim?.termico ? <p className="fine-print">Sistema termico: gas evitato {sim.termico.gasEvitatoSmc}; risparmio annuo {sim.termico.risparmioAnnuo}; {sim.termico.incentivoEtichetta} {sim.termico.incentivoImporto ?? ''}.</p> : null}<p className="fine-print">{sim?.tariffe}</p></PageShell>
+  return <PageShell dati={dati} numero={numero} id="report-finanza" design><BoxCliente dati={dati} /><h2 className="design-section-title">Analisi finanziaria dettagliata</h2><div className="finance-kpis large">{sim?.kpiFinanziari.map((kpi) => <div className={`tone-${kpi.tono}`} key={kpi.etichetta}><span>{kpi.etichetta}</span><strong>{kpi.valore}</strong></div>)}</div><div className="finance-split compact"><div><span>Investimento complessivo</span><strong>{eco?.totaleLordo ?? dati.totaleLordo}</strong><p>IVA inclusa, prima delle agevolazioni selezionate.</p></div><div><span>Beneficio stimato anno 1</span><strong>{eco?.risparmioAnnuo ?? '—'}</strong><p>Risparmio e valorizzazione dell’energia ceduta.</p></div></div><div className="chart-card finance-chart"><span>Flusso di cassa cumulativo</span><GraficoCashflow punti={sim?.cumulato ?? []} /></div>{sim?.termico ? <p className="fine-print">Sistema termico: gas evitato {sim.termico.gasEvitatoSmc}; risparmio annuo {sim.termico.risparmioAnnuo}; {sim.termico.incentivoEtichetta} {sim.termico.incentivoImporto ?? ''}.</p> : null}<p className="fine-print">{sim?.tariffe}</p></PageShell>
 }
 
-function PaginaCashflow({ dati }: { readonly dati: DatiPdfPreventivo }) {
+function PaginaCashflow({ dati, numero }: { readonly dati: DatiPdfPreventivo; readonly numero: number }) {
   const sim = dati.simulazione
   const cumulatoPerAnno = new Map(sim?.cumulato.map((p) => [String(p.anno), p.cumulatoEur.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })]) ?? [])
-  return <PageShell dati={dati} numero={13} id="report-cashflow" design><BoxCliente dati={dati} /><h2 className="design-section-title">Flusso di cassa annuale</h2><table className="cashflow-table cashflow-full"><thead><tr><th>Anno</th><th>Risparmio energetico</th><th>Agevolazioni</th><th>Flusso annuo</th><th>Cumulato</th></tr></thead><tbody>{sim?.cashflow.map((riga) => <tr key={riga.anno}><td>{riga.anno}</td><td>{riga.risparmio}{riga.risparmioTermico ? ` + ${riga.risparmioTermico}` : ''}</td><td>{riga.contoTermico ?? riga.detrazione}</td><td>{riga.flusso}</td><td>{cumulatoPerAnno.get(riga.anno) ?? '—'}</td></tr>)}</tbody></table><p className="fine-print">Simulazione EcoSolare Design calcolata sullo studio tetto del cliente. Orizzonte modello: {sim?.orizzonteAnni ?? '—'} anni.</p></PageShell>
+  return <PageShell dati={dati} numero={numero} id="report-cashflow" design><BoxCliente dati={dati} /><h2 className="design-section-title">Flusso di cassa annuale</h2><table className="cashflow-table cashflow-full"><thead><tr><th>Anno</th><th>Risparmio energetico</th><th>Agevolazioni</th><th>Flusso annuo</th><th>Cumulato</th></tr></thead><tbody>{sim?.cashflow.map((riga) => <tr key={riga.anno}><td>{riga.anno}</td><td>{riga.risparmio}{riga.risparmioTermico ? ` + ${riga.risparmioTermico}` : ''}</td><td>{riga.contoTermico ?? riga.detrazione}</td><td>{riga.flusso}</td><td>{cumulatoPerAnno.get(riga.anno) ?? '—'}</td></tr>)}</tbody></table><p className="fine-print">Simulazione EcoSolare Design calcolata sullo studio tetto del cliente. Orizzonte modello: {sim?.orizzonteAnni ?? '—'} anni.</p></PageShell>
 }
 
-function PaginaMensile({ dati }: { readonly dati: DatiPdfPreventivo }) {
+function PaginaMensile({ dati, numero }: { readonly dati: DatiPdfPreventivo; readonly numero: number }) {
   const sim = dati.simulazione
   const mesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
-  return <PageShell dati={dati} numero={14} id="report-mensile" design><BoxCliente dati={dati} /><h2 className="design-section-title">Energia mensile stimata</h2><div className="chart-card monthly"><span>Produzione mensile (kWh) - profilo annuale</span><GraficoMensile valori={sim?.produzioneMensileKwh ?? []} /><p>Produzione annua complessiva stimata: <b>{dati.dettagliImpianto?.produzioneKwh ?? '—'}</b></p></div><h2 className="design-section-title compact">Dettaglio mensile della produzione</h2><div className="monthly-data-grid">{mesi.map((mese, i) => <div key={mese}><span>{mese}</span><strong>{sim?.produzioneMensileKwh[i]?.toLocaleString('it-IT') ?? '—'} <small>kWh</small></strong></div>)}</div><p className="fine-print">Valori stimati dal profilo di producibilità dello studio associato; possono variare in funzione delle condizioni meteo e operative reali.</p></PageShell>
+  return <PageShell dati={dati} numero={numero} id="report-mensile" design><BoxCliente dati={dati} /><h2 className="design-section-title">Energia mensile stimata</h2><div className="chart-card monthly"><span>Produzione mensile (kWh) - profilo annuale</span><GraficoMensile valori={sim?.produzioneMensileKwh ?? []} /><p>Produzione annua complessiva stimata: <b>{dati.dettagliImpianto?.produzioneKwh ?? '—'}</b></p></div><h2 className="design-section-title compact">Dettaglio mensile della produzione</h2><div className="monthly-data-grid">{mesi.map((mese, i) => <div key={mese}><span>{mese}</span><strong>{sim?.produzioneMensileKwh[i]?.toLocaleString('it-IT') ?? '—'} <small>kWh</small></strong></div>)}</div><p className="fine-print">Valori stimati dal profilo di producibilità dello studio associato; possono variare in funzione delle condizioni meteo e operative reali.</p></PageShell>
 }
 
 function PaginaTecnica({ dati, pagina, numero }: { readonly dati: DatiPdfPreventivo; readonly pagina: PaginaTecnicaHtml; readonly numero: number }) {
   return <PageShell dati={dati} numero={numero} id={`tecnica-${pagina.documento.id}-${pagina.paginaDocumento}`} className="technical-page"><div className="technical-kicker">DOCUMENTAZIONE TECNICA</div><h1>{pagina.documento.title}</h1><div className="technical-version">Versione {pagina.documento.versionLabel} • pagina originale {pagina.paginaDocumento}</div><div className="technical-slot" data-technical-document-id={pagina.documento.id} data-technical-source-page={pagina.paginaDocumento} /></PageShell>
 }
 
+/** Le pagine commerciali: ci sono sempre, qualunque cosa si venda. */
+const PAGINE_COMMERCIALI = 9
+
+/**
+ * Le cinque pagine «EcoSolare Design» vivono di simulazione.
+ *
+ * Senza studio tetto uscivano lo stesso, con i titoli stampati e le tabelle
+ * vuote: cinque pagine che dicono al cliente che i conti non li abbiamo
+ * ancora fatti. Un documento di nove pagine dice meno, ma dice tutto quello
+ * che stampa — ed è il solo modo per non spedire un preventivo che sembra
+ * incompiuto.
+ */
+const PAGINE_SIMULAZIONE = [
+  PaginaPanoramica,
+  PaginaEnergia,
+  PaginaFinanza,
+  PaginaCashflow,
+  PaginaMensile,
+] as const
+
 export function QuoteDocument({ dati, pagineTecniche = [] }: { readonly dati: DatiPdfPreventivo; readonly pagineTecniche?: readonly PaginaTecnicaHtml[] }) {
-  const totale = BASE_PAGES + pagineTecniche.length
-  return <><PdfReadySignal /><main className="pdf-document" data-template-version="html-v1" data-total-pages={totale}><Copertina dati={dati} /><PaginaDettagli dati={dati} /><PaginaCaratteristiche dati={dati} /><PaginaEsclusioni dati={dati} />{Array.from({ length: 4 }, (_, indice) => <MarketingPage key={indice} dati={dati} indice={indice} />)}<PaginaPrezzo dati={dati} /><PaginaPanoramica dati={dati} /><PaginaEnergia dati={dati} /><PaginaFinanza dati={dati} /><PaginaCashflow dati={dati} /><PaginaMensile dati={dati} />{pagineTecniche.map((pagina, indice) => <PaginaTecnica key={`${pagina.documento.id}-${pagina.paginaDocumento}`} dati={dati} pagina={pagina} numero={BASE_PAGES + indice + 1} />)}</main></>
+  const simulazione = dati.simulazione ? PAGINE_SIMULAZIONE : []
+  const primaPaginaTecnica = PAGINE_COMMERCIALI + simulazione.length
+  const totale = primaPaginaTecnica + pagineTecniche.length
+
+  return <><PdfReadySignal /><main className="pdf-document" data-template-version="html-v1" data-total-pages={totale}><Copertina dati={dati} /><PaginaDettagli dati={dati} /><PaginaCaratteristiche dati={dati} /><PaginaEsclusioni dati={dati} />{Array.from({ length: 4 }, (_, indice) => <MarketingPage key={indice} dati={dati} indice={indice} />)}<PaginaPrezzo dati={dati} />{simulazione.map((Pagina, indice) => <Pagina key={indice} dati={dati} numero={PAGINE_COMMERCIALI + indice + 1} />)}{pagineTecniche.map((pagina, indice) => <PaginaTecnica key={`${pagina.documento.id}-${pagina.paginaDocumento}`} dati={dati} pagina={pagina} numero={primaPaginaTecnica + indice + 1} />)}</main></>
 }

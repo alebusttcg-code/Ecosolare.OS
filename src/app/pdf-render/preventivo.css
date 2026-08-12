@@ -276,6 +276,11 @@ body:has(.pdf-document)::before {
 .roof-comparison figure { min-width: 0; margin: 0; }
 .cover-roof { height: 62mm; border-radius: 2.5mm; }
 .cover-roof-singola { height: 70mm; }
+/*
+ * Senza i cartigli la copertina resterebbe con un quarto di pagina in bianco:
+ * la vista del tetto si prende lo spazio che avanza invece di lasciarlo vuoto.
+ */
+.pdf-page-cover .page-content:not(:has(.cover-kpis)) .cover-roof-singola { height: 108mm; }
 .roof-comparison figcaption { padding-top: 2.2mm; color: var(--navy); font-size: 6.5pt; font-weight: 700; letter-spacing: .08em; text-align: center; text-transform: uppercase; }
 .roof-svg-wrap { width: 100%; background: #eaf1fa; overflow: hidden; }
 .roof-svg-wrap svg { width: 100%; height: 100%; }
@@ -292,6 +297,8 @@ body:has(.pdf-document)::before {
 .cover-kpi-value small { margin-left: 2mm; color: var(--navy); font-family: 'Manrope', sans-serif; font-size: 8.5pt; }
 .cover-summary { height: 34mm; margin-top: 4mm; border: .25mm solid #cacdce; border-radius: 2.5mm; display: grid; grid-template-columns: 16mm 1fr .25mm 16mm 1.2fr; gap: 5mm; align-items: center; padding: 5mm 9mm; }
 .cover-summary > i { height: 25mm; background: #bdc2c9; }
+/* Senza simulazione resta il solo investimento: due colonne, non cinque. */
+.cover-summary-sola { grid-template-columns: 16mm 1fr; }
 .summary-icon { width: 15mm; height: 15mm; padding: 2mm; border: .35mm dashed currentColor; border-radius: 50%; }
 .summary-icon svg { width: 100%; height: 100%; }
 .summary-icon.green { color: var(--green); }
@@ -400,9 +407,9 @@ body:has(.pdf-document)::before {
 .client-box > div:last-child { text-align: right; }
 .client-box strong { color: var(--navy); font-size: 9pt; text-transform: uppercase; }
 .client-box span { color: var(--muted); font-size: 7pt; }
-.design-section-title { margin: 9mm 0 3mm !important; }
+.design-section-title { margin: 6mm 0 3mm !important; }
 .design-section-title.compact { margin-top: 5mm !important; }
-.design-roof { height: 65mm; border: .25mm solid var(--line); }
+.design-roof { height: 60mm; border: .25mm solid var(--line); }
 .finance-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
 .finance-kpis > div, .indicator-grid > div { min-height: 25mm; padding: 5mm; border: .25mm solid #ced9e9; border-radius: 2mm; background: white; }
 .finance-kpis span, .indicator-grid span, .bill-kpis span, .finance-split span { display: block; color: var(--muted); font-size: 6.5pt; text-transform: uppercase; letter-spacing: .05em; }
@@ -410,7 +417,16 @@ body:has(.pdf-document)::before {
 .finance-kpis .tone-beneficio strong { color: var(--green); }
 .finance-kpis .tone-costo strong { color: var(--orange); }
 .indicator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-top: 4mm; }
-.indicator-grid strong { font-size: 13pt; }
+/*
+ * I riquadri degli indicatori sono più bassi di quelli finanziari: contengono
+ * un'etichetta e un numero, non hanno bisogno di 25mm. Con l'accumulo le voci
+ * passano da sette a dieci, la griglia va a tre righe, e alla vecchia altezza
+ * l'ultima riga finiva sotto il piè di pagina — tagliata a metà, con i valori
+ * illeggibili. Il contenitore ha `overflow: hidden`, quindi non se ne accorge
+ * nessuno finché non si guarda il PDF stampato.
+ */
+.indicator-grid > div { min-height: 17mm; padding: 3.5mm 4mm; }
+.indicator-grid strong { margin-top: 1.5mm; font-size: 12pt; }
 .indicator-grid small { margin-left: 1mm; color: var(--muted); font-size: 6.5pt; }
 .energy-card, .chart-card { padding: 5mm; border: .25mm solid #cbd7e7; border-radius: 2mm; background: white; }
 .energy-card { margin-bottom: 4mm; }

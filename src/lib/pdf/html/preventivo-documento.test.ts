@@ -120,6 +120,68 @@ describe('template HTML del preventivo', () => {
     expect(html).toContain(termico.prezzoLordo)
   })
 
+  /*
+   * Le cinque pagine della simulazione uscivano lo stesso senza studio tetto:
+   * titoli stampati, tabelle vuote, «Orizzonte modello: — anni». Cinque pagine
+   * che dicono al cliente che i conti non li abbiamo fatti.
+   */
+  it('senza simulazione non stampa le pagine EcoSolare Design', () => {
+    const senzaStudio = { ...WALTER_RICCI_HTML_FIXTURE, simulazione: null }
+    const html = renderToStaticMarkup(createElement(QuoteDocument, { dati: senzaStudio }))
+    const ids = [...html.matchAll(/data-page-id="([^"]+)"/g)].map((match) => match[1])
+
+    expect(ids).toEqual([
+      'sintesi',
+      'dettagli',
+      'caratteristiche',
+      'garanzie',
+      'esperienza',
+      'qualita',
+      'recensioni',
+      'garanzia-unica',
+      'spesa',
+    ])
+    expect(html).toContain('data-total-pages="9"')
+    expect(html).not.toContain('Flusso di cassa annuale')
+    // Neanche i cartigli di copertina, che direbbero «Potenza impianto —».
+    expect(html).not.toContain('cover-kpis')
+    expect(html).not.toContain('Autonomia energetica')
+  })
+
+  it('senza simulazione la copertina tiene comunque l’investimento', () => {
+    const senzaStudio = { ...WALTER_RICCI_HTML_FIXTURE, simulazione: null }
+    const html = renderToStaticMarkup(createElement(QuoteDocument, { dati: senzaStudio }))
+    expect(html).toContain('Investimento')
+    expect(html).toContain(WALTER_RICCI_HTML_FIXTURE.totaleLordo)
+    expect(html).not.toContain('Riduzione CO')
+  })
+
+  it('le pagine tecniche seguono la numerazione reale, non una costante', () => {
+    const documento = {
+      id: 'scheda-modulo',
+      productId: 'modulo-1',
+      title: 'Scheda modulo',
+      versionLabel: '2026.1',
+      storageKey: 'prodotti/modulo.pdf',
+      mimeType: 'application/pdf',
+      checksum: null,
+      includedPages: [1],
+      sortOrder: 0,
+    } as const
+    const senzaStudio = { ...WALTER_RICCI_HTML_FIXTURE, simulazione: null }
+    const html = renderToStaticMarkup(
+      createElement(QuoteDocument, {
+        dati: senzaStudio,
+        pagineTecniche: [{ documento, paginaDocumento: 1 }],
+      }),
+    )
+
+    // Nove commerciali senza simulazione: l'allegato è la decima, non la
+    // quindicesima. Sbagliare qui sposta ogni pagina tecnica del PDF finale.
+    expect(html).toContain('data-page-number="10"')
+    expect(html).toContain('data-total-pages="10"')
+  })
+
   it('aggiunge un wrapper per ogni pagina tecnica selezionata', () => {
     const documento = {
       id: 'scheda-inverter',

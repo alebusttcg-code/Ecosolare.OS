@@ -217,3 +217,29 @@ export function nomeComponente(componente: ComponenteDescritto): string {
   const marchio = [componente.marca, componente.modello].filter(Boolean).join(' ')
   return marchio || componente.descrizione
 }
+
+/**
+ * Il pezzo di frase che dice quanti sono e di cosa si tratta.
+ *
+ * Con marca e modello si scrive come lo scriverebbe un commerciale:
+ * «12 moduli Viessmann Vitovolt 500». Senza, resta solo la descrizione del
+ * listino — che è già una locuzione compiuta, «Modulo fotovoltaico 450 W» o
+ * «Batteria di accumulo 10 kWh» — e anteporle il sostantivo produce «5 moduli
+ * Modulo fotovoltaico 450 W»: come lo scriverebbe una macchina. In quel caso
+ * si usa «5 × Modulo fotovoltaico 450 W», che non ripete niente e regge
+ * qualunque parola scelga il catalogo.
+ *
+ * Non è un dettaglio di stile: finché il catalogo non ha marca e modello su
+ * ogni prodotto — e all'inizio non li ha — è **questo** il testo che il cliente
+ * si trova in mano.
+ */
+export function quantitaEComponente(
+  quantita: number,
+  sostantivo: { readonly uno: string; readonly molti: string },
+  componente: ComponenteDescritto,
+): string {
+  const numero = quantita.toLocaleString('it-IT')
+  const marchio = [componente.marca, componente.modello].filter(Boolean).join(' ')
+  if (!marchio) return `${numero} × ${componente.descrizione}`
+  return `${numero} ${quantita === 1 ? sostantivo.uno : sostantivo.molti} ${marchio}`
+}

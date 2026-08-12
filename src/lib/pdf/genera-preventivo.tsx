@@ -3,10 +3,17 @@ import type { DatiPdfPreventivo } from '@/lib/pdf/dati-preventivo'
 import {
   assemblaPreventivoConDocumentiTecnici,
   caricaDocumentiTecnici,
+  espandiPagineTecniche,
   type DocumentoTecnicoPreventivo,
 } from '@/lib/pdf/premium/documenti-tecnici'
 
-const PAGINE_BASE = 14
+/**
+ * Le pagine commerciali, quelle che ci sono sempre. Le cinque della
+ * simulazione compaiono solo con lo studio tetto, quindi il totale non e' piu'
+ * una costante: si legge dal documento appena stampato invece di darlo per
+ * scontato, o l'assemblaggio degli allegati sbaglia di cinque pagine.
+ */
+const PAGINE_COMMERCIALI = 9
 const VIEWPORT = { width: 1400, height: 1980 } as const
 const A4_CSS = {
   width: (210 / 25.4) * 96,
@@ -33,10 +40,15 @@ function verificaUrlRender(renderUrl: string): URL {
  * Stampa la route HTML/CSS A4 con il Chromium distribuito dalla versione
  * bloccata di Playwright. Font e immagini espongono un unico segnale di ready.
  */
+interface CorpoStampato {
+  readonly pdf: Buffer
+  readonly numeroPagine: number
+}
+
 async function stampaHtmlConChromium(
   renderUrl: string,
   cookieHeader?: string | null,
-): Promise<Buffer> {
+): Promise<CorpoStampato> {
   const url = verificaUrlRender(renderUrl)
   const browser = await chromium.launch({ headless: true })
   try {
@@ -72,8 +84,8 @@ async function stampaHtmlConChromium(
 
     const pagine = page.locator('.pdf-page')
     const numeroPagine = await pagine.count()
-    if (numeroPagine < PAGINE_BASE) {
-      throw new Error(`Preventivo incompleto: trovate ${numeroPagine} pagine, attese almeno ${PAGINE_BASE}.`)
+    if (numeroPagine < PAGINE_COMMERCIALI) {
+      throw new Error(`Preventivo incompleto: trovate ${numeroPagine} pagine, attese almeno ${PAGINE_COMMERCIALI}.`)
     }
     for (let indice = 0; indice < numeroPagine; indice += 1) {
       const box = await pagine.nth(indice).boundingBox()
@@ -87,12 +99,13 @@ async function stampaHtmlConChromium(
     }
 
     await page.emulateMedia({ media: 'print' })
-    return await page.pdf({
+    const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     })
+    return { pdf, numeroPagine }
   } finally {
     await browser.close()
   }
@@ -105,14 +118,16 @@ export async function generaPdfPreventivo(
 ): Promise<Buffer> {
   const documenti = opzioni.documentiTecnici ?? []
   const caricati = await caricaDocumentiTecnici(documenti)
-  const corpoConWrapper = await stampaHtmlConChromium(
+  const corpo = await stampaHtmlConChromium(
     opzioni.renderUrl,
     opzioni.cookieHeader,
   )
 
+  // Le pagine tecniche sono in coda: il corpo e' tutto quello che le precede.
+  const pagineAllegate = await espandiPagineTecniche(caricati)
   return assemblaPreventivoConDocumentiTecnici({
-    corpoConWrapper,
+    corpoConWrapper: corpo.pdf,
     documenti: caricati,
-    numeroPagineCorpo: PAGINE_BASE,
+    numeroPagineCorpo: corpo.numeroPagine - pagineAllegate.length,
   })
 }
