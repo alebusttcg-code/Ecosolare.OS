@@ -16,6 +16,7 @@ import {
   type BloccoTermicoDossier,
   type DossierPreventivo,
 } from '@/lib/domain/dossier-preventivo'
+import { deduciRuolo } from '@/lib/domain/componenti-impianto'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import type { RigaVisibile } from '@/lib/queries/quotes'
 
@@ -25,6 +26,8 @@ export interface VoceCatalogo {
   readonly name: string
   readonly unit: string
   readonly type: 'materiale' | 'servizio' | 'manodopera' | 'kit'
+  /** Ruolo nell'impianto: serve a dedurre il peso del blocco termico. */
+  readonly componentRole: string | null
   readonly prezzo: number
   readonly costo?: number
   readonly iva: number
@@ -105,9 +108,12 @@ export function EditorPreventivo({
     termicoIniziale?.tipo ?? 'pdc',
   )
   const [termicoDesc, setTermicoDesc] = useState(termicoIniziale?.descrizione ?? '')
-  const [termicoPrezzo, setTermicoPrezzo] = useState(
-    termicoIniziale ? String(termicoIniziale.prezzoLordoEur) : '',
-  )
+  /*
+   * Sola lettura: il prezzo del termico ora si deduce dalle righe. Questo
+   * valore resta solo per i preventivi salvati prima, dove nessuna riga e'
+   * riconosciuta come pompa di calore.
+   */
+  const termicoPrezzo = termicoIniziale ? String(termicoIniziale.prezzoLordoEur) : ''
   const [termicoDetrazione, setTermicoDetrazione] = useState(
     termicoIniziale ? String(termicoIniziale.detrazionePct) : '50',
   )
@@ -156,6 +162,30 @@ export function EditorPreventivo({
     [righe, sconto],
   )
 
+  /*
+   * Quanto pesa l'impianto termico nel totale, letto dalle righe.
+   *
+   * Prima era un campo che il commerciale ricompilava a mano: lo stesso prezzo
+   * scritto in due punti, e niente che verificasse che coincidessero. Quando
+   * divergevano, la pagina del prezzo mostrava due verita' sullo stesso
+   * impianto e il piano economico usava quella sbagliata.
+   *
+   * Il ruolo si legge dal catalogo e, quando manca, si deduce dalla descrizione
+   * con la stessa funzione che usa il server: l'anteprima non puo' divergere
+   * dal salvataggio.
+   */
+  const prezzoTermicoCents = useMemo(
+    () =>
+      righe.reduce((somma, riga, indice) => {
+        const ruolo = riga.componentRole ?? deduciRuolo(riga.description)
+        if (ruolo !== 'pompa_calore') return somma
+        const totale = totali.righe[indice]
+        return somma + (totale ? totale.imponibile + totale.iva : 0)
+      }, 0),
+    [righe, totali],
+  )
+  const termicoDedotto = prezzoTermicoCents > 0
+
   function aggiorna(chiave: string, patch: Partial<RigaEditor>) {
     setRighe((precedenti) =>
       precedenti.map((r) => {
@@ -185,6 +215,7 @@ export function EditorPreventivo({
         ...(mostraCosti ? { unitCost: voce.costo ?? 0 } : {}),
         discountPct: 0,
         vatRate: voce.iva,
+        componentRole: voce.componentRole,
       },
     ])
   }
@@ -203,6 +234,8 @@ export function EditorPreventivo({
         ...(mostraCosti ? { unitCost: 0 } : {}),
         discountPct: 0,
         vatRate: 10,
+        // Riga libera: il ruolo si dedurrà dalla descrizione, come sul server.
+        componentRole: null,
       },
     ])
   }
@@ -213,17 +246,24 @@ export function EditorPreventivo({
     esegui(async () => {
       let dossier: DossierPreventivo = { termico: null }
       if (termicoAttivo) {
-        const prezzo = Number.parseFloat(termicoPrezzo.replace(',', '.'))
+        /*
+         * Il prezzo non si digita piu': e' la somma delle righe termiche. Il
+         * valore salvato in precedenza resta come ripiego per i preventivi in
+         * cui nessuna riga e' riconosciuta, cosi' non perdono la divisione
+         * degli incentivi gia' fatta.
+         */
+        const prezzoSalvato = Number.parseFloat(termicoPrezzo.replace(',', '.'))
+        const prezzo = termicoDedotto
+          ? prezzoTermicoCents / 100
+          : Number.isFinite(prezzoSalvato) && prezzoSalvato > 0
+            ? prezzoSalvato
+            : 0
         const detrazione = Number.parseFloat(termicoDetrazione.replace(',', '.'))
         const ctRaw = termicoCt.trim()
         const ct =
           ctRaw === '' ? null : Number.parseFloat(ctRaw.replace(',', '.'))
         if (!termicoDesc.trim()) {
           setErrore('Descrivi il blocco termico (modello / potenza).')
-          return
-        }
-        if (!Number.isFinite(prezzo) || prezzo < 0) {
-          setErrore('Prezzo termico non valido.')
           return
         }
         if (
@@ -611,20 +651,41 @@ export function EditorPreventivo({
                 style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
               />
             </label>
-            <label className="block">
+            <div className="block">
               <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
                 Prezzo IVA inclusa (€)
               </span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={termicoPrezzo}
-                disabled={!modificabile}
-                onChange={(e) => setTermicoPrezzo(e.target.value)}
-                className="w-full rounded-md border px-2 py-1.5 text-sm"
-                style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
-              />
-            </label>
+              {termicoDedotto ? (
+                <>
+                  <p
+                    className="rounded-md border px-2 py-1.5 text-sm tabular-nums"
+                    style={{ background: 'rgba(5,10,20,0.35)', borderColor: 'var(--bordo)' }}
+                  >
+                    {formattaImporto(prezzoTermicoCents)}
+                  </p>
+                  <span
+                    className="mt-1 block text-[11px]"
+                    style={{ color: 'var(--testo-fioco)' }}
+                  >
+                    Somma delle righe riconosciute come pompa di calore. Per
+                    cambiarlo, cambia le righe.
+                  </span>
+                </>
+              ) : (
+                <p
+                  className="rounded-md border px-2 py-1.5 text-[11px]"
+                  style={{
+                    borderColor: 'rgba(217,164,65,0.42)',
+                    background: 'rgba(217,164,65,0.08)',
+                    color: '#e8c765',
+                  }}
+                >
+                  Nessuna riga riconosciuta come pompa di calore: aggiungila al
+                  preventivo perché il suo costo si separi dalla quota
+                  fotovoltaica e l’agevolazione termica sia calcolata su di essa.
+                </p>
+              )}
+            </div>
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
                 Agevolazione sulle spese termiche

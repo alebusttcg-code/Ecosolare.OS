@@ -5,6 +5,7 @@ import {
   leggiConfigurazione,
   nomeComponente,
   normalizzaRiga,
+  prezzoTermicoEffettivoCents,
   quantitaEComponente,
   type RigaComponente,
 } from './componenti-impianto'
@@ -253,5 +254,88 @@ describe('quantità e componente nella frase del preventivo', () => {
         descrizione: 'Batteria di accumulo 10 kWh',
       }),
     ).toBe('1 × Batteria di accumulo 10 kWh')
+  })
+})
+
+describe('prezzo del blocco termico dedotto dalle righe', () => {
+  const riga = (
+    descrizione: string,
+    importoLordoCents: number,
+    ruolo: RigaComponente['ruolo'] = null,
+  ): RigaComponente => ({
+    descrizione,
+    quantita: 1,
+    ruolo,
+    potenzaModuloW: null,
+    potenzaCaKw: null,
+    capacitaKwh: null,
+    marca: null,
+    modello: null,
+    importoLordoCents,
+  })
+
+  it('somma le righe termiche e ignora tutto il resto', () => {
+    const configurazione = leggiConfigurazione([
+      riga('Modulo fotovoltaico 500 W', 180_000),
+      riga('Pompa di calore 8 kW', 700_000, 'pompa_calore'),
+      riga('Manodopera', 120_000),
+    ])
+    expect(configurazione.prezzoTermicoLordoCents).toBe(700_000)
+    expect(configurazione.haPompaCalore).toBe(true)
+  })
+
+  it('riconosce la pompa di calore anche senza ruolo nel catalogo', () => {
+    // Il catalogo non è compilato dappertutto: la descrizione resta l'ultimo
+    // appiglio, ed è lo stesso ripiego che usa il resto della configurazione.
+    const configurazione = leggiConfigurazione([riga('Pompa di calore aria-acqua', 550_000)])
+    expect(configurazione.prezzoTermicoLordoCents).toBe(550_000)
+  })
+
+  it('somma più righe termiche: unità esterna e accumulo sanitario', () => {
+    const configurazione = leggiConfigurazione([
+      riga('Pompa di calore 8 kW', 700_000, 'pompa_calore'),
+      riga('Bollitore', 150_000, 'pompa_calore'),
+    ])
+    expect(configurazione.prezzoTermicoLordoCents).toBe(850_000)
+  })
+
+  it('resta a zero senza righe termiche: è il segnale che fa scattare il ripiego', () => {
+    const configurazione = leggiConfigurazione([
+      riga('Modulo fotovoltaico 500 W', 180_000),
+    ])
+    expect(configurazione.prezzoTermicoLordoCents).toBe(0)
+    expect(configurazione.haPompaCalore).toBe(false)
+  })
+
+  it('non si fa rompere da un importo assente o assurdo', () => {
+    const senzaImporto: RigaComponente = { ...riga('Pompa di calore', 0, 'pompa_calore') }
+    const configurazione = leggiConfigurazione([
+      senzaImporto,
+      riga('Pompa di calore usata come sconto', -50_000, 'pompa_calore'),
+    ])
+    expect(configurazione.prezzoTermicoLordoCents).toBe(0)
+  })
+})
+
+describe('quale prezzo termico usa il preventivo', () => {
+  it('le righe vincono sul valore scritto a mano', () => {
+    // È il difetto che questa funzione esiste per chiudere: due numeri per lo
+    // stesso impianto, e il piano economico che usava quello sbagliato.
+    expect(
+      prezzoTermicoEffettivoCents({ prezzoTermicoLordoCents: 700_000 }, 999_900),
+    ).toBe(700_000)
+  })
+
+  it('senza righe riconosciute ripiega sul valore salvato', () => {
+    // I preventivi fatti prima non hanno il ruolo sulle righe: senza ripiego
+    // perderebbero la divisione fra quota fotovoltaica e quota termica.
+    expect(
+      prezzoTermicoEffettivoCents({ prezzoTermicoLordoCents: 0 }, 550_000),
+    ).toBe(550_000)
+  })
+
+  it('senza né righe né valore salvato resta zero', () => {
+    expect(prezzoTermicoEffettivoCents({ prezzoTermicoLordoCents: 0 }, 0)).toBe(0)
+    expect(prezzoTermicoEffettivoCents({ prezzoTermicoLordoCents: 0 }, -100)).toBe(0)
   })
 })

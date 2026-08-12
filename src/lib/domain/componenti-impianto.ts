@@ -33,6 +33,14 @@ export interface RigaComponente {
   readonly capacitaKwh: number | null
   readonly marca: string | null
   readonly modello: string | null
+  /**
+   * Importo della riga IVA inclusa, in centesimi.
+   *
+   * Serve a dedurre quanto pesa l'impianto termico dentro il totale, invece di
+   * farlo riscrivere a mano in un secondo campo. Assente sulle righe di cui non
+   * interessa il prezzo.
+   */
+  readonly importoLordoCents?: number | null
 }
 
 export interface ComponenteDescritto {
@@ -54,6 +62,18 @@ export interface ConfigurazioneImpianto {
   readonly capacitaAccumuloKwh: number
   readonly haAccumulo: boolean
   readonly haPompaCalore: boolean
+  /**
+   * Quanto pesa l'impianto termico nel totale, IVA inclusa, in centesimi.
+   *
+   * Dedotto dalle righe con ruolo `pompa_calore`. Prima era un campo che il
+   * commerciale ricompilava a mano nel blocco termico: lo stesso prezzo scritto
+   * in due punti, senza niente che verificasse che coincidessero. Quando
+   * divergevano, la pagina del prezzo mostrava due verità sullo stesso impianto
+   * e il piano economico usava quella sbagliata.
+   *
+   * Zero quando nessuna riga è riconosciuta come termica.
+   */
+  readonly prezzoTermicoLordoCents: number
 
   readonly moduliDescritti: readonly ComponenteDescritto[]
   readonly inverterDescritti: readonly ComponenteDescritto[]
@@ -195,7 +215,11 @@ export function leggiConfigurazione(
     potenzaCaKw: potenzaCa > 0 ? potenzaCa : null,
     capacitaAccumuloKwh: capacita,
     haAccumulo: capacita > 0,
-    haPompaCalore: normalizzate.some((r) => r.ruolo === 'pompa_calore'),
+    haPompaCalore: pompeCalore.length > 0,
+    prezzoTermicoLordoCents: pompeCalore.reduce(
+      (somma, riga) => somma + Math.max(0, Math.round(numero(riga.importoLordoCents))),
+      0,
+    ),
     moduliDescritti: moduli.map(descrivi),
     inverterDescritti: inverter.map(descrivi),
     accumuliDescritti: accumuli.map(descrivi),
@@ -242,4 +266,27 @@ export function quantitaEComponente(
   const marchio = [componente.marca, componente.modello].filter(Boolean).join(' ')
   if (!marchio) return `${numero} × ${componente.descrizione}`
   return `${numero} ${quantita === 1 ? sostantivo.uno : sostantivo.molti} ${marchio}`
+}
+
+/**
+ * Quale prezzo termico usare: quello letto dalle righe o quello salvato prima.
+ *
+ * La regola è una sola e va scritta una volta sola. Prima viveva in due punti
+ * di `quotes.ts` — il piano economico e il blocco stampato — ed è esattamente
+ * il modo in cui due parti dello stesso documento cominciano a dire numeri
+ * diversi.
+ *
+ * Le righe vincono sempre quando dicono qualcosa. Il valore salvato a mano
+ * resta solo per i preventivi fatti prima, dove nessuna riga porta il ruolo:
+ * senza quel ripiego perderebbero la divisione fra quota fotovoltaica e quota
+ * termica, e con essa l'agevolazione già calcolata.
+ */
+export function prezzoTermicoEffettivoCents(
+  configurazione: Pick<ConfigurazioneImpianto, 'prezzoTermicoLordoCents'>,
+  ripiegoCents: number,
+): number {
+  if (configurazione.prezzoTermicoLordoCents > 0) {
+    return configurazione.prezzoTermicoLordoCents
+  }
+  return Math.max(0, Math.round(ripiegoCents))
 }

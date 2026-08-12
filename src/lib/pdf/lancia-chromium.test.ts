@@ -17,7 +17,7 @@ const finto = {
 }
 
 type OpzioniLancio = { readonly executablePath: string; readonly headless: boolean }
-const lancio = vi.fn(async (_opzioni: OpzioniLancio) => ({ chiuso: false }))
+const lancio = vi.fn(async (opzioni: OpzioniLancio) => ({ chiuso: opzioni.headless }))
 
 vi.mock('@sparticuz/chromium', () => ({
   default: {

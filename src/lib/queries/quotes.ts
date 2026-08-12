@@ -19,6 +19,7 @@ import { formattaImporto, importoDaEuro } from '@/lib/domain/money'
 import {
   leggiConfigurazione,
   nomeComponente,
+  prezzoTermicoEffettivoCents,
   quantitaEComponente,
 } from '@/lib/domain/componenti-impianto'
 import { simulaImpiantoFv } from '@/lib/domain/simulazione-fv'
@@ -61,6 +62,11 @@ export interface RigaVisibile {
   readonly unitCost?: number
   readonly discountPct: number
   readonly vatRate: number
+  /**
+   * Ruolo del prodotto collegato. Serve all'editor per dedurre quanto pesa
+   * l'impianto termico senza farlo riscrivere a mano.
+   */
+  readonly componentRole: string | null
 }
 
 /**
@@ -97,12 +103,16 @@ export async function getQuoteVersion(versionId: string, mostraCosti: boolean) {
   if (!riga) return null
 
   const righeDb = await db
-    .select()
+    .select({
+      riga: quoteLines,
+      componentRole: products.componentRole,
+    })
     .from(quoteLines)
+    .leftJoin(products, eq(products.id, quoteLines.productId))
     .where(eq(quoteLines.quoteVersionId, versionId))
     .orderBy(asc(quoteLines.sortOrder))
 
-  const righe: RigaVisibile[] = righeDb.map((r) => ({
+  const righe: RigaVisibile[] = righeDb.map(({ riga: r, componentRole }) => ({
     id: r.id,
     productId: r.productId,
     description: r.description,
@@ -112,6 +122,7 @@ export async function getQuoteVersion(versionId: string, mostraCosti: boolean) {
     ...(mostraCosti ? { unitCost: Number.parseFloat(r.unitCost) } : {}),
     discountPct: Number.parseFloat(r.discountPct),
     vatRate: Number.parseFloat(r.vatRate),
+    componentRole,
   }))
 
   const versioni = await db
@@ -275,6 +286,15 @@ export async function getQuoteVersionPerPdf(
       capacitaKwh: r.capacityKwh ? Number.parseFloat(r.capacityKwh) : null,
       marca: r.brand,
       modello: r.model,
+      /*
+       * L'importo IVA inclusa serve a dedurre quanto pesa il termico nel
+       * totale. `lineNet` e' l'imponibile di riga: l'aliquota si riapplica qui
+       * perche' la divisione degli incentivi ragiona sul lordo, come il totale
+       * del preventivo.
+       */
+      importoLordoCents: importoDaEuro(
+        Number.parseFloat(r.lineNet) * (1 + Number.parseFloat(r.vatRate) / 100),
+      ),
     })),
   )
 
@@ -311,8 +331,16 @@ export async function getQuoteVersionPerPdf(
                 : {}),
               scop: dossier.termico.scop ?? 0,
               prezzoGasEurSmc: dossier.termico.prezzoGasEurSmc ?? 0,
-              prezzoLordoCents: importoDaEuro(
-                dossier.termico.prezzoLordoEur,
+              /*
+               * Il prezzo del termico si deduce dalle righe, non si riscrive.
+               * Era un campo a mano nel blocco termico: lo stesso importo in
+               * due punti, senza niente che verificasse che coincidessero.
+               * Il valore scritto a mano resta solo come ripiego per i
+               * preventivi in cui nessuna riga e' riconosciuta come termica.
+               */
+              prezzoLordoCents: prezzoTermicoEffettivoCents(
+                configurazione,
+                importoDaEuro(dossier.termico.prezzoLordoEur),
               ),
               incentivo: dossier.termico.incentivo,
               detrazionePct: dossier.termico.detrazionePct,
@@ -354,7 +382,15 @@ export async function getQuoteVersionPerPdf(
   let bloccoTermico: DatiPdfPreventivo['bloccoTermico'] = null
   if (dossier.termico?.presente) {
     const t = dossier.termico
-    const prezzoCents = importoDaEuro(t.prezzoLordoEur)
+    /*
+     * Lo stesso prezzo che entra nel piano economico, dedotto dalle righe.
+     * Stamparne un altro qui vorrebbe dire mettere due verita' sullo stesso
+     * impianto nella stessa pagina — ed e' gia' successo.
+     */
+    const prezzoCents = prezzoTermicoEffettivoCents(
+      configurazione,
+      importoDaEuro(t.prezzoLordoEur),
+    )
     const incentivoCents =
       t.incentivo === 'detrazione'
         ? Math.round((prezzoCents * t.detrazionePct) / 100)
@@ -522,6 +558,7 @@ export async function getCatalogo(mostraCosti: boolean) {
       name: products.name,
       unit: products.unit,
       type: products.type,
+      componentRole: products.componentRole,
       salePrice: products.defaultSalePrice,
       costPrice: products.defaultCostPrice,
       vatRate: products.vatRate,
@@ -536,6 +573,7 @@ export async function getCatalogo(mostraCosti: boolean) {
     name: r.name,
     unit: r.unit,
     type: r.type,
+    componentRole: r.componentRole,
     prezzo: r.salePrice ? Number.parseFloat(r.salePrice) : 0,
     ...(mostraCosti && r.costPrice ? { costo: Number.parseFloat(r.costPrice) } : {}),
     iva: Number.parseFloat(r.vatRate),
