@@ -7,6 +7,7 @@ import { useAzioneServer } from '@/lib/use-azione-server'
 import { newQuoteVersion, recordQuoteOutcome, sendQuote } from '@/lib/actions/quotes'
 import { puoEliminarePreventivo, type StatoVersione } from '@/lib/domain/quote-lifecycle'
 import { EliminaPreventivo } from '../elimina'
+import { ScaricaPdfPreventivo } from './scarica-pdf'
 
 export function AzioniPreventivo({
   versionId,
@@ -166,14 +167,7 @@ export function AzioniPreventivo({
             <span aria-hidden>◉</span>
             Anteprima preventivo
           </a>
-          <a
-            href={`/api/preventivi/${versionId}/pdf`}
-            className="bottone-fantasma flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-white/[0.04]"
-            style={{ borderColor: 'rgba(217,164,65,0.42)', color: 'var(--color-eco-gold-300)' }}
-          >
-            <span aria-hidden>↓</span>
-            Scarica PDF
-          </a>
+          <ScaricaPdfPreventivo versionId={versionId} disabled={inCorso} />
         </div>
       ) : (
         <p className="text-xs" style={{ color: 'var(--testo-tenue)' }}>

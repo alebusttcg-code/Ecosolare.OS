@@ -26,7 +26,7 @@ export async function lanciaChromiumPerPdf(): Promise<Browser> {
     process.env.LD_LIBRARY_PATH = path.dirname(executablePath)
 
     return playwrightChromium.launch({
-      args: sparticuz.args,
+      args: [...sparticuz.args, '--disable-dev-shm-usage', '--disable-gpu'],
       executablePath,
       headless: true,
     })

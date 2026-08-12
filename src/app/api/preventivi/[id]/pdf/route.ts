@@ -28,7 +28,10 @@ export async function GET(
     const tokenInterno = env().MAINTENANCE_TOKEN
     if (!tokenInterno) {
       return NextResponse.json(
-        { errore: 'Stampa PDF non configurata: manca MAINTENANCE_TOKEN.' },
+        {
+          errore: 'Stampa PDF non configurata.',
+          dettaglio: 'Imposta MAINTENANCE_TOKEN su Vercel (stesso valore di CRON_SECRET).',
+        },
         { status: 503 },
       )
     }
@@ -41,9 +44,15 @@ export async function GET(
       )
     }
 
+    const bypassProtezione = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
     const pdf = await generaPdfPreventivo(bundle.dati, {
       renderUrl: new URL(`/pdf-render/interno/preventivi/${id}`, request.url).toString(),
-      extraHeaders: { 'x-pdf-interno': tokenInterno },
+      extraHeaders: {
+        'x-pdf-interno': tokenInterno,
+        ...(bypassProtezione
+          ? { 'x-vercel-protection-bypass': bypassProtezione }
+          : {}),
+      },
       documentiTecnici: bundle.documentiTecnici,
     })
     const nome = nomeFilePreventivo(bundle.dati.codice, bundle.dati.versione)
@@ -63,11 +72,13 @@ export async function GET(
       return NextResponse.json({ errore: 'Accesso non consentito.' }, { status: 403 })
     }
 
+    const messaggio =
+      errore instanceof Error ? errore.message : 'Errore sconosciuto in generazione PDF.'
     console.error('[preventivo-pdf]', errore)
     return NextResponse.json(
       {
-        errore:
-          'Generazione PDF non riuscita. Se il problema persiste, contattare il supporto tecnico.',
+        errore: 'Generazione PDF non riuscita.',
+        dettaglio: messaggio,
       },
       { status: 503 },
     )
