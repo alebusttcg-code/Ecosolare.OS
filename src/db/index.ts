@@ -1,14 +1,20 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { env } from '@/env'
+import { ambienteDatabase, hostDatabase } from './ambiente'
 import * as schema from './schema'
 
 /**
  * Connessione al database.
  *
- * Sviluppo, staging e produzione usano lo stesso PostgreSQL gestito: l'ambiente
- * locale deve somigliare alla produzione, non a un surrogato. I test automatici
- * usano invece PGlite (Postgres in-process) — vedere `src/db/testing.ts`.
+ * Sviluppo, staging e produzione usano lo stesso **motore** — PostgreSQL
+ * gestito — perche' l'ambiente locale deve somigliare alla produzione, non a un
+ * surrogato. Lo stesso motore, pero', non vuol dire la stessa istanza: per
+ * settimane questa frase e' stata letta come «lo stesso database» e ogni prova
+ * in locale ha scritto sui dati dei clienti. Ogni ambiente ha il suo
+ * `DATABASE_URL`, e `src/db/ambiente.ts` dice a chi guarda il terminale dove si
+ * trova. I test automatici usano PGlite (Postgres in-process) — vedere
+ * `src/db/testing.ts`.
  *
  * L'inizializzazione e' pigra di proposito: leggere le variabili d'ambiente
  * al caricamento del modulo farebbe fallire `next build` in una macchina di
@@ -41,7 +47,26 @@ function dimensionePool(): number {
   return inServerless ? 4 : 10
 }
 
+/**
+ * Un avviso in testa al terminale quando si lavora sui dati veri.
+ *
+ * Non blocca niente — a volte e' proprio quello che si vuole fare, per esempio
+ * rigenerare un PDF su un preventivo reale. Ma deve essere una cosa che si sa,
+ * non una che si scopre dopo.
+ */
+function avvisaSeProduzione(): void {
+  if (inServerless) return
+  const ambiente = ambienteDatabase()
+  if (ambiente === 'sviluppo') return
+
+  console.warn(
+    `\n  \u26a0  Questo processo scrive sul database di ${ambiente}: ${hostDatabase()}\n` +
+      '     Se e\u0300 un database di prova, dichiaralo con AMBIENTE_DB=sviluppo.\n',
+  )
+}
+
 function buildDb() {
+  avvisaSeProduzione()
   const sql = postgres(env().DATABASE_URL, {
     // Con il pooler in transaction mode ogni connessione e' condivisa fra
     // richieste diverse: tenerne molte aperte per istanza esaurisce il pooler

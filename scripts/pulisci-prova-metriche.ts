@@ -6,6 +6,7 @@
 import { inArray, like, or, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
+import { proteggiScript } from '../src/db/ambiente'
 import {
   activities,
   contacts,
@@ -21,6 +22,8 @@ if (!url) {
   console.error('DATABASE_URL non impostata.')
   process.exit(1)
 }
+
+proteggiScript('npm run prova:metriche:pulisci')
 
 const client = postgres(url, { max: 1, prepare: false })
 const db = drizzle(client)

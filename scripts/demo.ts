@@ -28,6 +28,7 @@ import {
   users,
 } from '../src/db/schema'
 import { CATALOGO_FV } from '../src/db/templates/catalogo-fv'
+import { proteggiScript } from '../src/db/ambiente'
 import { calcolaImpronta } from '../src/lib/auth/password'
 
 const url = process.env.DATABASE_URL
@@ -35,10 +36,13 @@ if (!url) {
   console.error('DATABASE_URL non impostata.')
   process.exit(1)
 }
-if (process.env.NODE_ENV === 'production') {
-  console.error('Rifiuto di eseguire dati dimostrativi in produzione.')
-  process.exit(1)
-}
+/*
+ * Il controllo di prima guardava `NODE_ENV`, che descrive il processo e non il
+ * database: lanciato dal portatile valeva «development» anche quando dall'altra
+ * parte c'era la produzione, e questo script cancella e ricrea i propri record.
+ * Ora si guarda dove si sta scrivendo.
+ */
+proteggiScript('npm run demo')
 
 const client = postgres(url, { max: 1, prepare: false })
 const db = drizzle(client)
