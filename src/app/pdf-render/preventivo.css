@@ -266,21 +266,42 @@ body:has(.pdf-document)::before {
 .cover-letterhead span { display: block; color: var(--blue); font-size: 6.2pt; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
 .cover-letterhead strong { display: block; margin-top: 1.6mm; color: var(--navy); font-size: 10pt; }
 .cover-letterhead em { display: block; margin-top: .8mm; color: var(--muted); font-size: 7.4pt; font-style: normal; line-height: 1.45; }
+/*
+ * La griglia decorativa è `position: absolute`, quindi si dipinge sopra tutto
+ * ciò che non è posizionato — anche sulla foto del tetto, che le finisce sotto
+ * per una regola di impilamento e non per una scelta. Da quando la vista tetto
+ * è cresciuta il bordo si vedeva dentro l'immagine. Basta posizionare anche i
+ * blocchi del contenuto: stessa quota, e vince chi viene dopo nel documento.
+ */
+.pdf-page-cover .roof-comparison,
+.pdf-page-cover .roof-image,
+.pdf-page-cover .roof-placeholder,
+.pdf-page-cover .roof-svg-wrap,
+.pdf-page-cover .cover-kpis,
+.pdf-page-cover .cover-summary { position: relative; z-index: 1; }
 .cover-kicker { position: relative; z-index: 2; color: var(--blue); font-size: 7.5pt; letter-spacing: .22em; font-weight: 600; }
 .cover-title { position: relative; z-index: 2; margin: 2mm 0 5mm; color: var(--navy); font-family: 'Bodoni Moda', serif; font-size: 34pt; line-height: 1; font-weight: 400; }
 .roof-image { display: block; width: 100%; object-fit: cover; object-position: var(--focus-x, 50%) var(--focus-y, 50%); }
 .roof-photo-overlay { position: relative; width: 100%; overflow: hidden; background: #0b1525; }
 .roof-photo-overlay > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--focus-x, 50%) var(--focus-y, 50%); }
 .roof-photo-overlay > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.roof-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; height: 70mm; }
-.roof-comparison figure { min-width: 0; margin: 0; }
-.cover-roof { height: 62mm; border-radius: 2.5mm; }
-.cover-roof-singola { height: 70mm; }
 /*
- * Senza i cartigli la copertina resterebbe con un quarto di pagina in bianco:
- * la vista del tetto si prende lo spazio che avanza invece di lasciarlo vuoto.
+ * Il contenitore del confronto ha altezza propria: e' la griglia a decidere,
+ * non le immagini dentro. Alzare `.cover-roof` senza alzare anche questa non
+ * sposta un pixel — ci ho perso una stampa.
  */
-.pdf-page-cover .page-content:not(:has(.cover-kpis)) .cover-roof-singola { height: 108mm; }
+.roof-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; height: 85mm; }
+.roof-comparison figure { min-width: 0; margin: 0; }
+/*
+ * Le altezze della vista tetto sono tarate sul bianco che resta sopra il pie'
+ * di pagina, misurato sul PDF stampato e non a occhio: senza i cartigli ne
+ * avanza di piu', quindi la foto cresce di piu'. Chi tocca questi numeri
+ * ristampi e rimisuri — la copertina non ha scorrimento, quello che sfora
+ * viene tagliato senza dire niente.
+ */
+.cover-roof { height: 77mm; border-radius: 2.5mm; }
+.cover-roof-singola { height: 85mm; }
+.pdf-page-cover .page-content:not(:has(.cover-kpis)) .cover-roof-singola { height: 132mm; }
 .roof-comparison figcaption { padding-top: 2.2mm; color: var(--navy); font-size: 6.5pt; font-weight: 700; letter-spacing: .08em; text-align: center; text-transform: uppercase; }
 .roof-svg-wrap { width: 100%; background: #eaf1fa; overflow: hidden; }
 .roof-svg-wrap svg { width: 100%; height: 100%; }
