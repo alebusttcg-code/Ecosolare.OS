@@ -17,10 +17,20 @@ import type { NextRequest } from 'next/server'
 const COOKIE = 'ecosolare.sessione'
 
 function percorsoPubblico(pathname: string, request: NextRequest): boolean {
+  /*
+   * Il segreto si confronta ripulito da entrambi i lati.
+   *
+   * Chi lo manda lo ripulisce (un a-capo in coda a un'intestazione HTTP non è
+   * nemmeno legale); se qui si confrontasse il valore grezzo della variabile
+   * d'ambiente, i due non coinciderebbero più e la stampa finirebbe
+   * silenziosamente su `/accedi` — cioè il PDF fallirebbe dicendo che la pagina
+   * ha reindirizzato, senza mai nominare lo spazio di troppo.
+   */
+  const segreto = process.env.MAINTENANCE_TOKEN?.trim()
   if (
     pathname.startsWith('/pdf-render/interno/') &&
-    process.env.MAINTENANCE_TOKEN &&
-    request.headers.get('x-pdf-interno') === process.env.MAINTENANCE_TOKEN
+    segreto &&
+    request.headers.get('x-pdf-interno')?.trim() === segreto
   ) {
     return true
   }

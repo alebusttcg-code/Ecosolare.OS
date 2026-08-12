@@ -23,14 +23,20 @@ const schema = z.object({
    * Segreto condiviso con i form del sito e le landing per l'endpoint di intake.
    * Se assente, l'endpoint risponde 503: meglio disattivo che aperto.
    */
-  INTAKE_TOKEN: z.string().min(24).optional().or(z.literal('')),
+  INTAKE_TOKEN: z.string().trim().min(24).optional().or(z.literal('')),
 
   /**
    * Segreto che protegge gli endpoint di manutenzione (`/api/manutenzione/*`),
    * chiamati da un pianificatore e non da una persona. Se assente rispondono
    * 503: un endpoint che elabora la coda e' un endpoint che va protetto.
    */
-  MAINTENANCE_TOKEN: z.string().min(24).optional().or(z.literal('')),
+  /*
+   * `.trim()` non è pignoleria: questo segreto viaggia anche come intestazione
+   * HTTP verso la route di stampa interna, e un a-capo incollato dietro al
+   * valore fa fallire il protocollo di Chromium invece di limitarsi a non
+   * corrispondere. Ripulito qui, tutti lo leggono uguale.
+   */
+  MAINTENANCE_TOKEN: z.string().trim().min(24).optional().or(z.literal('')),
 
   /**
    * Chiave con cui si cifra il segreto della verifica in due passaggi

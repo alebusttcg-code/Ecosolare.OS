@@ -1,4 +1,5 @@
 import type { DatiPdfPreventivo } from '@/lib/pdf/dati-preventivo'
+import { intestazioniStampa } from '@/lib/pdf/intestazioni-stampa'
 import { lanciaChromiumPerPdf } from '@/lib/pdf/lancia-chromium'
 import {
   assemblaPreventivoConDocumentiTecnici,
@@ -60,11 +61,11 @@ async function stampaHtmlConChromium(
       viewport: VIEWPORT,
       deviceScaleFactor: 1,
       colorScheme: 'light',
-      extraHTTPHeaders: {
+      extraHTTPHeaders: intestazioniStampa({
         'Accept-Language': 'it-IT,it;q=0.9',
-        ...(opzioni.cookieHeader ? { Cookie: opzioni.cookieHeader } : {}),
+        Cookie: opzioni.cookieHeader,
         ...opzioni.extraHeaders,
-      },
+      }),
     })
     const page = await context.newPage()
 

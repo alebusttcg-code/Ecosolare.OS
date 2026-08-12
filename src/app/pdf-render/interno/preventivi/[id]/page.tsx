@@ -23,8 +23,10 @@ export default async function PreventivoInternoPage({
 }: {
   readonly params: Promise<{ id: string }>
 }) {
+  // Ripulito da entrambi i lati, come nel proxy: chi manda l'intestazione non
+  // può inviare gli spazi che una variabile d'ambiente si porta dietro.
   const segreto = env().MAINTENANCE_TOKEN
-  const header = (await headers()).get('x-pdf-interno')
+  const header = (await headers()).get('x-pdf-interno')?.trim()
   if (!segreto || header !== segreto) notFound()
 
   const { id } = await params
