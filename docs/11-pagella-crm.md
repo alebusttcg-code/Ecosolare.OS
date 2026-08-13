@@ -427,19 +427,39 @@ questo momento, e costa mezz'ora risolverlo.
 
 # Piano, in ordine di ritorno
 
-| # | Intervento | Perché prima | Sforzo |
-|---|---|---|---|
-| 1 | Database di sviluppo separato da produzione | Oggi ogni prova scrive sui dati veri | mezza giornata |
-| 2 | Ritarare `fattoreAzimut` + test calibrati | Stiamo perdendo vendite su ogni tetto non a sud | 1 giorno |
-| 3 | Costi di esercizio nel piano a 25 anni | È il punto dove il cliente ci troverà in fallo | 1 giorno |
-| 4 | Prezzo termico dedotto dalle righe | Elimina la doppia verità | mezza giornata |
-| 5 | SCOP nel catalogo, prezzo gas in configurazione | Toglie due errori a mano per preventivo | 1 giorno |
-| 6 | Avviso «il termico non entra nel piano» | Un preventivo sbagliato in silenzio | 2 ore |
-| 7 | Fondere «Le mie scadenze» e «Follow-up» | Duplicazione vera, non percepita | mezza giornata |
-| 8 | Eliminare CSS duplicato e codice morto | 700 righe che possono solo divergere | 2 ore |
-| 9 | Usare i sunshine quantiles come fattore assoluto | Fa entrare l'ombra reale nel preventivo | 2 giorni |
-| 10 | Fondere agende e stati del ciclo di vita | Da 16 a 11 voci di menu | 2 giorni |
+| # | Intervento | Stato |
+|---|---|---|
+| ~~1~~ | ~~Database di sviluppo separato da produzione~~ | **Fatto il 13 agosto** — guardia sugli script che cancellano; resta da creare il secondo progetto Supabase |
+| ~~2~~ | ~~Ritarare il modello di producibilità~~ | **Fatto il 13 agosto** — il difetto era la separabilità, non la taratura |
+| 3 | Costi di esercizio nel piano a 25 anni | **Sospeso** — da discutere con il cliente |
+| ~~4~~ | ~~Prezzo termico dedotto dalle righe~~ | **Fatto il 13 agosto** |
+| ~~5~~ | ~~SCOP nel catalogo, prezzo gas in configurazione~~ | **Fatto il 13 agosto** — e il catalogo è diventato compilabile |
+| ~~6~~ | ~~Avviso «il termico non entra nel piano»~~ | **Fatto il 13 agosto** |
+| ~~7~~ | ~~Fondere «Le mie scadenze» e «Follow-up»~~ | **Fatto il 13 agosto** — menu da 16 a 15 voci |
+| ~~8~~ | ~~Eliminare CSS duplicato e codice morto~~ | **Fatto il 13 agosto** — 383 righe e 24 KB |
+| 9 | Usare i sunshine quantiles come fattore assoluto | Da fare — 2 giorni |
+| 10 | Fondere agende e stati del ciclo di vita | Da fare — 2 giorni |
 
 I punti 2, 3 e 4 cambiano i numeri che mandiamo ai clienti. Verrebbero prima di
 tutto il resto se non fosse per il punto 1, che è quello che può far perdere
 dati.
+
+---
+
+## Cosa è emerso strada facendo
+
+Tre cose che l'analisi non aveva visto e che sono uscite mettendoci le mani.
+
+**Il modello di producibilità non riproduceva i propri casi di taratura.**
+Sottostimava Riboldi del 23%, Ricci del 21%, Tarantola del 34%. La causa non era
+la calibrazione ma la forma: esposizione e inclinazione moltiplicate come se
+fossero indipendenti, quando su un tetto piano l'esposizione non conta nulla.
+
+**Le colonne tecniche del catalogo non erano compilabili da nessuna
+interfaccia.** Esistono dalla migrazione 0021 e su tutti e sei i prodotti erano
+nulle: l'intero preventivo girava sui ripieghi che leggono la descrizione con
+espressioni regolari.
+
+**I test dell'app non giravano affatto.** `vitest` includeva solo
+`src/**/*.test.ts` e in tutta `src/app` c'era un file solo. Ora ce ne sono due,
+ed è la strada per coprire il resto.
