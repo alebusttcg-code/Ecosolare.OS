@@ -1,4 +1,4 @@
-import { and, count, eq, isNotNull, isNull, lt, or, sql, sum } from 'drizzle-orm'
+import { and, count, eq, isNotNull, isNull, lt, sql, sum } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { activities, contacts, opportunities, pipelineStages } from '@/db/schema'
 
@@ -125,50 +125,6 @@ export interface AttivitaInElenco {
  * `scaduta` viene calcolata qui e non nel componente: leggere l'orologio
  * durante il render produce risultati che cambiano a ogni ri-render.
  */
-export async function getAttivitaAperte(
-  userId: string,
-  limite = 50,
-): Promise<AttivitaInElenco[]> {
-  const adesso = Date.now()
-
-  const righe = await getDb()
-    .select({
-      id: activities.id,
-      subject: activities.subject,
-      kind: sql<string>`${activities.kind}`,
-      dueAt: activities.dueAt,
-      isNextAction: activities.isNextAction,
-      opportunityId: activities.opportunityId,
-      opportunityCode: opportunities.code,
-      opportunityTitle: opportunities.title,
-      contattoNome: contacts.firstName,
-      contattoCognome: contacts.lastName,
-    })
-    .from(activities)
-    .leftJoin(opportunities, eq(opportunities.id, activities.opportunityId))
-    .leftJoin(contacts, eq(contacts.id, opportunities.contactId))
-    .where(
-      and(
-        eq(activities.assignedTo, userId),
-        isNull(activities.completedAt),
-        // Un'attività legata a un lead archiviato non è più «da fare».
-        or(isNull(activities.opportunityId), isNull(opportunities.deletedAt)),
-      ),
-    )
-    .orderBy(sql`${activities.dueAt} asc nulls last`)
-    .limit(limite)
-
-  return righe.map((r) => {
-    const { contattoNome, contattoCognome, ...resto } = r
-    return {
-      ...resto,
-      clienteNome: [contattoNome, contattoCognome].filter(Boolean).join(' ') || null,
-      scaduta: r.dueAt !== null && r.dueAt.getTime() < adesso,
-    }
-  })
-}
-
-/** Quante attivita' aperte ha in carico ciascuno: serve per la ripartizione. */
 export async function contaAttivitaScadute(userId: string): Promise<number> {
   const [riga] = await getDb()
     .select({ totale: count() })

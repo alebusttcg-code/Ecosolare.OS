@@ -56,7 +56,6 @@ const VOCI: readonly (VoceMenu & {
 
   { href: '/lead', label: 'Lead', icona: '◭', gruppo: 'ciclo', resource: 'opportunity' },
   { href: '/sviluppo', label: 'Sviluppo', icona: '◎', gruppo: 'ciclo', resource: 'sviluppo' },
-  { href: '/follow-up', label: 'Follow-up', icona: '↻', gruppo: 'ciclo', resource: 'activity' },
   { href: '/agenda', label: 'Agenda e sopralluoghi', icona: '⌂', gruppo: 'ciclo', resource: 'survey' },
   { href: '/preventivi', label: 'Preventivi e firme', icona: '€', gruppo: 'ciclo', resource: 'quote' },
   { href: '/clienti', label: 'Clienti', icona: '◐', gruppo: 'ciclo', resource: 'contact' },
@@ -64,7 +63,7 @@ const VOCI: readonly (VoceMenu & {
   { href: '/cantieri/agenda', label: 'Agenda cantieri', icona: '◷', gruppo: 'ciclo', resource: 'schedule' },
   { href: '/lavori-completati', label: 'Lavori completati', icona: '▣', gruppo: 'ciclo', resource: 'project' },
 
-  { href: '/attivita', label: 'Le mie scadenze', icona: '✓', gruppo: 'lavoro', resource: 'activity' },
+  { href: '/attivita', label: 'Da fare', icona: '✓', gruppo: 'lavoro', resource: 'activity' },
   { href: '/controllo-bancario', label: 'Controllo bancario', icona: '⚖', gruppo: 'lavoro', resource: 'invoice', azione: 'update' },
   { href: '/approvazioni', label: 'Approvazioni', icona: '⚑', gruppo: 'lavoro', resource: 'quote_approval' },
 
