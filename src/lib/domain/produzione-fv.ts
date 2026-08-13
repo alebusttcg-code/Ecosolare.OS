@@ -13,8 +13,8 @@ export type InputProduzioneFalda = {
   readonly azimuthDegrees: number
   /** Media sunshine della falda (quantili Solar), se nota. */
   readonly sunshineMedio?: number | null
-  /** Media sunshine delle falde del tetto, per normalizzare. */
-  readonly sunshineMedioTetto?: number | null
+  /** Ore di sole della falda meno ombreggiata del tetto: è il riferimento. */
+  readonly sunshineMigliore?: number | null
 }
 
 export type RisultatoProduzioneFalda = {
@@ -24,7 +24,8 @@ export type RisultatoProduzioneFalda = {
   readonly resaBaseKwhKwp: number
   /** Quanto rende questa giacitura rispetto al punto ottimo, in [0, 1]. */
   readonly fattoreOrientamento: number
-  readonly fattoreSunshine: number
+  /** Quanto perde per l'ombra rispetto alla falda migliore, in [0,5, 1]. */
+  readonly fattoreOmbra: number
 }
 
 /**
@@ -132,27 +133,47 @@ export function fattoreOrientamento(
 }
 
 /**
- * Fattore relativo tra falde dello stesso tetto. Neutro se i dati mancano.
+ * Quanto una falda è ombreggiata rispetto alla parte migliore del tetto.
  *
- * Nota: è un rapporto **interno al tetto**, limitato a ±12%, quindi non porta
- * dentro l'ombreggiamento assoluto misurato da Google (un tetto all'ombra di un
- * palazzo riceve oggi la stessa stima di uno libero). Usarlo come fattore
- * assoluto è il punto 9 della pagella.
+ * La Solar API di Google restituisce, per ogni falda, le **ore di sole
+ * effettive all'anno**: incorporano l'ombra reale — l'albero, il palazzo di
+ * fianco, il camino, il tetto stesso. È l'unica informazione che il nostro
+ * modello geometrico non potrebbe mai dedurre da solo.
+ *
+ * Prima veniva quasi buttata. Il confronto era con la **media** delle falde e
+ * limitato a ±12%, il che faceva due danni insieme: la falda migliore veniva
+ * gonfiata del 12% e la peggiore scontata solo del 12%. Sullo studio reale in
+ * archivio le ore vanno da 803 a 1.325 — un ventaglio del 39% — e uscivano
+ * compresse in un quarto di quello.
+ *
+ * Ora il riferimento è la **falda migliore**, e questo non è un dettaglio: la
+ * resa di base è tarata sui dossier dove il fattore valeva 1, quindi la parte
+ * meno ombreggiata deve continuare a valere 1 o l'ancoraggio si sposta. Da lì
+ * in giù si scende fino a metà, che è già una falda che nessuno dovrebbe
+ * coprire di moduli.
+ *
+ * **Quello che questo non vede:** un edificio ombreggiato per intero — dietro
+ * una collina, in un cortile stretto — ha tutte le falde basse insieme, quindi
+ * il rapporto resta 1. Servirebbe un riferimento esterno di zona, e
+ * `maxSunshineHoursPerYear` non lo è: è il massimo *puntuale* sul tetto, non
+ * confrontabile con la media di una falda.
  */
-export function fattoreSunshineRelativo(
+const OMBRA_MINIMA = 0.5
+
+export function fattoreOmbra(
   sunshineMedio: number | null | undefined,
-  sunshineMedioTetto: number | null | undefined,
+  sunshineMigliore: number | null | undefined,
 ): number {
   if (
     sunshineMedio == null ||
-    sunshineMedioTetto == null ||
-    !(sunshineMedioTetto > 0) ||
+    sunshineMigliore == null ||
+    !(sunshineMigliore > 0) ||
     !(sunshineMedio > 0)
   ) {
     return 1
   }
-  const grezzo = sunshineMedio / sunshineMedioTetto
-  return Math.min(1.12, Math.max(0.88, grezzo))
+  // Mai sopra 1: la falda migliore è il riferimento, nessuna può batterla.
+  return Math.min(1, Math.max(OMBRA_MINIMA, sunshineMedio / sunshineMigliore))
 }
 
 export function stimaProduzioneFalda(
@@ -164,7 +185,7 @@ export function stimaProduzioneFalda(
       resaSpecificaKwhKwp: 0,
       resaBaseKwhKwp: 0,
       fattoreOrientamento: 0,
-      fattoreSunshine: 1,
+      fattoreOmbra: 1,
     }
   }
 
@@ -173,18 +194,15 @@ export function stimaProduzioneFalda(
     input.pitchDegrees,
     input.azimuthDegrees,
   )
-  const fs = fattoreSunshineRelativo(
-    input.sunshineMedio,
-    input.sunshineMedioTetto,
-  )
-  const resaSpecificaKwhKwp = Math.round(resaBaseKwhKwp * orientamento * fs)
+  const ombra = fattoreOmbra(input.sunshineMedio, input.sunshineMigliore)
+  const resaSpecificaKwhKwp = Math.round(resaBaseKwhKwp * orientamento * ombra)
 
   return {
     produzioneKwh: Math.round(input.kWp * resaSpecificaKwhKwp),
     resaSpecificaKwhKwp,
     resaBaseKwhKwp,
     fattoreOrientamento: orientamento,
-    fattoreSunshine: fs,
+    fattoreOmbra: ombra,
   }
 }
 

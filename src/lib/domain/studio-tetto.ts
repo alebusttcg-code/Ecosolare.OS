@@ -145,13 +145,15 @@ export function stimaProduzioneDaStudio(
   )
   const latFallback = snapshot.analisi.location?.latitude ?? null
 
+  /*
+   * Il riferimento per l'ombra e' la falda **meno ombreggiata**, non la media.
+   * Con la media la falda migliore risultava sopra il riferimento e veniva
+   * gonfiata, mentre la resa di base e' tarata proprio su una falda libera.
+   */
   const sunshineVals = falde
     .map((f) => f.sunshineMedio)
     .filter((v): v is number => v != null && v > 0)
-  const sunshineMedioTetto =
-    sunshineVals.length > 0
-      ? sunshineVals.reduce((a, b) => a + b, 0) / sunshineVals.length
-      : null
+  const sunshineMigliore = sunshineVals.length > 0 ? Math.max(...sunshineVals) : null
 
   let totale = 0
   for (const layout of layouts) {
@@ -169,7 +171,7 @@ export function stimaProduzioneDaStudio(
       pitchDegrees: falda.pitchDegrees,
       azimuthDegrees: falda.azimuthDegrees,
       sunshineMedio: falda.sunshineMedio,
-      sunshineMedioTetto,
+      sunshineMigliore,
     }).produzioneKwh
   }
   return Math.round(totale)

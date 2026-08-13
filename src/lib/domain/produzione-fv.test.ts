@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   distribuisciProduzioneMensile,
+  fattoreOmbra,
   fattoreOrientamento,
   PESI_MENSILI_FV_ITALIA,
   resaBaseDaLatitudine,
@@ -144,5 +145,63 @@ describe('ripartizione mensile', () => {
     expect(mesi).toHaveLength(12)
     expect(mesi.reduce((a, b) => a + b, 0)).toBe(7890)
     expect(mesi[6]!).toBeGreaterThan(mesi[0]!) // luglio > gennaio
+  })
+})
+
+/**
+ * I numeri sono quelli veri dell'unico studio in archivio: otto falde, ore di
+ * sole da 803 a 1.325. È il caso su cui si vede che il modello di prima
+ * comprimeva un ventaglio del 39% dentro un ±12%.
+ */
+describe('ombra letta dai dati di Google', () => {
+  const FALDE = [1325, 1000, 1274, 1150, 1230, 1232, 1155, 803]
+  const MIGLIORE = Math.max(...FALDE)
+
+  it('la falda meno ombreggiata vale 1, o la taratura si sposta', () => {
+    // La resa di base è ancorata ai dossier con questo fattore a 1: se la
+    // migliore valesse più o meno di 1, tutti i preventivi cambierebbero.
+    expect(fattoreOmbra(MIGLIORE, MIGLIORE)).toBe(1)
+  })
+
+  it('non gonfia mai: nessuna falda può battere il riferimento', () => {
+    expect(fattoreOmbra(1500, MIGLIORE)).toBe(1)
+  })
+
+  it('l’ombra vera arriva a schermo invece di essere compressa', () => {
+    // Falda 7: 803 ore contro 1.325. Prima perdeva il 12%, ora il 39%.
+    expect(fattoreOmbra(803, MIGLIORE)).toBeCloseTo(0.61, 2)
+    // Falda 1, esposta a nord-ovest e in ombra: 25% invece di 12%.
+    expect(fattoreOmbra(1000, MIGLIORE)).toBeCloseTo(0.75, 2)
+  })
+
+  it('non scende sotto metà: più giù è una falda da non coprire', () => {
+    expect(fattoreOmbra(100, MIGLIORE)).toBe(0.5)
+  })
+
+  it('senza dati resta neutro invece di inventare un’ombra', () => {
+    expect(fattoreOmbra(null, MIGLIORE)).toBe(1)
+    expect(fattoreOmbra(1000, null)).toBe(1)
+    expect(fattoreOmbra(1000, 0)).toBe(1)
+  })
+
+  it('entra nella produzione della falda', () => {
+    const libera = stimaProduzioneFalda({
+      kWp: 6,
+      latitudine: 44.5,
+      pitchDegrees: 20,
+      azimuthDegrees: 180,
+      sunshineMedio: MIGLIORE,
+      sunshineMigliore: MIGLIORE,
+    })
+    const ombreggiata = stimaProduzioneFalda({
+      kWp: 6,
+      latitudine: 44.5,
+      pitchDegrees: 20,
+      azimuthDegrees: 180,
+      sunshineMedio: 803,
+      sunshineMigliore: MIGLIORE,
+    })
+    expect(ombreggiata.produzioneKwh).toBeLessThan(libera.produzioneKwh * 0.65)
+    expect(libera.fattoreOmbra).toBe(1)
   })
 })
