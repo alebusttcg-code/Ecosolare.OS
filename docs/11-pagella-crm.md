@@ -437,8 +437,8 @@ questo momento, e costa mezz'ora risolverlo.
 | ~~6~~ | ~~Avviso «il termico non entra nel piano»~~ | **Fatto il 13 agosto** |
 | ~~7~~ | ~~Fondere «Le mie scadenze» e «Follow-up»~~ | **Fatto il 13 agosto** — menu da 16 a 15 voci |
 | ~~8~~ | ~~Eliminare CSS duplicato e codice morto~~ | **Fatto il 13 agosto** — 383 righe e 24 KB |
-| 9 | Usare i sunshine quantiles come fattore assoluto | Da fare — 2 giorni |
-| 10 | Fondere agende e stati del ciclo di vita | Da fare — 2 giorni |
+| ~~9~~ | ~~Usare i dati di ombreggiamento di Google~~ | **Fatto il 13 agosto** — riferimento la falda migliore, non la media |
+| 10 | Fondere agende e stati del ciclo di vita | **Fatto a metà il 13 agosto** — cantieri sì, agende no: vedi sotto |
 
 I punti 2, 3 e 4 cambiano i numeri che mandiamo ai clienti. Verrebbero prima di
 tutto il resto se non fosse per il punto 1, che è quello che può far perdere
@@ -463,3 +463,27 @@ espressioni regolari.
 **I test dell'app non giravano affatto.** `vitest` includeva solo
 `src/**/*.test.ts` e in tutta `src/app` c'era un file solo. Ora ce ne sono due,
 ed è la strada per coprire il resto.
+
+## Cosa resta aperto, e perché
+
+**Le due agende non si fondono con un riordino.** La pagella le aveva messe
+insieme fra le ridondanze, ma da vicino non lo sono: `/agenda` è un elenco di
+sopralluoghi ordinato per data di creazione — non è nemmeno un calendario — e
+`/cantieri/agenda` è un calendario di ordini di lavoro per giorno, con permessi
+diversi (`survey` contro `schedule`). Unirle vuol dire progettare una vista
+temporale unica su due oggetti diversi: è una funzione, non una pulizia. Per
+ora sono state rinominate «Sopralluoghi» e «Calendario cantieri», perché il
+problema immediato era che due voci che cominciano con «Agenda» sembrano
+doppioni.
+
+**Il menu è a 14 voci, non alle 11 previste.** Le tre che mancano sono le due
+agende più quella che sarebbe sparita fondendole.
+
+**Il punto 3 — i costi di esercizio nel piano a 25 anni — resta sospeso** per
+decisione commerciale, non tecnica. È l'unico punto del piano dove il cliente,
+rifacendo i conti dopo dieci anni, ci può trovare in fallo.
+
+**Due cose sono inerti finché non ci mette mano qualcuno:** il progetto Supabase
+di sviluppo (senza, la guardia ferma gli script ma si lavora ancora sui dati
+veri) e i dati tecnici dei sei prodotti a catalogo (senza, i numeri del
+preventivo continuano a dipendere da come è scritta una descrizione).
