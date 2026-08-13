@@ -6,6 +6,7 @@ import { guard } from '@/lib/auth/session'
 import { normalizzaDossier } from '@/lib/domain/dossier-preventivo'
 import { puoModificare, type StatoVersione } from '@/lib/domain/quote-lifecycle'
 import { getCatalogo, getQuoteVersion } from '@/lib/queries/quotes'
+import { getParametriSimulazioneFv } from '@/lib/queries/parametri-simulazione'
 import { CHIAVI_MARGINE, getSetting } from '@/lib/settings'
 import { AzioniPreventivo } from './azioni'
 import { RegistraFirma } from './firma'
@@ -38,6 +39,9 @@ export default async function PreventivoPage({
   const dati = await getQuoteVersion(id, mostraCosti)
   const catalogo = await getCatalogo(mostraCosti)
   const soglia = await getSetting(CHIAVI_MARGINE.sogliaMarginePct, 20)
+  // Il prezzo del gas configurato in azienda: serve all'avviso, che deve dire
+  // «manca» solo quando manca davvero anche il valore predefinito.
+  const parametri = await getParametriSimulazioneFv()
 
   if (!dati) notFound()
 
@@ -103,6 +107,8 @@ export default async function PreventivoPage({
             catalogo={catalogo}
             sogliaMarginePct={soglia}
             dossierIniziale={normalizzaDossier(dati.versione.dossier)}
+            consumoGasAnnuoSmc={dati.consumoGasAnnuoSmc}
+            prezzoGasPredefinito={parametri.prezzoGasEurSmc}
           />
         </div>
 

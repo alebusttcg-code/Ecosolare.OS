@@ -17,6 +17,10 @@ import {
   type DossierPreventivo,
 } from '@/lib/domain/dossier-preventivo'
 import { deduciRuolo } from '@/lib/domain/componenti-impianto'
+import {
+  datiMancantiTermico,
+  ingressiTermico,
+} from '@/lib/domain/diagnostica-termico'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import type { RigaVisibile } from '@/lib/queries/quotes'
 
@@ -28,6 +32,8 @@ export interface VoceCatalogo {
   readonly type: 'materiale' | 'servizio' | 'manodopera' | 'kit'
   /** Ruolo nell'impianto: serve a dedurre il peso del blocco termico. */
   readonly componentRole: string | null
+  /** SCOP dichiarato dal catalogo, per le pompe di calore. */
+  readonly scop: number | null
   readonly prezzo: number
   readonly costo?: number
   readonly iva: number
@@ -84,6 +90,8 @@ export function EditorPreventivo({
   catalogo,
   sogliaMarginePct,
   dossierIniziale,
+  consumoGasAnnuoSmc,
+  prezzoGasPredefinito,
 }: {
   versionId: string
   righeIniziali: readonly RigaVisibile[]
@@ -93,6 +101,10 @@ export function EditorPreventivo({
   catalogo: readonly VoceCatalogo[]
   sogliaMarginePct: number
   dossierIniziale?: DossierPreventivo | null
+  /** Gas dell'ultimo anno, dallo studio tetto. Null se nessuno l'ha compilato. */
+  consumoGasAnnuoSmc?: number | null
+  /** Prezzo del gas configurato in azienda, usato quando il preventivo tace. */
+  prezzoGasPredefinito?: number | null
 }) {
   const [righe, setRighe] = useState<RigaEditor[]>(
     righeIniziali.map((r) => ({
@@ -186,6 +198,49 @@ export function EditorPreventivo({
   )
   const termicoDedotto = prezzoTermicoCents > 0
 
+  /*
+   * Perché la pompa di calore non entra nel piano economico.
+   *
+   * Il motore è severo di proposito — senza i tre dati non inventa un
+   * risparmio — ma finora taceva: il preventivo usciva con il termico come
+   * pura voce di spesa, il rientro peggiore del vero, e nessuno sapeva che era
+   * mancato un campo. I tre dati stanno in tre posti diversi, quindi l'avviso
+   * deve dire anche dove si compilano.
+   */
+  const scopDalCatalogo = useMemo(() => {
+    const scop = righe
+      .map((riga) => (riga.componentRole ?? deduciRuolo(riga.description)) === 'pompa_calore'
+        ? riga.scop ?? null
+        : null)
+      .filter((valore): valore is number => valore != null && valore > 0)
+    return scop.length > 0 ? Math.min(...scop) : null
+  }, [righe])
+
+  const mancantiTermico = useMemo(
+    () =>
+      termicoAttivo
+        ? datiMancantiTermico(
+            ingressiTermico({
+              consumoGasAnnuoSmc,
+              scopCatalogo: scopDalCatalogo,
+              scopManuale: Number.parseFloat(termicoScop.replace(',', '.')),
+              prezzoGasManuale: Number.parseFloat(
+                termicoPrezzoGas.replace(',', '.'),
+              ),
+              prezzoGasPredefinito,
+            }),
+          )
+        : [],
+    [
+      termicoAttivo,
+      consumoGasAnnuoSmc,
+      scopDalCatalogo,
+      termicoScop,
+      termicoPrezzoGas,
+      prezzoGasPredefinito,
+    ],
+  )
+
   function aggiorna(chiave: string, patch: Partial<RigaEditor>) {
     setRighe((precedenti) =>
       precedenti.map((r) => {
@@ -216,6 +271,7 @@ export function EditorPreventivo({
         discountPct: 0,
         vatRate: voce.iva,
         componentRole: voce.componentRole,
+        scop: voce.scop,
       },
     ])
   }
@@ -236,6 +292,7 @@ export function EditorPreventivo({
         vatRate: 10,
         // Riga libera: il ruolo si dedurrà dalla descrizione, come sul server.
         componentRole: null,
+        scop: null,
       },
     ])
   }
@@ -638,6 +695,45 @@ export function EditorPreventivo({
                 <option value="altro">Altro</option>
               </select>
             </label>
+
+            {mancantiTermico.length > 0 ? (
+              <div
+                className="rounded-md border p-3 sm:col-span-2"
+                style={{
+                  borderColor: 'rgba(217,164,65,0.42)',
+                  background: 'rgba(217,164,65,0.08)',
+                }}
+              >
+                <p className="text-xs font-semibold" style={{ color: '#e8c765' }}>
+                  Il risparmio sul riscaldamento non entra nel piano economico
+                </p>
+                <p className="mt-1 text-[11px]" style={{ color: 'var(--testo-fioco)' }}>
+                  La pompa di calore resta nel preventivo come costo, quindi il
+                  rientro dell’investimento esce peggiore del vero.{' '}
+                  {mancantiTermico.length === 1 ? 'Manca' : 'Mancano'}:
+                </p>
+                <ul className="mt-1.5 space-y-1">
+                  {mancantiTermico.map((mancante) => (
+                    <li key={mancante.cosa} className="text-[11px]">
+                      <b style={{ color: 'var(--testo)' }}>{mancante.cosa}</b>
+                      <span style={{ color: 'var(--testo-fioco)' }}> — {mancante.dove}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p
+                className="rounded-md border p-2 text-[11px] sm:col-span-2"
+                style={{
+                  borderColor: 'rgba(163,197,99,0.35)',
+                  background: 'rgba(163,197,99,0.07)',
+                  color: '#b5d47c',
+                }}
+              >
+                Il risparmio sul riscaldamento entra nel piano economico insieme
+                al costo.
+              </p>
+            )}
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-xs" style={{ color: 'var(--testo-fioco)' }}>
                 Descrizione (modello, potenza…)

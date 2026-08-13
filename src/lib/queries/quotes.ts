@@ -68,6 +68,8 @@ export interface RigaVisibile {
    * l'impianto termico senza farlo riscrivere a mano.
    */
   readonly componentRole: string | null
+  /** SCOP dal catalogo: serve all'avviso «il termico non entra nel piano». */
+  readonly scop: number | null
 }
 
 /**
@@ -93,11 +95,18 @@ export async function getQuoteVersion(versionId: string, mostraCosti: boolean) {
       clienteId: contacts.id,
       clienteNome: contacts.firstName,
       clienteCognome: contacts.lastName,
+      /*
+       * Il gas dell'ultimo anno vive nello studio tetto, non nel preventivo:
+       * serve qui solo per dire al commerciale che senza quel dato la pompa di
+       * calore resta una voce di spesa.
+       */
+      studioPayload: siteStudies.payload,
     })
     .from(quoteVersions)
     .innerJoin(quotes, eq(quotes.id, quoteVersions.quoteId))
     .innerJoin(opportunities, eq(opportunities.id, quotes.opportunityId))
     .innerJoin(contacts, eq(contacts.id, opportunities.contactId))
+    .leftJoin(siteStudies, eq(siteStudies.id, quotes.siteStudyId))
     .where(eq(quoteVersions.id, versionId))
     .limit(1)
 
@@ -107,13 +116,14 @@ export async function getQuoteVersion(versionId: string, mostraCosti: boolean) {
     .select({
       riga: quoteLines,
       componentRole: products.componentRole,
+      scop: products.scop,
     })
     .from(quoteLines)
     .leftJoin(products, eq(products.id, quoteLines.productId))
     .where(eq(quoteLines.quoteVersionId, versionId))
     .orderBy(asc(quoteLines.sortOrder))
 
-  const righe: RigaVisibile[] = righeDb.map(({ riga: r, componentRole }) => ({
+  const righe: RigaVisibile[] = righeDb.map(({ riga: r, componentRole, scop }) => ({
     id: r.id,
     productId: r.productId,
     description: r.description,
@@ -124,6 +134,7 @@ export async function getQuoteVersion(versionId: string, mostraCosti: boolean) {
     discountPct: Number.parseFloat(r.discountPct),
     vatRate: Number.parseFloat(r.vatRate),
     componentRole,
+    scop: scop ? Number.parseFloat(scop) : null,
   }))
 
   const versioni = await db
@@ -137,7 +148,16 @@ export async function getQuoteVersion(versionId: string, mostraCosti: boolean) {
     .where(eq(quoteVersions.quoteId, riga.quoteId))
     .orderBy(desc(quoteVersions.versionNo))
 
-  return { ...riga, righe, versioni }
+  const studio = riga.studioPayload as { consumoGasAnnuoSmc?: unknown } | null
+  const consumoGasAnnuoSmc =
+    typeof studio?.consumoGasAnnuoSmc === 'number' ? studio.consumoGasAnnuoSmc : null
+
+  // Il payload dello studio non esce di qui: e' grosso e al browser serve
+  // soltanto il gas consumato.
+  const resto = { ...riga, studioPayload: undefined }
+  delete (resto as { studioPayload?: unknown }).studioPayload
+
+  return { ...resto, consumoGasAnnuoSmc, righe, versioni }
 }
 
 /**
@@ -568,6 +588,7 @@ export async function getCatalogo(mostraCosti: boolean) {
       unit: products.unit,
       type: products.type,
       componentRole: products.componentRole,
+      scop: products.scop,
       salePrice: products.defaultSalePrice,
       costPrice: products.defaultCostPrice,
       vatRate: products.vatRate,
@@ -583,6 +604,7 @@ export async function getCatalogo(mostraCosti: boolean) {
     unit: r.unit,
     type: r.type,
     componentRole: r.componentRole,
+    scop: r.scop ? Number.parseFloat(r.scop) : null,
     prezzo: r.salePrice ? Number.parseFloat(r.salePrice) : 0,
     ...(mostraCosti && r.costPrice ? { costo: Number.parseFloat(r.costPrice) } : {}),
     iva: Number.parseFloat(r.vatRate),
