@@ -5,6 +5,7 @@ import type { StatoPianificabilita } from '@/lib/domain/readiness'
 import { etichettaStatoWorkOrder } from '@/lib/domain/schedule'
 import { listProjects } from '@/lib/queries/projects'
 import { mappaPianificazioniAttive } from '@/lib/queries/schedule'
+import { FiltroStato, leggiStatoCantieri } from './filtro-stato'
 
 export const metadata = { title: 'Cantieri — EcoSolare OS' }
 
@@ -17,11 +18,31 @@ const PIANIFICABILITA: Record<
   non_pianificabile: { testo: 'Non pianificabile', tono: 'critico' },
 }
 
-export default async function CommessePage() {
+/**
+ * I cantieri, aperti e chiusi.
+ *
+ * Erano due voci di menu per lo stesso oggetto: «Cantieri» leggeva le commesse
+ * attive e «Lavori completati» le stesse commesse con `closedAt` valorizzato —
+ * `listProjects(utente, 'attive' | 'completate')`, la stessa query con un
+ * argomento diverso. Il sottotitolo lo confessava da solo: «i lavori chiusi
+ * sono in Lavori completati».
+ *
+ * Un cantiere chiuso non è un altro oggetto: è lo stesso cantiere, dopo. Qui è
+ * un filtro, come deve essere.
+ */
+export default async function CommessePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stato?: string }>
+}) {
   const utente = await guard('read', 'project')
+  const stato = leggiStatoCantieri((await searchParams).stato)
+  const chiusi = stato === 'completati'
 
-  const righe = await listProjects(utente, 'attive')
-  const pianificazioni = await mappaPianificazioniAttive(righe.map((r) => r.id))
+  const righe = await listProjects(utente, chiusi ? 'completate' : 'attive')
+  const pianificazioni = chiusi
+    ? new Map()
+    : await mappaPianificazioniAttive(righe.map((r) => r.id))
 
   const pianificabili = righe.filter((r) => r.readinessState === 'pianificabile').length
   const bloccate = righe.filter((r) => r.readinessState === 'non_pianificabile').length
@@ -31,18 +52,25 @@ export default async function CommessePage() {
     <div>
       <Intestazione
         titolo="Cantieri"
-        sottotitolo={`${righe.length} aperte · i lavori chiusi sono in «Lavori completati»`}
+        sottotitolo={
+          chiusi
+            ? `${righe.length} ${righe.length === 1 ? 'lavoro chiuso' : 'lavori chiusi'} · contratto, documenti e pagamenti restano qui`
+            : `${righe.length} ${righe.length === 1 ? 'cantiere aperto' : 'cantieri aperti'}`
+        }
         azione={
           <Link
             href="/cantieri/agenda"
             className="bottone-fantasma rounded-lg border px-4 py-2 text-sm font-medium"
             style={{ borderColor: 'var(--bordo)' }}
           >
-            Agenda cantieri
+            Calendario cantieri
           </Link>
         }
       />
 
+      <FiltroStato attivo={stato} />
+
+      {chiusi ? null : (
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Cantieri attivi" value={righe.length} icona="◫" indice={0} />
         <Stat
@@ -68,11 +96,18 @@ export default async function CommessePage() {
           indice={3}
         />
       </div>
+      )}
 
       <div className="mt-8">
         <Card indice={1}>
           {righe.length === 0 ? (
-            <Vuoto messaggio="Nessuna commessa. Si aprono registrando la firma di un preventivo inviato." />
+            <Vuoto
+              messaggio={
+                chiusi
+                  ? 'Nessun lavoro chiuso. Quando una commessa passa allo stato «Chiusa», compare qui.'
+                  : 'Nessuna commessa. Si aprono registrando la firma di un preventivo inviato.'
+              }
+            />
           ) : (
             <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
               {righe.map((r) => {

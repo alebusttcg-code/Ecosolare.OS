@@ -24,7 +24,7 @@ const ETICHETTA_RUOLO: Record<Role, string> = {
  * archivio dei lavori finiti. Gli URL coincidono con i nomi di menu
  * (`/lead`, `/agenda`, `/cantieri`, …): niente gergo tecnico nascosto
  * dietro etichette diverse. «Clienti» sta dopo le firme perché lì nasce il
- * rapporto stabile; prima è ancora un lead. «Lavori completati» è l'archivio:
+ * rapporto stabile; prima è ancora un lead. Il filtro «Completati» dei cantieri è l'archivio:
  * non compete con le commesse aperte, serve a ritrovare tutto di un lavoro già
  * chiuso. Gli stati della pipeline NON stanno qui — sono filtri dentro «Lead»,
  * non sezioni: sono sedici, cambiano dopo l'audit, e la domanda vera non è
@@ -56,12 +56,11 @@ const VOCI: readonly (VoceMenu & {
 
   { href: '/lead', label: 'Lead', icona: '◭', gruppo: 'ciclo', resource: 'opportunity' },
   { href: '/sviluppo', label: 'Sviluppo', icona: '◎', gruppo: 'ciclo', resource: 'sviluppo' },
-  { href: '/agenda', label: 'Agenda e sopralluoghi', icona: '⌂', gruppo: 'ciclo', resource: 'survey' },
+  { href: '/agenda', label: 'Sopralluoghi', icona: '⌂', gruppo: 'ciclo', resource: 'survey' },
   { href: '/preventivi', label: 'Preventivi e firme', icona: '€', gruppo: 'ciclo', resource: 'quote' },
   { href: '/clienti', label: 'Clienti', icona: '◐', gruppo: 'ciclo', resource: 'contact' },
   { href: '/cantieri', label: 'Cantieri', icona: '◫', gruppo: 'ciclo', resource: 'project' },
-  { href: '/cantieri/agenda', label: 'Agenda cantieri', icona: '◷', gruppo: 'ciclo', resource: 'schedule' },
-  { href: '/lavori-completati', label: 'Lavori completati', icona: '▣', gruppo: 'ciclo', resource: 'project' },
+  { href: '/cantieri/agenda', label: 'Calendario cantieri', icona: '◷', gruppo: 'ciclo', resource: 'schedule' },
 
   { href: '/attivita', label: 'Da fare', icona: '✓', gruppo: 'lavoro', resource: 'activity' },
   { href: '/controllo-bancario', label: 'Controllo bancario', icona: '⚖', gruppo: 'lavoro', resource: 'invoice', azione: 'update' },

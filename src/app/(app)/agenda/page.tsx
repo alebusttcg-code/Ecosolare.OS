@@ -6,7 +6,7 @@ import { getDb } from '@/db'
 import { contacts, opportunities, surveyTemplates, surveys, users } from '@/db/schema'
 import { guard } from '@/lib/auth/session'
 
-export const metadata = { title: 'Agenda e sopralluoghi — EcoSolare OS' }
+export const metadata = { title: 'Sopralluoghi — EcoSolare OS' }
 
 export default async function SopralluoghiPage() {
   await guard('read', 'survey')
@@ -41,7 +41,7 @@ export default async function SopralluoghiPage() {
   return (
     <div>
       <Intestazione
-        titolo="Agenda e sopralluoghi"
+        titolo="Sopralluoghi"
         sottotitolo={`${righe.length} in elenco · ${inCorso} da completare`}
       />
 

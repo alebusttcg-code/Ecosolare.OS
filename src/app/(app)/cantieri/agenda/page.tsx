@@ -4,7 +4,7 @@ import { guard } from '@/lib/auth/session'
 import { etichettaStatoWorkOrder, isoDaDataGiorno } from '@/lib/domain/schedule'
 import { listAgendaCantieri, type VoceAgendaCantiere } from '@/lib/queries/schedule'
 
-export const metadata = { title: 'Agenda cantieri — EcoSolare OS' }
+export const metadata = { title: 'Calendario cantieri — EcoSolare OS' }
 
 function tonoBadge(status: string): 'positivo' | 'attenzione' | 'blu' | 'neutro' {
   if (status === 'in_corso') return 'attenzione'
@@ -51,7 +51,7 @@ export default async function AgendaCantieriPage() {
           ← Cantieri
         </Link>
         <Intestazione
-          titolo="Agenda cantieri"
+          titolo="Calendario cantieri"
           sottotitolo="Chi va dove e quando — pianificazione e lavori in corso."
         />
       </div>

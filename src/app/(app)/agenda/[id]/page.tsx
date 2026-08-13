@@ -21,7 +21,7 @@ import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnai
 import { getUltimoStudioCompletoPerLead } from '@/lib/queries/site-studies'
 import { CompilaSopralluogo } from './compila'
 
-export const metadata = { title: 'Agenda e sopralluoghi — EcoSolare OS' }
+export const metadata = { title: 'Sopralluoghi — EcoSolare OS' }
 
 export default async function SopralluogoPage({
   params,
@@ -91,7 +91,7 @@ export default async function SopralluogoPage({
           className="text-sm"
           style={{ color: 'var(--testo-tenue)' }}
         >
-          ← Agenda e sopralluoghi
+          ← Sopralluoghi
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
