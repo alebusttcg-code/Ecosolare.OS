@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  coerenzaPrezzoTermico,
   datiMancantiTermico,
   ingressiTermico,
   termicoEntraNelPiano,
@@ -116,5 +117,63 @@ describe('da dove arrivano i tre dati', () => {
     expect(
       termicoEntraNelPiano(ingressiTermico({ ...base, scopCatalogo: 4 })),
     ).toBe(true)
+  })
+})
+
+describe('coerenza fra prezzo termico dedotto e scritto a mano', () => {
+  it('le righe vincono, e il valore a mano coerente non fa rumore', () => {
+    const c = coerenzaPrezzoTermico({ dedottoCents: 800_000, manualeCents: 800_000 })
+    expect(c.fonte).toBe('righe')
+    expect(c.effettivoCents).toBe(800_000)
+    expect(c.manualeIgnorato).toBe(false)
+    expect(c.divergenzaCents).toBe(0)
+  })
+
+  it('quando il valore a mano diverge dalle righe, lo dichiara ignorato', () => {
+    // Le righe sommano 7.500 €, ma il preventivo storico riporta 8.000 € a mano.
+    const c = coerenzaPrezzoTermico({ dedottoCents: 750_000, manualeCents: 800_000 })
+    expect(c.fonte).toBe('righe')
+    expect(c.effettivoCents).toBe(750_000) // vincono le righe
+    expect(c.manualeIgnorato).toBe(true)
+    expect(c.divergenzaCents).toBe(50_000)
+  })
+
+  it('uno scarto sotto l’euro è arrotondamento, non divergenza', () => {
+    const c = coerenzaPrezzoTermico({ dedottoCents: 800_050, manualeCents: 800_000 })
+    expect(c.manualeIgnorato).toBe(false)
+    expect(c.effettivoCents).toBe(800_050)
+  })
+
+  it('senza righe termiche vale il ripiego scritto a mano (preventivi storici)', () => {
+    const c = coerenzaPrezzoTermico({ dedottoCents: 0, manualeCents: 620_000 })
+    expect(c.fonte).toBe('manuale')
+    expect(c.effettivoCents).toBe(620_000)
+    expect(c.manualeIgnorato).toBe(false)
+    expect(c.divergenzaCents).toBe(0)
+  })
+
+  it('senza righe e senza valore a mano non c’è prezzo termico', () => {
+    const c = coerenzaPrezzoTermico({ dedottoCents: 0, manualeCents: 0 })
+    expect(c.fonte).toBe('assente')
+    expect(c.effettivoCents).toBe(0)
+    expect(c.manualeIgnorato).toBe(false)
+  })
+
+  it('un valore a mano assente non è mai «ignorato», anche con righe presenti', () => {
+    // Un preventivo nuovo non ha un valore a mano da ignorare: le righe bastano.
+    const c = coerenzaPrezzoTermico({ dedottoCents: 900_000, manualeCents: 0 })
+    expect(c.fonte).toBe('righe')
+    expect(c.manualeIgnorato).toBe(false)
+    expect(c.divergenzaCents).toBe(0)
+  })
+
+  it('numeri sporchi non passano: negativi e non-finiti diventano zero', () => {
+    const c = coerenzaPrezzoTermico({
+      dedottoCents: -10,
+      manualeCents: Number.NaN,
+    })
+    expect(c.dedottoCents).toBe(0)
+    expect(c.manualeCents).toBe(0)
+    expect(c.fonte).toBe('assente')
   })
 })

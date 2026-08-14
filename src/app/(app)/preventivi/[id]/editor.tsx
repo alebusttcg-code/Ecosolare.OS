@@ -18,6 +18,7 @@ import {
 } from '@/lib/domain/dossier-preventivo'
 import { deduciRuolo } from '@/lib/domain/componenti-impianto'
 import {
+  coerenzaPrezzoTermico,
   datiMancantiTermico,
   ingressiTermico,
 } from '@/lib/domain/diagnostica-termico'
@@ -196,7 +197,24 @@ export function EditorPreventivo({
       }, 0),
     [righe, totali],
   )
-  const termicoDedotto = prezzoTermicoCents > 0
+
+  /*
+   * La coerenza fra il prezzo dedotto dalle righe e quello scritto a mano nei
+   * preventivi storici. Quando divergono le righe vincono — ma in silenzio no:
+   * `manualeIgnorato` accende un avviso, invece di lasciare che la differenza
+   * si scopra confrontando due pagine.
+   */
+  const coerenzaTermico = useMemo(
+    () =>
+      coerenzaPrezzoTermico({
+        dedottoCents: prezzoTermicoCents,
+        manualeCents: Math.round(
+          Number.parseFloat(termicoPrezzo.replace(',', '.')) * 100,
+        ),
+      }),
+    [prezzoTermicoCents, termicoPrezzo],
+  )
+  const termicoDedotto = coerenzaTermico.fonte === 'righe'
 
   /*
    * Perché la pompa di calore non entra nel piano economico.
@@ -766,6 +784,21 @@ export function EditorPreventivo({
                     Somma delle righe riconosciute come pompa di calore. Per
                     cambiarlo, cambia le righe.
                   </span>
+                  {coerenzaTermico.manualeIgnorato ? (
+                    <span
+                      className="mt-1 block rounded-md border px-2 py-1.5 text-[11px]"
+                      style={{
+                        borderColor: 'rgba(217,164,65,0.42)',
+                        background: 'rgba(217,164,65,0.08)',
+                        color: '#e8c765',
+                      }}
+                    >
+                      Questo preventivo riportava a mano{' '}
+                      {formattaImporto(coerenzaTermico.manualeCents)}: vale la
+                      somma delle righe. Se il valore giusto era l’altro,
+                      aggiorna le righe.
+                    </span>
+                  ) : null}
                 </>
               ) : (
                 <p
