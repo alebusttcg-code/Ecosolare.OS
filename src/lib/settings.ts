@@ -40,6 +40,28 @@ export const CHIAVI_MARGINE = {
  * I valori vivono in `app_settings`; i motori di dominio li ricevono come
  * input e non contengono aliquote normative.
  */
+/**
+ * Parametri fisici del motore di producibilità (ADR-016, tappa 7a).
+ *
+ * Sono le assunzioni di sistema — perdite, albedo, temperatura, inverter — che
+ * finora vivevano come costanti nei moduli fisici. Portarle qui è il principio
+ * del progetto applicato al motore: valori affinabili senza un rilascio, con
+ * validità operativa, invece che murati nel codice. I default restano dichiarati
+ * nel dominio; questi valori li **superano** quando l'azienda li scrive.
+ */
+export const CHIAVI_FISICA = {
+  albedo: 'fisica.albedo',
+  guadagnoBifaccialePct: 'fisica.guadagno_bifacciale_pct',
+  noct: 'fisica.noct',
+  coeffTemperatura: 'fisica.coeff_temperatura',
+  efficienzaInverter: 'fisica.efficienza_inverter',
+  perditaSporcamento: 'fisica.perdita_sporcamento',
+  perditaOhmicheCc: 'fisica.perdita_ohmiche_cc',
+  perditaMismatch: 'fisica.perdita_mismatch',
+  perditaDegradazioneIniziale: 'fisica.perdita_degradazione_iniziale',
+  perditaRiflessioneSpettro: 'fisica.perdita_riflessione_spettro',
+} as const
+
 export const CHIAVI_SIMULAZIONE = {
   tariffaImportEurKwh: 'energia.tariffa_import_eur_kwh',
   tariffaExportEurKwh: 'energia.tariffa_export_eur_kwh',

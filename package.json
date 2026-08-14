@@ -8,6 +8,8 @@
     "amministratore": "tsx --env-file-if-exists=.env.local scripts/crea-amministratore.ts",
     "baseline": "tsx scripts/calcola-baseline-kpi.ts",
     "baseline:stato": "tsx scripts/calcola-baseline-kpi.ts -- --stato",
+    "prova:pvgis": "tsx scripts/prova-pvgis.ts",
+    "prova:orientamenti": "tsx scripts/prova-orientamenti.ts",
     "prova:metriche": "tsx --env-file-if-exists=.env.local scripts/prova-metriche.ts",
     "prova:metriche:pulisci": "tsx --env-file-if-exists=.env.local scripts/pulisci-prova-metriche.ts",
     "outbox": "tsx --env-file-if-exists=.env.local scripts/outbox.ts",

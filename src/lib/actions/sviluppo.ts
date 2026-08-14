@@ -3,12 +3,13 @@
 import { z } from 'zod'
 import { guard } from '@/lib/auth/session'
 import {
-  buildingInsightsNelRaggio,
   geocodeIndirizzo,
   suggerisciIndirizziPlaces,
   type AnalisiTetto,
   type SuggerimentoIndirizzo,
 } from '@/lib/solar'
+import { buildingInsightsConCache } from '@/lib/solar/building-insights-cache'
+import { archivioBuildingInsightsDb } from '@/lib/solar/building-insights-cache-db'
 import { caricaGrigliaDsm, raggioMetriDaBbox } from '@/lib/solar/data-layers'
 import { chiaveCacheDsm, getDsmCached, setDsmCached } from '@/lib/solar/dsm-cache'
 import type { GrigliaDsm } from '@/lib/solar/griglia-dsm'
@@ -83,7 +84,9 @@ export async function analizzaTetto(
     return { ok: false, errors: { _: geo.errore.messaggio } }
   }
 
-  const solar = await buildingInsightsNelRaggio(geo.location)
+  const solar = await buildingInsightsConCache(geo.location, {
+    archivio: archivioBuildingInsightsDb(),
+  })
   if (!solar.ok) {
     return { ok: false, errors: { _: solar.errore.messaggio } }
   }
@@ -114,7 +117,9 @@ export async function analizzaTettoAlPunto(
     latitude: parsed.data.latitude,
     longitude: parsed.data.longitude,
   }
-  const solar = await buildingInsightsNelRaggio(location)
+  const solar = await buildingInsightsConCache(location, {
+    archivio: archivioBuildingInsightsDb(),
+  })
   if (!solar.ok) {
     return { ok: false, errors: { _: solar.errore.messaggio } }
   }

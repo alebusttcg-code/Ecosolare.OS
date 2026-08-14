@@ -24,6 +24,7 @@ ricostruire il ragionamento a memoria.
 | [013](013-verifica-in-due-passaggi.md) | Verifica in due passaggi con TOTP | Superata |
 | [014](014-pagina-pubblica-stato-cliente.md) | Pagina di stato per il cliente, senza account | Accettata |
 | [015](015-preventivo-html-css-playwright.md) | Preventivo HTML/CSS stampato con Playwright Chromium | Accettata |
+| [016](016-motore-fisico-autonomo.md) | Motore di producibilità fisico e autonomo, dati posseduti | Accettata |
 
 Riferimento esteso: [§8.3 del blueprint](../00-discovery-blueprint-v1.md).
 Decisioni di prodotto e di processo (non architetturali): [registro decisioni](../01-registro-decisioni.md).

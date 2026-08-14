@@ -590,6 +590,52 @@ export const rateLimits = pgTable(
 )
 
 /* -------------------------------------------------------------------------- */
+/*  Cache climatica — motore fisico (ADR-016)                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * La climatologia di un sito, scaricata una volta da PVGIS e posseduta.
+ *
+ * È il cuore dell'autonomia a runtime (ADR-016): un preventivo non chiama
+ * nessuno, perché il meteo tipico del punto è già qui. La chiave è la coordinata
+ * arrotondata alla griglia (~1 km), così tetti vicini condividono lo stesso dato
+ * e la stessa (unica) chiamata pagata. Il payload è la climatologia compatta
+ * (giorno-tipo mensile). È una cache: rigenerabile, si può svuotare senza perdere
+ * nulla di irreversibile.
+ */
+export const climateCache = pgTable('climate_cache', {
+  /** Coordinata arrotondata alla griglia, es. `44.11,9.96`. */
+  gridKey: text('grid_key').primaryKey(),
+  lat: numeric('lat', { precision: 8, scale: 5 }).notNull(),
+  lng: numeric('lng', { precision: 8, scale: 5 }).notNull(),
+  /** Provenienza del dato, es. `PVGIS-TMY`. */
+  source: text('source').notNull(),
+  /** La climatologia compatta serializzata (matrici mese×ora + GHI annuo). */
+  payload: jsonb('payload').notNull(),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/**
+ * La geometria e l'ombra di un tetto da Google Solar, trovate una volta e
+ * possedute (ADR-016, D11 della pagella).
+ *
+ * Oggi ogni analisi nel laboratorio sonda fino a venticinque punti a pagamento
+ * per trovare l'edificio, e la cache è un `Map` di processo che su Vercel
+ * svanisce: lo stesso tetto si ripaga a ogni click. Qui la chiave è la
+ * coordinata arrotondata a ~11 m — fine da distinguere edifici vicini, larga da
+ * ritrovare lo stesso tetto ricliccato. Solo i successi si salvano.
+ */
+export const buildingInsightsCache = pgTable('building_insights_cache', {
+  /** Coordinata dell'origine arrotondata a ~11 m, es. `44.1103,9.9612`. */
+  coordKey: text('coord_key').primaryKey(),
+  lat: numeric('lat', { precision: 9, scale: 6 }).notNull(),
+  lng: numeric('lng', { precision: 9, scale: 6 }).notNull(),
+  /** L'analisi del tetto (falde, ombra, geometria) serializzata. */
+  payload: jsonb('payload').notNull(),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/* -------------------------------------------------------------------------- */
 /*  Pipeline                                                                   */
 /* -------------------------------------------------------------------------- */
 
