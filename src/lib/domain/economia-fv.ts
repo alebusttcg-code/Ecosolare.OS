@@ -180,6 +180,12 @@ export function calcolaEconomiaFv(input: InputEconomiaFv): EconomiaFv {
     const rataContoTermicoCents =
       anno <= rateContoTermico.length ? (rateContoTermico[anno - 1] ?? 0) : 0
 
+    /*
+     * Il flusso è al lordo dei costi di gestione: nessun opex (sostituzione
+     * inverter, manutenzione, assicurazione) entra nel piano. È una scelta
+     * deliberata (D-020), non una dimenticanza — il modello non deve mai
+     * presentare l'opex come incluso, e infatti non lo somma da nessuna parte.
+     */
     const flussoCents =
       risparmioEnergiaCents +
       risparmioTermicoCents +
