@@ -57,15 +57,43 @@ L'azienda usa Google Workspace. Ne discendono tre decisioni.
 
 *Conseguenza (11 agosto 2026):* TOTP in-app in D-018; **revocata l’11 agosto 2026** — accesso di nuovo solo email + password.
 
+**D-021 — Motore di producibilità fisico e autonomo** (14 agosto 2026)
+- La stima di produzione passa da formula calibrata a **motore fisico** (fonti
+  pubbliche PVGIS/pvlib, ombra reale Google), e l'autoconsumo da frazione fissa a
+  **matching orario** con un profilo di carico per utenza.
+- **SolarEdge è un rivale, non un riferimento:** i suoi dossier validano, non
+  tarano. **Zero dipendenze a runtime:** i dati si ingeriscono una volta per sito
+  e si posseggono.
+- Design [docs/15](15-motore-fisico-autonomo.md), decisione [ADR-016](adr/016-motore-fisico-autonomo.md).
+  Primo pezzo già in casa: [`profili-carico.ts`](../src/lib/domain/profili-carico.ts).
+
+**D-020 — Il piano economico del cliente non include i costi di gestione** (14 agosto 2026)
+- Il cashflow a 25 anni del preventivo somma risparmi e incentivi, **senza opex**:
+  niente sostituzione dell'inverter, manutenzione, assicurazione, verifiche
+  periodiche. VAN, TIR, ROI e rientro sono quindi al lordo dei costi di esercizio.
+- **Scelta deliberata, non una svista.** È la prassi commerciale del settore, e
+  introdurre un opex stimato aprirebbe una trattativa su cifre incerte (ogni
+  inverter, ogni contratto di manutenzione è diverso) che sposta la vendita
+  senza renderla più onesta di così.
+- Confine da non superare: il modello non deve **mai** presentare l'opex come
+  incluso quando non lo è. Nessuna riga di costo di gestione entra nel flusso
+  ([`economia-fv.ts`](../src/lib/domain/economia-fv.ts)).
+- Chiude il punto «costi di esercizio nel piano a 25 anni», che le due pagelle
+  tenevano sospeso: non è più un difetto aperto, è una decisione presa.
+
 **D-019 — Pagina di stato per il cliente, senza account**
 - Un collegamento firmato per commessa mostra al cliente a che punto è e quali documenti aspettiamo da lui.
 - Nessun importo e nessun dato economico: il collegamento è la credenziale, e può finire in mano a chiunque.
 - Dettagli: [ADR-014](adr/014-pagina-pubblica-stato-cliente.md).
 
-**D-018 — Verifica in due passaggi con TOTP** — **revocata** (11 agosto 2026)
+**D-018 — Verifica in due passaggi con TOTP** — **revocata** (11 agosto 2026), **esclusa in via definitiva** (14 agosto 2026)
 - Era obbligatoria per `amministratore` e `contabilita` ([ADR-013](adr/013-verifica-in-due-passaggi.md)).
 - Revocata per frizione operativa: login di nuovo **solo email + password**.
-- Colonne `totp_*` e codice legacy restano inutilizzati (nessuna migrazione drop).
+- **Esclusa per sempre:** il secondo fattore non tornerà. Rimosso il codice
+  rimasto orfano — pagina `/due-passaggi`, server action `*Mfa`, moduli
+  `auth/totp`, `auth/mfa`, `auth/cifratura`, variabile `MFA_SECRET_KEY`.
+- Le colonne `totp_*` restano nello schema, inerti (nessuna migrazione drop:
+  non porta valore e aggiungerebbe rischio).
 
 **D-017 — Nessun file viene mai cancellato**
 - Documenti, contabili e fotografie eliminati finiscono in un cestino senza scadenza, ripristinabile dall'amministratore.
