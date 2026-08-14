@@ -5,6 +5,13 @@
 > **Superata:** l’accesso torna a email + password senza secondo fattore
 > (frizione operativa). Vedi D-018 revocata nel registro decisioni. Le colonne
 > `totp_*` restano nello schema inutilizzate.
+>
+> **Esclusa in via definitiva (13 agosto 2026).** Il secondo fattore non
+> tornerà: rimosso il codice che era rimasto orfano dopo la supersessione —
+> la pagina `/due-passaggi`, le server action `*Mfa`, i moduli `auth/totp`,
+> `auth/mfa`, `auth/cifratura` e la variabile `MFA_SECRET_KEY`. Le colonne
+> `totp_*` restano nello schema (rimuoverle richiede una migrazione dedicata e
+> non porta valore): sono inerti, nessuno le legge più.
 
 ## Contesto
 

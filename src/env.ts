@@ -38,21 +38,6 @@ const schema = z.object({
    */
   MAINTENANCE_TOKEN: z.string().trim().min(24).optional().or(z.literal('')),
 
-  /**
-   * Chiave con cui si cifra il segreto della verifica in due passaggi
-   * (32 byte in esadecimale: `openssl rand -hex 32`).
-   *
-   * Sta nell'ambiente e non nel database di proposito: e' cio' che impedisce a
-   * una copia del database di contenere anche il secondo fattore di tutti.
-   * Senza, l'MFA non si puo' attivare. Se la si perde, chi ha gia' attivato
-   * l'MFA entra con i codici di recupero e riconfigura l'app.
-   */
-  MFA_SECRET_KEY: z
-    .string()
-    .regex(/^[0-9a-fA-F]{64}$/, 'MFA_SECRET_KEY deve essere 64 caratteri esadecimali')
-    .optional()
-    .or(z.literal('')),
-
   /* --- Archivio dei documenti (Supabase Storage) ------------------------- */
   /**
    * Se assenti si usa il disco locale, che va bene solo in sviluppo: su Vercel

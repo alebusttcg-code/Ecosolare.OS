@@ -214,12 +214,11 @@ const cambioSchema = z
  * Non passa da `guard`: cambiare la propria password è possibile per chiunque
  * sia collegato, indipendentemente dal ruolo — ed è obbligatorio al primo
  * accesso, quando la persona non ha ancora potuto fare nient'altro.
- * `consentitoSenzaMfa` perché il cambio password iniziale precede l’enrollment.
  */
 export async function cambiaPassword(
   input: z.input<typeof cambioSchema>,
 ): Promise<ActionResult> {
-  const utente = await requireUser({ consentitoSenzaMfa: true })
+  const utente = await requireUser()
 
   const parsed = cambioSchema.safeParse(input)
   if (!parsed.success) {

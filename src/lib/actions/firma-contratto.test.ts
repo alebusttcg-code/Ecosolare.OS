@@ -36,7 +36,6 @@ const utenteFinto = {
   isFieldOnly: false,
   isActive: true,
   mustChangePassword: false,
-  mfaAttiva: true,
 }
 
 const contenitore: { db?: TestDatabase } = {}

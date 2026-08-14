@@ -18,8 +18,6 @@ export interface CurrentUser extends PolicySubject {
   readonly name: string | null
   /** Vero finché la persona usa la password iniziale assegnata dall'amministratore. */
   readonly mustChangePassword: boolean
-  /** Verifica in due passaggi attiva su questo account. */
-  readonly mfaAttiva: boolean
 }
 
 /**
@@ -49,26 +47,21 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       isFieldOnly: true,
       isActive: true,
       mustChangePassword: true,
-      totpEnabledAt: true,
     },
   })
 
   if (!utente || !utente.isActive) return null
 
-  const { totpEnabledAt, ...resto } = utente
-  return { ...resto, mfaAttiva: totpEnabledAt !== null }
+  return utente
 })
 
 /**
  * Come `getCurrentUser`, ma solleva invece di restituire null.
  *
- * `consentitoSenzaMfa` è mantenuto per compatibilità con call-site legacy
- * (cambio password); l’obbligo MFA non è più attivo.
+ * L'accesso è a fattore singolo (email + password): la verifica in due
+ * passaggi è esclusa per scelta di prodotto (ADR-013, superata).
  */
-export async function requireUser(_opzioni?: {
-  readonly consentitoSenzaMfa?: boolean
-}): Promise<CurrentUser> {
-  void _opzioni
+export async function requireUser(): Promise<CurrentUser> {
   const utente = await getCurrentUser()
   if (!utente) throw new AuthorizationError('read', 'contact')
   return utente
