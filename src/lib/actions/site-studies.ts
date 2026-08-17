@@ -10,6 +10,7 @@ import { guard } from '@/lib/auth/session'
 import { CHIAVI_FISICA, getSetting } from '@/lib/settings'
 import { archivioClimatologiaDb } from '@/lib/solar/clima/archivio-db'
 import { produzioneFisicaDaStudio } from '@/lib/domain/produzione-studio-fisica'
+import { getParametriFisici } from '@/lib/queries/parametri-fisici'
 import {
   contaModuli,
   kWpDaLayouts,
@@ -166,6 +167,7 @@ export async function salvaStudioTetto(
   if (await getSetting(CHIAVI_FISICA.motoreProducibilitaAttivo, false)) {
     const fisica = await produzioneFisicaDaStudio(snapshot, {
       archivio: archivioClimatologiaDb(),
+      parametri: await getParametriFisici(),
     })
     if (fisica != null && fisica > 0) {
       snapshot = { ...snapshot, produzioneAnnuakWh: fisica }

@@ -31,8 +31,8 @@ describe('temperatura di cella', () => {
 })
 
 describe('perdite di sistema', () => {
-  it('si compongono in modo moltiplicativo (PR standard ~0,90)', () => {
-    expect(fattorePerditeSistema(PERDITE_STANDARD)).toBeCloseTo(0.899, 3)
+  it('si compongono in modo moltiplicativo (livello ancorato a PVGIS)', () => {
+    expect(fattorePerditeSistema(PERDITE_STANDARD)).toBeCloseTo(0.863, 3)
   })
 
   it('meno perdite → fattore più alto', () => {

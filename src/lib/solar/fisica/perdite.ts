@@ -20,13 +20,21 @@ export interface PerditeSistema {
   readonly riflessioneSpettro: number
 }
 
-/** Valori standard per un impianto residenziale ben fatto. PR risultante ~0,90. */
+/**
+ * Valori standard per un impianto residenziale ben fatto.
+ *
+ * Il livello è **ancorato a PVGIS** (motore fisico pubblico indipendente): la
+ * risposta all'orientamento del nostro motore combacia con PVGIS entro 1–2 punti,
+ * ma il livello assoluto usciva ~7% più alto. Poiché la forma è giusta, il divario
+ * è di perdite: qui è assorbito, insieme al bifacciale realistico ai bassi angoli
+ * (vedi `parametri-fisici.ts`). Da rivedere quando ci saranno dati di campo reali.
+ */
 export const PERDITE_STANDARD: PerditeSistema = {
-  sporcamento: 0.02,
+  sporcamento: 0.03,
   ohmicheCc: 0.02,
-  mismatch: 0.02,
-  degradazioneIniziale: 0.015,
-  riflessioneSpettro: 0.03,
+  mismatch: 0.025,
+  degradazioneIniziale: 0.02,
+  riflessioneSpettro: 0.05,
 }
 
 /**

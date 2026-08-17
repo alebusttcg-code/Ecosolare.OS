@@ -42,7 +42,10 @@ export interface ParametriFisici {
  * dei moduli doppio-vetro che l'azienda installa.
  */
 export const PARAMETRI_FISICI_PREDEFINITI: ParametriFisici = {
-  guadagnoBifaccialePct: 6,
+  // I moduli sono bifacciali, ma la flotta ha tetti a bassa inclinazione (4–21°),
+  // dove il guadagno del retro è modesto: ~2%, non il 6% teorico dei tetti ripidi.
+  // Insieme alle perdite, ancora il livello assoluto a PVGIS. Affinabile da config.
+  guadagnoBifaccialePct: 2,
   albedo: ALBEDO_DEFAULT,
   noct: NOCT_DEFAULT,
   coeffTemperatura: COEFF_TEMPERATURA_DEFAULT,
