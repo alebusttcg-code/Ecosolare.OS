@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { and, eq, gt, lt } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { getDb } from '@/db'
-import { sessions } from '@/db/schema'
+import { sessions, users } from '@/db/schema'
 
 /**
  * Sessioni.
@@ -79,20 +79,42 @@ export async function creaSessione(params: {
  * Si aggiorna solo la riga, mai il cookie: questa funzione viene chiamata
  * anche durante il rendering, dove scrivere cookie non è permesso.
  */
-export async function sessioneCorrente(): Promise<{ userId: string } | null> {
+/**
+ * L'utente della sessione corrente in **una sola query**.
+ *
+ * Prima erano due round-trip in fila — `sessions`, poi `users` — su ogni pagina
+ * autenticata. Con il database remoto ogni round-trip si paga in latenza, quindi
+ * qui sessione e utente si uniscono in una JOIN. Restituisce le colonne che
+ * servono al policy layer, o `null` se non c'è una sessione valida. La scadenza
+ * si estende in modo scorrevole come prima, solo sulla riga (mai sul cookie:
+ * questa gira anche durante il rendering, dove scrivere cookie non è permesso).
+ */
+export async function utenteDaSessioneCorrente() {
   const token = (await cookies()).get(COOKIE)?.value
   if (!token) return null
 
   const chiave = impronta(token)
   const adesso = new Date()
 
-  const sessione = await getDb().query.sessions.findFirst({
-    where: and(eq(sessions.sessionToken, chiave), gt(sessions.expires, adesso)),
-    columns: { userId: true, expires: true },
-  })
-  if (!sessione) return null
+  const [riga] = await getDb()
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      role: users.role,
+      canViewCosts: users.canViewCosts,
+      isFieldOnly: users.isFieldOnly,
+      isActive: users.isActive,
+      mustChangePassword: users.mustChangePassword,
+      expires: sessions.expires,
+    })
+    .from(sessions)
+    .innerJoin(users, eq(users.id, sessions.userId))
+    .where(and(eq(sessions.sessionToken, chiave), gt(sessions.expires, adesso)))
+    .limit(1)
+  if (!riga) return null
 
-  const restante = sessione.expires.getTime() - adesso.getTime()
+  const restante = riga.expires.getTime() - adesso.getTime()
   if (restante < DURATA_MS / 2) {
     await getDb()
       .update(sessions)
@@ -100,7 +122,16 @@ export async function sessioneCorrente(): Promise<{ userId: string } | null> {
       .where(eq(sessions.sessionToken, chiave))
   }
 
-  return { userId: sessione.userId }
+  return {
+    id: riga.id,
+    email: riga.email,
+    name: riga.name,
+    role: riga.role,
+    canViewCosts: riga.canViewCosts,
+    isFieldOnly: riga.isFieldOnly,
+    isActive: riga.isActive,
+    mustChangePassword: riga.mustChangePassword,
+  }
 }
 
 /** Chiude la sessione corrente: riga cancellata e cookie rimosso. */

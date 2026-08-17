@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["fra1"],
+  "regions": ["dub1"],
   "framework": "nextjs",
   "env": {
     "AWS_LAMBDA_JS_RUNTIME": "nodejs22.x"
