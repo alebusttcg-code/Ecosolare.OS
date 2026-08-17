@@ -50,6 +50,13 @@ export const CHIAVI_MARGINE = {
  * nel dominio; questi valori li **superano** quando l'azienda li scrive.
  */
 export const CHIAVI_FISICA = {
+  /**
+   * Interruttore del motore fisico di producibilità (ADR-016, tappa 7b).
+   * Spento di default: la produzione dello studio resta quella della formula
+   * calibrata. Acceso, si ricalcola col motore fisico e si congela al salvataggio.
+   * È il modo di accendere il motore senza cambiare in silenzio i numeri.
+   */
+  motoreProducibilitaAttivo: 'fisica.motore_producibilita_attivo',
   albedo: 'fisica.albedo',
   guadagnoBifaccialePct: 'fisica.guadagno_bifacciale_pct',
   noct: 'fisica.noct',

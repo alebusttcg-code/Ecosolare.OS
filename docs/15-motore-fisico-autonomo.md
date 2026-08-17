@@ -195,7 +195,7 @@ dare valore.
 | 5b | Porta d'ingresso `stima-energetica-sito.ts` (climatologia + produzione + autoconsumo, in una chiamata) | **fatto** (3 test) — è l'API che la tappa 7 innesta |
 | 6 | Validazione triangolata sui 3 dossier + orientamenti est/ovest/nord vs PVGIS | **fatto** (`prova:pvgis`, `prova:orientamenti`) |
 | 7a | Parametri fisici (perdite, albedo, bifacciale, NOCT, coeff. temperatura, inverter) dalla **configurazione** `app_settings`, con fallback ai default | **fatto** (`domain/parametri-fisici.ts` + `queries/parametri-fisici.ts`, 5 test, nessuna migrazione) |
-| 7b | Innesto in `simulazione-fv` / `economia-fv`, con `produzione-fv` come ripiego; specifiche modulo per-prodotto dal catalogo | da fare |
+| 7b | Innesto nello studio (`salvaStudioTetto`) **dietro interruttore**, con la formula come ripiego; la produzione fisica alimenta poi `simulazione-fv`/`economia-fv` | **fatto** (`produzione-studio-fisica.ts`, flag `fisica.motore_producibilita_attivo`, 6 test) — resta: specifiche modulo per-prodotto dal catalogo |
 | 8 | Cattura profili di carico mancanti (pompa di calore, ecc.) | continuativo |
 
 L'innesto (7b) va **dopo** i parametri reali (7a): è il punto in cui la fisica

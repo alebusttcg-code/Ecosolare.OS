@@ -7,6 +7,9 @@ import { getDb } from '@/db'
 import { opportunities, siteStudies } from '@/db/schema'
 import { recordEntityChange } from '@/lib/audit'
 import { guard } from '@/lib/auth/session'
+import { CHIAVI_FISICA, getSetting } from '@/lib/settings'
+import { archivioClimatologiaDb } from '@/lib/solar/clima/archivio-db'
+import { produzioneFisicaDaStudio } from '@/lib/domain/produzione-studio-fisica'
 import {
   contaModuli,
   kWpDaLayouts,
@@ -152,7 +155,23 @@ export async function salvaStudioTetto(
   })
   if (!opp) return { ok: false, errors: { _: 'Lead non trovato.' } }
 
-  const snapshot = normalizzaSnapshot(parsed.data.snapshot)
+  let snapshot = normalizzaSnapshot(parsed.data.snapshot)
+
+  // Motore fisico di producibilità (ADR-016, tappa 7b): quando l'interruttore è
+  // acceso la produzione si ricalcola server-side e si **congela** qui, al
+  // salvataggio, rispettando l'immutabilità economica (ADR-008). Spento — il
+  // default — resta il numero della formula calibrata. Se il motore non può
+  // stimare (mancano falde o coordinate) tiene il numero esistente: mai
+  // sovrascrivere con un buco.
+  if (await getSetting(CHIAVI_FISICA.motoreProducibilitaAttivo, false)) {
+    const fisica = await produzioneFisicaDaStudio(snapshot, {
+      archivio: archivioClimatologiaDb(),
+    })
+    if (fisica != null && fisica > 0) {
+      snapshot = { ...snapshot, produzioneAnnuakWh: fisica }
+    }
+  }
+
   const kWp = kWpDaLayouts(snapshot.layouts)
   const moduli = contaModuli(snapshot.layouts)
 
