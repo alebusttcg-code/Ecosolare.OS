@@ -63,6 +63,10 @@ const VOCI: readonly (VoceMenu & {
   { href: '/cantieri/agenda', label: 'Calendario cantieri', icona: '◷', gruppo: 'ciclo', resource: 'schedule' },
 
   { href: '/attivita', label: 'Da fare', icona: '✓', gruppo: 'lavoro', resource: 'activity' },
+  // Fatturazione e controllo bancario: `azione: update` sull'invoice esclude il
+  // commerciale (che ha sola lettura dello stato) e lascia amministrazione e
+  // contabilità. Non serve `soloRuolo`: la matrice permessi fa già il taglio.
+  { href: '/fatturazione', label: 'Fatturazione', icona: '▦', gruppo: 'lavoro', resource: 'invoice', azione: 'update' },
   { href: '/controllo-bancario', label: 'Controllo bancario', icona: '⚖', gruppo: 'lavoro', resource: 'invoice', azione: 'update' },
   { href: '/approvazioni', label: 'Approvazioni', icona: '⚑', gruppo: 'lavoro', resource: 'quote_approval' },
 
