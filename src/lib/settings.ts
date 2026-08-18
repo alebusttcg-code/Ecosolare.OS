@@ -69,6 +69,15 @@ export const CHIAVI_FISICA = {
   perditaRiflessioneSpettro: 'fisica.perdita_riflessione_spettro',
 } as const
 
+/**
+ * Fatturazione (Fase 1). Aliquota IVA di default (10% agevolata sul FV) e il
+ * sezionale del registro. Sono configurazioni, non costanti nel codice.
+ */
+export const CHIAVI_FATTURA = {
+  aliquotaIvaDefaultPct: 'fattura.aliquota_iva_default_pct',
+  sezionaleDefault: 'fattura.sezionale_default',
+} as const
+
 export const CHIAVI_SIMULAZIONE = {
   tariffaImportEurKwh: 'energia.tariffa_import_eur_kwh',
   tariffaExportEurKwh: 'energia.tariffa_export_eur_kwh',
