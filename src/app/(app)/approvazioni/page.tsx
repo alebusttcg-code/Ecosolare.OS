@@ -54,7 +54,7 @@ export default async function ApprovazioniPage() {
           return (
             <Card key={r.id}>
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <Link
                     href={`/preventivi/${r.versionId}`}
                     className="text-sm font-medium text-eco-blue-300 hover:underline collega"
