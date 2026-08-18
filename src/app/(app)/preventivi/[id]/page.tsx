@@ -97,7 +97,10 @@ export default async function PreventivoPage({
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-3">
+        {/* min-w-0: senza, la tabella dell'editor (min-w 780) allarga la cella
+            di griglia e sfonda la pagina, tagliando i riepiloghi a destra su
+            mobile. Con min-w-0 l'overflow-x-auto interno scorre come deve. */}
+        <div className="min-w-0 lg:col-span-3">
           <EditorPreventivo
             versionId={dati.versione.id}
             lockVersioneIniziale={dati.versione.lockVersion}
