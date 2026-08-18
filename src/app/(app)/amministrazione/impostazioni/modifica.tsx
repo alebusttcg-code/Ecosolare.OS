@@ -51,9 +51,24 @@ const META: Record<string, MetaConfig> = {
     gruppo: 'Preventivi',
     unita: '%',
   },
+  'fattura.aliquota_iva_default_pct': {
+    titolo: 'Aliquota IVA di default',
+    gruppo: 'Fatturazione',
+    unita: '%',
+  },
+  'fattura.sezionale_default': {
+    titolo: 'Sezionale registro',
+    gruppo: 'Fatturazione',
+  },
 }
 
-const ORDINE_GRUPPI = ['Lead e contatti', 'Pipeline', 'Preventivi', 'Altro'] as const
+const ORDINE_GRUPPI = [
+  'Lead e contatti',
+  'Pipeline',
+  'Preventivi',
+  'Fatturazione',
+  'Altro',
+] as const
 
 function metaDi(key: string): MetaConfig {
   return (

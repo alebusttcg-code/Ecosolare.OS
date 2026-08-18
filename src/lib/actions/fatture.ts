@@ -25,8 +25,11 @@ import {
 import { CHIAVI_FATTURA, getSetting } from '@/lib/settings'
 import type { ActionResult } from './opportunities'
 
-/** Un numero valido, altrimenti il fallback. Le config arrivano da jsonb. */
+/** Un numero valido, altrimenti il fallback. Vale per number, stringa o `{valore}`. */
 function numero(valore: unknown, fallback: number): number {
+  if (valore && typeof valore === 'object' && 'valore' in valore) {
+    return numero((valore as { valore: unknown }).valore, fallback)
+  }
   const n = typeof valore === 'string' ? Number.parseFloat(valore) : Number(valore)
   return Number.isFinite(n) ? n : fallback
 }
@@ -71,7 +74,16 @@ export async function creaBozzaFattura(
 
   const contatto = await db.query.contacts.findFirst({
     where: eq(contacts.id, progetto.contactId),
-    columns: { firstName: true, lastName: true, taxCode: true, companyId: true },
+    columns: {
+      firstName: true,
+      lastName: true,
+      taxCode: true,
+      addressLine: true,
+      city: true,
+      province: true,
+      postalCode: true,
+      companyId: true,
+    },
   })
   if (!contatto) return { ok: false, errors: { _: 'Cliente non trovato.' } }
 

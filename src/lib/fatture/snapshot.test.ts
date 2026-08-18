@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { componiSnapshotCliente, datiFiscaliMancanti } from './snapshot'
+import {
+  componiSnapshotCliente,
+  datiFiscaliMancanti,
+  type ContattoFiscale,
+} from './snapshot'
+
+function persona(over: Partial<ContattoFiscale> = {}): ContattoFiscale {
+  return {
+    firstName: 'Mario',
+    lastName: 'Rossi',
+    taxCode: 'RSSMRA80A01H501U',
+    addressLine: null,
+    city: null,
+    province: null,
+    postalCode: null,
+    ...over,
+  }
+}
 
 const azienda = {
   legalName: 'Rossi Impianti S.r.l.',
@@ -15,7 +32,7 @@ const azienda = {
 
 describe('snapshot fiscale del cliente', () => {
   it('B2B: prende tutto dall’azienda (P.IVA, PEC, codice destinatario)', () => {
-    const s = componiSnapshotCliente({ firstName: 'Mario', lastName: 'Rossi', taxCode: 'RSSMRA…' }, azienda)
+    const s = componiSnapshotCliente(persona(), azienda)
     expect(s.tipo).toBe('azienda')
     expect(s.denominazione).toBe('Rossi Impianti S.r.l.')
     expect(s.partitaIva).toBe('01234567890')
@@ -23,25 +40,27 @@ describe('snapshot fiscale del cliente', () => {
     expect(s.citta).toBe('Sarzana')
   })
 
-  it('B2C: nome + cognome e codice fiscale, indirizzo assente (limite noto)', () => {
-    const s = componiSnapshotCliente({ firstName: 'Mario', lastName: 'Rossi', taxCode: 'RSSMRA80A01H501U' }, null)
+  it('B2C: nome, codice fiscale e indirizzo del contatto', () => {
+    const s = componiSnapshotCliente(
+      persona({ addressLine: 'Via Barcola 13', city: 'Lerici', province: 'SP', postalCode: '19032' }),
+      null,
+    )
     expect(s.tipo).toBe('persona')
     expect(s.denominazione).toBe('Mario Rossi')
     expect(s.codiceFiscale).toBe('RSSMRA80A01H501U')
     expect(s.partitaIva).toBeNull()
-    expect(s.indirizzo).toBeNull()
+    expect(s.indirizzo).toBe('Via Barcola 13')
+    expect(s.cap).toBe('19032')
   })
 
   it('la denominazione regge un contatto senza nome di battesimo', () => {
-    const s = componiSnapshotCliente({ firstName: null, lastName: 'Rossi', taxCode: null }, null)
-    expect(s.denominazione).toBe('Rossi')
+    expect(componiSnapshotCliente(persona({ firstName: null }), null).denominazione).toBe('Rossi')
   })
 
   it('emettibile solo con denominazione e un identificativo fiscale', () => {
-    const conCf = componiSnapshotCliente({ firstName: 'Mario', lastName: 'Rossi', taxCode: 'RSSMRA…' }, null)
-    expect(datiFiscaliMancanti(conCf)).toEqual([])
-
-    const senzaFiscale = componiSnapshotCliente({ firstName: 'Mario', lastName: 'Rossi', taxCode: null }, null)
-    expect(datiFiscaliMancanti(senzaFiscale)).toContain('il codice fiscale o la partita IVA')
+    expect(datiFiscaliMancanti(componiSnapshotCliente(persona(), null))).toEqual([])
+    expect(
+      datiFiscaliMancanti(componiSnapshotCliente(persona({ taxCode: null }), null)),
+    ).toContain('il codice fiscale o la partita IVA')
   })
 })

@@ -263,6 +263,14 @@ export async function createOpportunity(input: OpportunityInput): Promise<Create
   }
 
   const creato = await db.transaction(async (tx) => {
+    // L'indirizzo entra due volte, di proposito: sul contatto è l'indirizzo di
+    // fatturazione (del soggetto fiscale), sul sito è dove si installa. Per il
+    // residenziale coincidono, ma restano concetti diversi.
+    const addressLine = componeIndirizzo({
+      tipoVia: dati.streetType,
+      nomeVia: dati.streetName,
+      civico: dati.houseNumber,
+    })
     const [contatto] = await tx
       .insert(contacts)
       .values({
@@ -273,6 +281,10 @@ export async function createOpportunity(input: OpportunityInput): Promise<Create
         phone: telefono.raw || null,
         phoneE164: telefono.e164,
         taxCode: dati.taxCode?.toUpperCase() || null,
+        addressLine: addressLine || null,
+        city: dati.city?.trim() || null,
+        province: dati.province?.toUpperCase() || null,
+        postalCode: dati.postalCode?.trim() || null,
         preferredChannel: dati.preferredChannel ?? null,
         marketingConsent: dati.marketingConsent,
         marketingConsentAt: dati.marketingConsent ? new Date() : null,
@@ -286,11 +298,6 @@ export async function createOpportunity(input: OpportunityInput): Promise<Create
     if (!contatto) throw new Error('Inserimento contatto non riuscito')
 
     let sitoId: string | null = null
-    const addressLine = componeIndirizzo({
-      tipoVia: dati.streetType,
-      nomeVia: dati.streetName,
-      civico: dati.houseNumber,
-    })
     if (dati.city?.trim() && addressLine) {
       const [sito] = await tx
         .insert(sites)

@@ -154,6 +154,18 @@ const CONFIGURAZIONI = [
     description: 'Validità proposta per un nuovo preventivo, in giorni.',
   },
   {
+    key: 'fattura.aliquota_iva_default_pct',
+    value: { valore: 10, validoDal: '2024-01-01', nota: 'IVA agevolata fotovoltaico' },
+    description:
+      'Aliquota IVA di default applicata alle fatture (%). 10% agevolata sul fotovoltaico.',
+  },
+  {
+    key: 'fattura.sezionale_default',
+    value: '',
+    description:
+      'Sezionale del registro fatture. Vuoto = registro unico; utile solo con registri IVA separati.',
+  },
+  {
     key: 'energia.tariffa_import_eur_kwh',
     value: { valore: 0.3, validoDal: '2024-01-01', nota: 'Ipotesi commerciale dossier' },
     description:

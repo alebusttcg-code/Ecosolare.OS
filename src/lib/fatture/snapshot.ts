@@ -28,6 +28,10 @@ export interface ContattoFiscale {
   readonly firstName: string | null
   readonly lastName: string
   readonly taxCode: string | null
+  readonly addressLine: string | null
+  readonly city: string | null
+  readonly province: string | null
+  readonly postalCode: string | null
 }
 
 export interface AziendaFiscale {
@@ -71,10 +75,10 @@ export function componiSnapshotCliente(
     denominazione,
     codiceFiscale: contatto.taxCode,
     partitaIva: null,
-    indirizzo: null,
-    citta: null,
-    provincia: null,
-    cap: null,
+    indirizzo: contatto.addressLine,
+    citta: contatto.city,
+    provincia: contatto.province,
+    cap: contatto.postalCode,
     pec: null,
     codiceDestinatario: null,
   }

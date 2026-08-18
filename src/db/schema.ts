@@ -398,6 +398,13 @@ export const contacts = pgTable(
     phoneE164: text('phone_e164'),
     taxCode: text('tax_code'),
 
+    /* Indirizzo di fatturazione del privato: sulla fattura serve, e il contatto
+       non lo aveva (le aziende sì). Per il B2B l'indirizzo resta quello azienda. */
+    addressLine: text('address_line'),
+    city: text('city'),
+    province: text('province'),
+    postalCode: text('postal_code'),
+
     /** L'azienda per cui il contatto e' referente, se il cliente e' B2B. */
     companyId: uuid('company_id').references(() => companies.id, { onDelete: 'set null' }),
     roleInCompany: text('role_in_company'),
