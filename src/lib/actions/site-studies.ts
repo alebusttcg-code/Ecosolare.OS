@@ -159,18 +159,26 @@ export async function salvaStudioTetto(
   let snapshot = normalizzaSnapshot(parsed.data.snapshot)
 
   // Motore fisico di producibilità (ADR-016, tappa 7b): quando l'interruttore è
-  // acceso la produzione si ricalcola server-side e si **congela** qui, al
-  // salvataggio, rispettando l'immutabilità economica (ADR-008). Spento — il
-  // default — resta il numero della formula calibrata. Se il motore non può
-  // stimare (mancano falde o coordinate) tiene il numero esistente: mai
+  // acceso — ora il **default** — la produzione si ricalcola server-side e si
+  // **congela** qui, al salvataggio, rispettando l'immutabilità economica
+  // (ADR-008). Spento, resta il numero della formula calibrata. Se il motore non
+  // può stimare (mancano falde o coordinate) tiene il numero esistente: mai
   // sovrascrivere con un buco.
-  if (await getSetting(CHIAVI_FISICA.motoreProducibilitaAttivo, false)) {
-    const fisica = await produzioneFisicaDaStudio(snapshot, {
-      archivio: archivioClimatologiaDb(),
-      parametri: await getParametriFisici(),
-    })
-    if (fisica != null && fisica > 0) {
-      snapshot = { ...snapshot, produzioneAnnuakWh: fisica }
+  if (await getSetting(CHIAVI_FISICA.motoreProducibilitaAttivo, true)) {
+    try {
+      const fisica = await produzioneFisicaDaStudio(snapshot, {
+        archivio: archivioClimatologiaDb(),
+        parametri: await getParametriFisici(),
+      })
+      if (fisica != null && fisica > 0) {
+        snapshot = { ...snapshot, produzioneAnnuakWh: fisica }
+      }
+    } catch (errore) {
+      // Il motore è acceso di default, ma un suo guasto — PVGIS irraggiungibile,
+      // climatologia non recuperabile — non deve MAI far fallire il salvataggio
+      // dello studio: si tiene il numero della formula calibrata. Rumoroso nei
+      // log, invisibile all'utente.
+      console.error('[studio] motore fisico non disponibile, tengo la formula calibrata', errore)
     }
   }
 

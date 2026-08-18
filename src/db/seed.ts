@@ -234,6 +234,12 @@ const CONFIGURAZIONI = [
     description:
       'Orario di servizio, usato per calcolare lo speed-to-lead senza contare le ore di chiusura.',
   },
+  {
+    key: 'fisica.motore_producibilita_attivo',
+    value: true,
+    description:
+      'Motore fisico di producibilità (PVGIS): true = la produzione dello studio si ricalcola dalla fisica e si congela al salvataggio; false = resta la formula calibrata. Valore booleano (true/false).',
+  },
 ] as const
 
 async function main(): Promise<void> {

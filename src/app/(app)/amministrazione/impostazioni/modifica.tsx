@@ -68,12 +68,17 @@ const META: Record<string, MetaConfig> = {
     titolo: 'Ragione sociale azienda',
     gruppo: 'Fatturazione',
   },
+  'fisica.motore_producibilita_attivo': {
+    titolo: 'Motore fisico di producibilità',
+    gruppo: 'Motore fisico',
+  },
 }
 
 const ORDINE_GRUPPI = [
   'Lead e contatti',
   'Pipeline',
   'Preventivi',
+  'Motore fisico',
   'Fatturazione',
   'Altro',
 ] as const
