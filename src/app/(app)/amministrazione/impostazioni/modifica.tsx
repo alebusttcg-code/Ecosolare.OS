@@ -64,6 +64,10 @@ const META: Record<string, MetaConfig> = {
     titolo: 'Partita IVA azienda',
     gruppo: 'Fatturazione',
   },
+  'fattura.azienda_ragione_sociale': {
+    titolo: 'Ragione sociale azienda',
+    gruppo: 'Fatturazione',
+  },
 }
 
 const ORDINE_GRUPPI = [

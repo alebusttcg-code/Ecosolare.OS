@@ -171,6 +171,11 @@ const CONFIGURAZIONI = [
     description: 'Partita IVA dell’azienda, stampata sul PDF di cortesia della fattura.',
   },
   {
+    key: 'fattura.azienda_ragione_sociale',
+    value: '',
+    description: 'Ragione sociale dell’azienda, in intestazione al PDF fattura.',
+  },
+  {
     key: 'energia.tariffa_import_eur_kwh',
     value: { valore: 0.3, validoDal: '2024-01-01', nota: 'Ipotesi commerciale dossier' },
     description:

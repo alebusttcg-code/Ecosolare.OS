@@ -30,6 +30,8 @@ export interface DatiFatturaPdf {
   readonly imponibile: string
   readonly imposta: string
   readonly totale: string
+  /** Ragione sociale dell'azienda cedente; fallback al marchio se non configurata. */
+  readonly aziendaRagioneSociale: string
   /** P.IVA dell'azienda cedente, se configurata. */
   readonly aziendaPartitaIva: string | null
 }
@@ -66,7 +68,7 @@ export function FatturaDocument({ dati }: { readonly dati: DatiFatturaPdf }) {
             <div>
               <img src="/brand/ecosolare-logo.png" alt="EcoSolare" style={{ height: '13mm', marginBottom: '3mm' }} />
               <div style={{ color: P.inchiostroMorbido, lineHeight: 1.5 }}>
-                <div style={{ fontWeight: 600, color: P.inchiostro }}>{sede.nome}</div>
+                <div style={{ fontWeight: 700, color: P.inchiostro }}>{dati.aziendaRagioneSociale}</div>
                 <div>{sede.via} · {sede.capCitta}</div>
                 <div>{sede.telefono} · {ECOSOLARE.email}</div>
                 {dati.aziendaPartitaIva ? <div>P.IVA {dati.aziendaPartitaIva}</div> : null}

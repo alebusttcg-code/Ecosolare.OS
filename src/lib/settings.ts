@@ -78,6 +78,8 @@ export const CHIAVI_FATTURA = {
   sezionaleDefault: 'fattura.sezionale_default',
   /** P.IVA dell'azienda cedente, stampata sul PDF di cortesia. */
   aziendaPartitaIva: 'fattura.azienda_partita_iva',
+  /** Ragione sociale dell'azienda, in intestazione al PDF fattura. */
+  aziendaRagioneSociale: 'fattura.azienda_ragione_sociale',
 } as const
 
 export const CHIAVI_SIMULAZIONE = {

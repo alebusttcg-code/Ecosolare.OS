@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { env } from '@/env'
+import { ECOSOLARE } from '@/lib/brand/ecosolare'
 import { FatturaDocument, type DatiFatturaPdf } from '@/lib/pdf/html/fattura-documento'
 import { getFatturaPerPdf } from '@/lib/queries/fatture'
 import type { SnapshotCliente } from '@/lib/fatture/snapshot'
@@ -51,8 +52,13 @@ export default async function FatturaInternaPage({
     imponibile: string
     imposta: string
   }>
-  const aziendaPartitaIva =
-    String((await getSetting(CHIAVI_FATTURA.aziendaPartitaIva, '')) ?? '').trim() || null
+  const [aziendaPartitaIvaGrezza, aziendaRagioneSocialeGrezza] = await Promise.all([
+    getSetting(CHIAVI_FATTURA.aziendaPartitaIva, ''),
+    getSetting(CHIAVI_FATTURA.aziendaRagioneSociale, ''),
+  ])
+  const aziendaPartitaIva = String(aziendaPartitaIvaGrezza ?? '').trim() || null
+  const aziendaRagioneSociale =
+    String(aziendaRagioneSocialeGrezza ?? '').trim() || ECOSOLARE.nome
 
   const dati: DatiFatturaPdf = {
     numero: fattura.displayNumber ?? '—',
@@ -80,6 +86,7 @@ export default async function FatturaInternaPage({
     imponibile: importo(fattura.imponibile),
     imposta: importo(fattura.imposta),
     totale: importo(fattura.totale),
+    aziendaRagioneSociale,
     aziendaPartitaIva,
   }
 
