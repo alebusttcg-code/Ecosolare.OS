@@ -15,6 +15,7 @@ import { getLinkCliente } from '@/lib/queries/stato-pubblico'
 import { getWorkOrderAttivo, listWorkers } from '@/lib/queries/schedule'
 import { CaricaDocumento } from './carica'
 import { PannelloLinkCliente } from './link-cliente'
+import { AzioniFattura } from './fatture'
 import { OkAmministrativo } from './ok-amministrativo'
 import { PannelloPianificazione } from './pianifica'
 import {
@@ -332,6 +333,13 @@ export default async function CommessaPage({
                         concessoIl={p.adminOkAt}
                         concessoDa={p.concessoDa}
                         contabili={p.contabili}
+                      />
+                    ) : null}
+                    {can(utente, 'read', 'invoice') ? (
+                      <AzioniFattura
+                        milestoneId={p.id}
+                        fatture={p.fatture}
+                        puoGestire={can(utente, 'create', 'invoice')}
                       />
                     ) : null}
                   </li>

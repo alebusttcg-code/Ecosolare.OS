@@ -11,6 +11,7 @@ import {
   contracts,
   documentFiles,
   documentRequirements,
+  invoices,
   paymentMilestones,
   paymentReceipts,
   projectMaterials,
@@ -166,7 +167,7 @@ export async function getProjectDetail(utente: UtenteConId, id: string) {
 
   if (!riga) return null
 
-  const [documenti, files, materiali, pratiche, task, pagamenti, contabili, storico, stati] =
+  const [documenti, files, materiali, pratiche, task, pagamenti, contabili, storico, stati, fatture] =
     await unoAllaVolta([
       () =>
         db
@@ -267,6 +268,19 @@ export async function getProjectDetail(utente: UtenteConId, id: string) {
           .where(eq(projectStatusHistory.projectId, id))
           .orderBy(desc(projectStatusHistory.changedAt)),
       () => db.select().from(projectStages).orderBy(asc(projectStages.sortOrder)),
+      () =>
+        db
+          .select({
+            id: invoices.id,
+            milestoneId: invoices.milestoneId,
+            status: invoices.status,
+            type: invoices.type,
+            displayNumber: invoices.displayNumber,
+            totale: invoices.totale,
+          })
+          .from(invoices)
+          .where(eq(invoices.projectId, id))
+          .orderBy(asc(invoices.createdAt)),
     ])
 
   const blocchi = (riga.commessa.readinessBlockers ?? []) as Blocco[]
@@ -308,6 +322,7 @@ export async function getProjectDetail(utente: UtenteConId, id: string) {
       ...p.milestone,
       concessoDa: p.concessoDa ?? p.concessoDaEmail,
       contabili: contabili.filter((c) => c.milestoneId === p.milestone.id),
+      fatture: fatture.filter((f) => f.milestoneId === p.milestone.id),
     })),
     storico,
     stati,
