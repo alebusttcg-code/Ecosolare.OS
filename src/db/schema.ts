@@ -1917,6 +1917,113 @@ export const reconciliationChecks = pgTable(
 )
 
 /* -------------------------------------------------------------------------- */
+/*  Fatturazione (Fase 1: entità + export, senza trasmissione SdI — M1)         */
+/* -------------------------------------------------------------------------- */
+
+export const invoiceType = pgEnum('invoice_type', ['fattura', 'acconto', 'nota_credito'])
+export const invoiceStatus = pgEnum('invoice_status', [
+  'bozza',
+  'emessa',
+  'esportata',
+  'incassata',
+  'stornata',
+])
+
+/**
+ * Contatore progressivo per sezionale e anno.
+ *
+ * La numerazione delle fatture deve essere **gapless**: un numero saltato è un
+ * problema col fisco. Il numero si assegna incrementando questa riga nella
+ * STESSA transazione dell'emissione, così un errore fa tornare indietro anche il
+ * contatore e non lascia buchi.
+ */
+export const invoiceNumberSequences = pgTable(
+  'invoice_number_sequences',
+  {
+    sezionale: text('sezionale').notNull(),
+    year: integer('year').notNull(),
+    lastNumber: integer('last_number').notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.sezionale, table.year] })],
+)
+
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    type: invoiceType('type').notNull().default('fattura'),
+    status: invoiceStatus('status').notNull().default('bozza'),
+
+    /* Numero: assegnato all'emissione, `null` in bozza. */
+    sezionale: text('sezionale'),
+    year: integer('year'),
+    number: integer('number'),
+    /** Come si scrive sul documento, es. «2026/0001». `null` in bozza. */
+    displayNumber: text('display_number'),
+
+    /* Aggancio al lavoro: nasce da una milestone del piano pagamenti. */
+    projectId: uuid('project_id').references(() => projects.id, { onDelete: 'restrict' }),
+    contractId: uuid('contract_id').references(() => contracts.id, { onDelete: 'set null' }),
+    milestoneId: uuid('milestone_id').references(() => paymentMilestones.id, {
+      onDelete: 'set null',
+    }),
+    contactId: uuid('contact_id').references(() => contacts.id, { onDelete: 'restrict' }),
+    /** La fattura corretta, quando questa è una nota di credito. */
+    correggeInvoiceId: uuid('corregge_invoice_id'),
+
+    /**
+     * Snapshot fiscale del cliente, **congelato all'emissione**: denominazione,
+     * P.IVA/CF, indirizzo, PEC, codice destinatario. Una fattura deve restare
+     * fedele a com'era quel giorno, anche se l'anagrafica cambia dopo.
+     */
+    clienteSnapshot: jsonb('cliente_snapshot'),
+
+    imponibile: numeric('imponibile', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    imposta: numeric('imposta', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    totale: numeric('totale', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    vatBreakdown: jsonb('vat_breakdown'),
+
+    esigibilita: text('esigibilita'),
+    causale: text('causale'),
+    dataDocumento: timestamp('data_documento', { withTimezone: true }),
+
+    issuedAt: timestamp('issued_at', { withTimezone: true }),
+    issuedBy: uuid('issued_by').references(() => users.id, { onDelete: 'set null' }),
+    esportataAt: timestamp('esportata_at', { withTimezone: true }),
+
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('invoices_project_idx').on(table.projectId),
+    index('invoices_contact_idx').on(table.contactId),
+    // Unico per numero emesso; le bozze hanno numero nullo e non collidono.
+    uniqueIndex('invoices_numero_idx').on(table.sezionale, table.year, table.number),
+  ],
+)
+
+export const invoiceLines = pgTable(
+  'invoice_lines',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    descrizione: text('descrizione').notNull(),
+    imponibile: numeric('imponibile', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    /** Aliquota in percentuale, es. 10.00. */
+    aliquotaIva: numeric('aliquota_iva', { precision: 5, scale: 2 }).notNull().default('10.00'),
+    imposta: numeric('imposta', { precision: 14, scale: 2 }).notNull().default('0.00'),
+    /** Natura IVA per righe esenti/non imponibili (N1…N7). */
+    natura: text('natura'),
+  },
+  (table) => [index('invoice_lines_invoice_idx').on(table.invoiceId, table.sortOrder)],
+)
+
+/* -------------------------------------------------------------------------- */
 /*  Pianificazione cantieri (Fase 4)                                           */
 /* -------------------------------------------------------------------------- */
 
