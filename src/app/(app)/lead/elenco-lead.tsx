@@ -103,11 +103,11 @@ export function ElencoLead({
                   className="border-b text-left text-xs"
                   style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
                 >
-                  <th className="pb-2 pr-3 font-medium">Nome</th>
-                  <th className="pb-2 pr-3 font-medium">Cognome</th>
+                  <th className="pb-2 pr-3 font-medium whitespace-nowrap">Nome</th>
+                  <th className="pb-2 pr-3 font-medium whitespace-nowrap">Cognome</th>
                   <th className="pb-2 pr-3 font-medium">Stato</th>
-                  <th className="pb-2 pr-3 font-medium">Telefono</th>
-                  <th className="pb-2 text-right font-medium">Creato</th>
+                  <th className="hidden pb-2 pr-3 font-medium whitespace-nowrap sm:table-cell">Telefono</th>
+                  <th className="hidden pb-2 text-right font-medium sm:table-cell">Creato</th>
                 </tr>
               </thead>
               <tbody>
@@ -128,7 +128,7 @@ export function ElencoLead({
                     aria-label={`Apri ${l.firstName} ${l.lastName}`}
                   >
                     <td
-                      className="py-2.5 pr-3 font-medium"
+                      className="py-2.5 pr-3 font-medium whitespace-nowrap"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <LinkNome href={`/lead/${l.id}?vista=${vista}`}>
@@ -136,7 +136,7 @@ export function ElencoLead({
                       </LinkNome>
                     </td>
                     <td
-                      className="py-2.5 pr-3 font-medium"
+                      className="py-2.5 pr-3 font-medium whitespace-nowrap"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <LinkNome href={`/lead/${l.id}?vista=${vista}`}>{l.lastName}</LinkNome>
@@ -153,13 +153,13 @@ export function ElencoLead({
                       )}
                     </td>
                     <td
-                      className="py-2.5 pr-3 tabular-nums"
+                      className="hidden py-2.5 pr-3 tabular-nums whitespace-nowrap sm:table-cell"
                       style={{ color: 'var(--testo-tenue)' }}
                     >
                       {l.phone || '—'}
                     </td>
                     <td
-                      className="py-2.5 text-right tabular-nums"
+                      className="hidden py-2.5 text-right tabular-nums sm:table-cell"
                       style={{ color: 'var(--testo-tenue)' }}
                     >
                       {formattaData(l.createdAt)}
