@@ -101,6 +101,17 @@ export function AzioniFattura({
               <span className="ml-auto" style={{ color: COLORE_STATO[f.status] }}>
                 {f.status}
               </span>
+              {f.displayNumber ? (
+                <a
+                  href={`/api/fatture/${f.id}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="collega"
+                  style={{ color: 'var(--color-eco-blue-300)' }}
+                >
+                  PDF
+                </a>
+              ) : null}
             </li>
           ))}
         </ul>

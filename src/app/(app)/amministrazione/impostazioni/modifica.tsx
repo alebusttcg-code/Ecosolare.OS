@@ -60,6 +60,10 @@ const META: Record<string, MetaConfig> = {
     titolo: 'Sezionale registro',
     gruppo: 'Fatturazione',
   },
+  'fattura.azienda_partita_iva': {
+    titolo: 'Partita IVA azienda',
+    gruppo: 'Fatturazione',
+  },
 }
 
 const ORDINE_GRUPPI = [

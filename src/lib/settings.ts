@@ -76,6 +76,8 @@ export const CHIAVI_FISICA = {
 export const CHIAVI_FATTURA = {
   aliquotaIvaDefaultPct: 'fattura.aliquota_iva_default_pct',
   sezionaleDefault: 'fattura.sezionale_default',
+  /** P.IVA dell'azienda cedente, stampata sul PDF di cortesia. */
+  aziendaPartitaIva: 'fattura.azienda_partita_iva',
 } as const
 
 export const CHIAVI_SIMULAZIONE = {

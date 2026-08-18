@@ -166,6 +166,11 @@ const CONFIGURAZIONI = [
       'Sezionale del registro fatture. Vuoto = registro unico; utile solo con registri IVA separati.',
   },
   {
+    key: 'fattura.azienda_partita_iva',
+    value: '',
+    description: 'Partita IVA dell’azienda, stampata sul PDF di cortesia della fattura.',
+  },
+  {
     key: 'energia.tariffa_import_eur_kwh',
     value: { valore: 0.3, validoDal: '2024-01-01', nota: 'Ipotesi commerciale dossier' },
     description:
