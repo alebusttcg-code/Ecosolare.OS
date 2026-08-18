@@ -1243,6 +1243,14 @@ export const quoteVersions = pgTable(
      */
     dossier: jsonb('dossier'),
 
+    /**
+     * Contatore di lock ottimistico (D10). Ogni salvataggio delle righe lo
+     * incrementa e vi si condiziona: chi salva partendo da un valore ormai
+     * vecchio — due persone sulla stessa bozza — viene respinto invece di
+     * sovrascrivere in silenzio il lavoro dell'altro.
+     */
+    lockVersion: integer('lock_version').notNull().default(0),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),

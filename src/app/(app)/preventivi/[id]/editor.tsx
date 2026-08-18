@@ -84,6 +84,7 @@ function valoreOpzionale(grezzo: string): number | null {
 
 export function EditorPreventivo({
   versionId,
+  lockVersioneIniziale,
   righeIniziali,
   scontoIniziale,
   modificabile,
@@ -95,6 +96,8 @@ export function EditorPreventivo({
   prezzoGasPredefinito,
 }: {
   versionId: string
+  /** Lock ottimistico letto al caricamento (D10): viaggia a ogni salvataggio. */
+  lockVersioneIniziale: number
   righeIniziali: readonly RigaVisibile[]
   scontoIniziale: number
   modificabile: boolean
@@ -158,6 +161,12 @@ export function EditorPreventivo({
   )
   const [messaggio, setMessaggio] = useState<string | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
+  /*
+   * Lock ottimistico (D10): parte dal valore letto al caricamento e avanza a
+   * ogni salvataggio riuscito. Se un altro salva nel frattempo, il server
+   * respinge il nostro con un avviso invece di sovrascrivere il suo lavoro.
+   */
+  const [lockVersion, setLockVersion] = useState(lockVersioneIniziale)
   const { inCorso, esegui } = useAzioneServer()
 
   const totali = useMemo(
@@ -383,6 +392,7 @@ export function EditorPreventivo({
 
       const esito = await saveQuoteLines({
         versionId,
+        lockVersion,
         globalDiscountPct: sconto,
         righe: righe.map((r) => ({
           ...(r.id ? { id: r.id } : {}),
@@ -402,6 +412,10 @@ export function EditorPreventivo({
         setErrore(Object.values(esito.errors)[0] ?? 'Salvataggio non riuscito.')
         return
       }
+
+      // Il lock è avanzato: il prossimo salvataggio parte da qui, non dal valore
+      // vecchio (altrimenti si auto-genererebbe un falso conflitto).
+      setLockVersion(esito.data.lockVersion)
 
       const parti: string[] = ['Salvato.']
       if (esito.data.marginePct !== null) {

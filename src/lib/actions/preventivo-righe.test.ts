@@ -255,6 +255,80 @@ describe('righe e invio del preventivo', () => {
     expect(esito.errors._).toContain('non è modificabile')
   })
 
+  it('respinge un salvataggio partito da una versione ormai vecchia (lock D10)', async () => {
+    // Due persone aprono la stessa bozza: entrambe leggono lockVersion 0.
+    const dati = await scenario('lock', true)
+
+    const riga = {
+      description: 'Voce',
+      unit: 'pz',
+      quantity: 1,
+      unitPrice: 1000,
+      unitCost: 500,
+      discountPct: 0,
+      vatRate: 10,
+    }
+
+    // La prima salva: il lock avanza a 1.
+    const primo = await saveQuoteLines({
+      versionId: dati.versionId,
+      lockVersion: 0,
+      globalDiscountPct: 0,
+      righe: [riga],
+    })
+    expect(primo.ok).toBe(true)
+    if (!primo.ok) return
+    expect(primo.data.lockVersion).toBe(1)
+
+    // La seconda salva partendo ancora da 0: deve essere respinta, non
+    // sovrascrivere in silenzio il lavoro della prima.
+    const secondo = await saveQuoteLines({
+      versionId: dati.versionId,
+      lockVersion: 0,
+      globalDiscountPct: 0,
+      righe: [{ ...riga, description: 'Sovrascrittura' }],
+    })
+    expect(secondo.ok).toBe(false)
+    if (secondo.ok) return
+    expect(secondo.errors._).toContain('Ricarica')
+
+    // Le righe sono ancora quelle della prima: niente è stato sovrascritto.
+    const righe = await db
+      .select()
+      .from(quoteLines)
+      .where(eq(quoteLines.quoteVersionId, dati.versionId))
+    expect(righe).toHaveLength(1)
+    expect(righe[0]!.description).toBe('Voce')
+
+    // Ripartendo dal lock aggiornato, il salvataggio passa.
+    const terzo = await saveQuoteLines({
+      versionId: dati.versionId,
+      lockVersion: primo.data.lockVersion,
+      globalDiscountPct: 0,
+      righe: [{ ...riga, description: 'Modifica legittima' }],
+    })
+    expect(terzo.ok).toBe(true)
+    if (!terzo.ok) return
+    expect(terzo.data.lockVersion).toBe(2)
+  })
+
+  it('senza lockVersion salva comunque (retro-compatibilità)', async () => {
+    // I chiamanti che non mandano il lock non hanno il controllo di concorrenza
+    // ma non si rompono: il salvataggio procede e il lock avanza lo stesso.
+    const dati = await scenario('nolock', true)
+
+    const esito = await saveQuoteLines({
+      versionId: dati.versionId,
+      globalDiscountPct: 0,
+      righe: [
+        { description: 'Voce', unit: 'pz', quantity: 1, unitPrice: 100, unitCost: 50, discountPct: 0, vatRate: 10 },
+      ],
+    })
+    expect(esito.ok).toBe(true)
+    if (!esito.ok) return
+    expect(esito.data.lockVersion).toBe(1)
+  })
+
   it('sotto soglia non invia: apre una richiesta di approvazione', async () => {
     const dati = await scenario('f', true)
 

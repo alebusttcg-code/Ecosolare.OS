@@ -53,6 +53,7 @@ function rendi(opzioni: {
   return renderToStaticMarkup(
     createElement(EditorPreventivo, {
       versionId: '00000000-0000-0000-0000-000000000001',
+      lockVersioneIniziale: 0,
       righeIniziali: [{ ...RIGA_POMPA, scop: opzioni.scopCatalogo ?? null }],
       scontoIniziale: 0,
       modificabile: true,

@@ -1,6 +1,6 @@
 'use server'
 
-import { and, desc, eq, inArray, like, max } from 'drizzle-orm'
+import { and, desc, eq, inArray, like, max, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getDb, type Esecutore } from '@/db'
@@ -217,7 +217,20 @@ const salvaRigheSchema = z.object({
       termico: bloccoTermicoSchema,
     })
     .optional(),
+  /**
+   * Lock ottimistico (D10): il valore di `lockVersion` letto quando si è aperta
+   * la bozza. Se nel frattempo un altro ha salvato, non coincide più e il
+   * salvataggio viene respinto invece di sovrascriverlo. Facoltativo per
+   * retro-compatibilità: quando manca, non c'è controllo di concorrenza.
+   */
+  lockVersion: z.number().int().min(0).optional(),
 })
+
+/** Messaggio del conflitto di concorrenza, riusato dall'editor per l'avviso. */
+export const CONFLITTO_PREVENTIVO =
+  'Qualcun altro ha salvato questo preventivo mentre lo stavi modificando. ' +
+  'Ricarica la pagina per vedere le sue modifiche, poi rimetti le tue: così ' +
+  'non si sovrascrive il lavoro di nessuno.'
 
 /**
  * Sostituisce le righe di una versione e ne ricalcola i totali.
@@ -227,7 +240,15 @@ const salvaRigheSchema = z.object({
  */
 export async function saveQuoteLines(
   input: z.input<typeof salvaRigheSchema>,
-): Promise<ActionResult<{ marginePct: number | null; sottoSoglia: boolean; righeSenzaCosto: string[] }>> {
+): Promise<
+  ActionResult<{
+    marginePct: number | null
+    sottoSoglia: boolean
+    righeSenzaCosto: string[]
+    /** Nuovo lock dopo il salvataggio: l'editor lo tiene per il salvataggio dopo. */
+    lockVersion: number
+  }>
+> {
   const utente = await guard('update', 'quote')
 
   const parsed = salvaRigheSchema.safeParse(input)
@@ -247,6 +268,14 @@ export async function saveQuoteLines(
         _: `Una versione in stato "${versione.status}" non è modificabile. Crea una nuova versione.`,
       },
     }
+  }
+
+  // Conflitto già visibile prima ancora di calcolare: il lock su cui l'editor
+  // ha aperto la bozza non è più quello corrente. Il controllo definitivo è
+  // comunque atomico dentro la transazione (sotto), questo è solo la via rapida
+  // per il caso comune — bozza vecchia di minuti, non di millisecondi.
+  if (dati.lockVersion !== undefined && versione.lockVersion !== dati.lockVersion) {
+    return { ok: false, errors: { _: CONFLITTO_PREVENTIVO } }
   }
 
   /**
@@ -306,29 +335,24 @@ export async function saveQuoteLines(
   const soglia = await sogliaMargine()
   const esitoSoglia = valutaSoglia(totali.marginePct, soglia)
 
-  await db.transaction(async (tx) => {
-    await tx.delete(quoteLines).where(eq(quoteLines.quoteVersionId, dati.versionId))
+  // Condizione di lock: quando l'editor ha mandato il suo `lockVersion`, la
+  // `where` esige che sia ancora quello corrente. Due salvataggi concorrenti si
+  // serializzano sul lock di riga di questo UPDATE: il secondo, che parte dallo
+  // stesso valore, dopo il commit del primo non trova più la riga e non tocca
+  // nulla.
+  const condizioneLock =
+    dati.lockVersion !== undefined
+      ? and(
+          eq(quoteVersions.id, dati.versionId),
+          eq(quoteVersions.lockVersion, dati.lockVersion),
+        )
+      : eq(quoteVersions.id, dati.versionId)
 
-    if (dati.righe.length > 0) {
-      await tx.insert(quoteLines).values(
-        dati.righe.map((r, indice) => ({
-          quoteVersionId: dati.versionId,
-          sortOrder: indice,
-          productId: r.productId ?? null,
-          description: r.description,
-          unit: r.unit,
-          quantity: r.quantity.toFixed(3),
-          unitCost: (costiRisolti[indice] ?? 0).toFixed(4),
-          unitPrice: r.unitPrice.toFixed(4),
-          discountPct: r.discountPct.toFixed(2),
-          vatRate: r.vatRate.toFixed(2),
-          lineNet: importoAStringa(totali.righe[indice]?.imponibile ?? 0),
-          lineCost: importoAStringa(totali.righe[indice]?.costo ?? 0),
-        })),
-      )
-    }
-
-    await tx
+  const nuovoLock = await db.transaction(async (tx) => {
+    // Prima la versione, condizionata al lock e con l'incremento: se qui non si
+    // aggiorna nulla, un altro ha salvato nel frattempo e le righe non vanno
+    // toccate.
+    const [aggiornata] = await tx
       .update(quoteVersions)
       .set({
         globalDiscountPct: dati.globalDiscountPct.toFixed(2),
@@ -353,10 +377,43 @@ export async function saveQuoteLines(
               ) as DossierPreventivo,
             }
           : {}),
+        lockVersion: sql`${quoteVersions.lockVersion} + 1`,
         updatedAt: new Date(),
       })
-      .where(eq(quoteVersions.id, dati.versionId))
+      .where(condizioneLock)
+      .returning({ lockVersion: quoteVersions.lockVersion })
+
+    // Nessuna riga aggiornata = lock cambiato sotto di noi: conflitto. Non si
+    // tocca nulla, la transazione si chiude senza effetti.
+    if (!aggiornata) return null
+
+    await tx.delete(quoteLines).where(eq(quoteLines.quoteVersionId, dati.versionId))
+
+    if (dati.righe.length > 0) {
+      await tx.insert(quoteLines).values(
+        dati.righe.map((r, indice) => ({
+          quoteVersionId: dati.versionId,
+          sortOrder: indice,
+          productId: r.productId ?? null,
+          description: r.description,
+          unit: r.unit,
+          quantity: r.quantity.toFixed(3),
+          unitCost: (costiRisolti[indice] ?? 0).toFixed(4),
+          unitPrice: r.unitPrice.toFixed(4),
+          discountPct: r.discountPct.toFixed(2),
+          vatRate: r.vatRate.toFixed(2),
+          lineNet: importoAStringa(totali.righe[indice]?.imponibile ?? 0),
+          lineCost: importoAStringa(totali.righe[indice]?.costo ?? 0),
+        })),
+      )
+    }
+
+    return aggiornata.lockVersion
   })
+
+  if (nuovoLock === null) {
+    return { ok: false, errors: { _: CONFLITTO_PREVENTIVO } }
+  }
 
   await recordEntityChange({
     actorId: utente.id,
@@ -378,6 +435,7 @@ export async function saveQuoteLines(
       marginePct: totali.marginePct,
       sottoSoglia: esitoSoglia === 'sotto_soglia',
       righeSenzaCosto: senzaCostoNoto,
+      lockVersion: nuovoLock,
     },
   }
 }

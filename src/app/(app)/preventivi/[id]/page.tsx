@@ -100,6 +100,7 @@ export default async function PreventivoPage({
         <div className="lg:col-span-3">
           <EditorPreventivo
             versionId={dati.versione.id}
+            lockVersioneIniziale={dati.versione.lockVersion}
             righeIniziali={dati.righe}
             scontoIniziale={Number.parseFloat(dati.versione.globalDiscountPct)}
             modificabile={modificabile}
