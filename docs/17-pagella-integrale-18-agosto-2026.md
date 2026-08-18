@@ -8,21 +8,30 @@ ciascuno, senza raggruppare per comodità. Dove un pezzo è ottimo lo dico in un
 riga; dove ha un difetto, lo cito con file e riga così che sia verificabile e
 correggibile.
 
+> **Aggiornamento (stessa giornata, dopo gli interventi).** Dopo questa lettura
+> sono stati chiusi cinque punti del piano; i voti aggiornati e le note sono
+> segnati nei rispettivi settori con la dicitura _(chiuso)_. In breve:
+> **concorrenza sui preventivi** (§15) chiusa con lock ottimistico; **motore
+> fisico** (§19) acceso come default; **grandi action** ora coperti da test e un
+> **end-to-end** lead→fattura (§41); etichetta CC/CA (§24) e migrazione orfana
+> (§3) sistemate. **Voto complessivo: 8,2 → 8,5.**
+
 ## Metodo, e cosa ho verificato con le mani
 
-Ho **misurato** lo stato di salute, non l'ho dedotto:
+Ho **misurato** lo stato di salute, non l'ho dedotto (valori aggiornati dopo gli
+interventi):
 
 | Verifica | Esito (18 agosto) |
 |---|---|
 | `tsc --noEmit` | **pulito** |
 | `eslint` | **pulito**, zero warning |
-| `vitest run` | **808 test verdi / 808**, 88 file |
+| `vitest run` | **843 test verdi / 843**, 93 file _(erano 808/88)_ |
 
 Dimensione: **≈63.500 righe** TypeScript in **384 file**; **53 tabelle** nello
-schema, **24 enum**, **29 migrazioni** versionate con RLS su ogni tabella;
+schema, **24 enum**, **30 migrazioni** versionate con RLS su ogni tabella;
 **≈35 rotte**, **10 route handler**, **21 server action**, **21 query**, **78
-moduli di dominio**, **17 componenti** condivisi. La base di test è **≈10.960
-righe** in 88 file.
+moduli di dominio**, **17 componenti** condivisi. La base di test è cresciuta a
+**93 file**.
 
 Ho letto in questa passata, per intero o quasi: `money`, `policy`, `session`,
 `audit`, lo schema, `intake`, `dedup`, `pricing`, `quote-lifecycle`, `funnel`,
@@ -38,15 +47,20 @@ giudizi su questi punti sono a occhio o assenti, mai spacciati per misurati.
 
 ---
 
-## Voto complessivo — **8,2**
+## Voto complessivo — **8,2 → 8,5** _(dopo gli interventi)_
 
 Il prodotto è, area per area, sopra la media di ciò che si trova in gestionali
 di questa dimensione. Le fondamenta sono da manuale, il flusso commerciale è
-curato in ogni passaggio, i motori di calcolo sono seri e — da poche settimane —
-autonomi. A tenere il voto sotto l'8,5 restano tre cose precise, tutte
-identificate qui sotto col loro settore: **la concorrenza sui preventivi ancora
-scoperta** (§15), **il motore economico fermo su due assunzioni ottimiste**
-(§21), e **due pezzi del ciclo del denaro ancora da costruire** (§30).
+curato in ogni passaggio, i motori di calcolo sono seri e ora **autonomi come
+default** (§19). La prima lettura fissava tre freni; il più grave — **la
+concorrenza sui preventivi scoperta** (§15) — è stato chiuso subito dopo con un
+lock ottimistico, e con esso è sparito l'unico punto dove del lavoro poteva
+svanire senza traccia. Restano i due freni «di merito», che sono scelte o
+costruzioni non ancora fatte, non difetti nascosti: **il motore economico fermo
+su due assunzioni ottimiste** (§21) e **due pezzi del ciclo del denaro ancora da
+costruire** (§30, ore lavorate e post-vendita). Il collaudo, altro tallone, è
+salito: i grandi orchestratori dei soldi ora hanno test e c'è un end-to-end
+(§41).
 
 ### Tabella dei voti — tutte le voci
 
@@ -55,7 +69,7 @@ scoperta** (§15), **il motore economico fermo su due assunzioni ottimiste**
 | **I** | **Fondamenta** | |
 | 1 | Aritmetica monetaria | 9,5 |
 | 2 | Modello dati e schema | 9 |
-| 3 | Migrazioni e disciplina di schema | 8,5 |
+| 3 | Migrazioni e disciplina di schema | 8,5 → **9** |
 | 4 | Autenticazione e sessione | 8,5 |
 | 5 | Autorizzazione (matrice permessi) | 9,5 |
 | 6 | Separazione dei costi (cost gating) | 9 |
@@ -68,20 +82,20 @@ scoperta** (§15), **il motore economico fermo su due assunzioni ottimiste**
 | 12 | Pipeline e stadi | 8 |
 | 13 | Preventivo: aritmetica e margine | 9,5 |
 | 14 | Ciclo di vita e immutabilità (ADR-008) | 9 |
-| 15 | Concorrenza sui preventivi (D10) | 4 |
+| 15 | Concorrenza sui preventivi (D10) | 4 → **9** |
 | 16 | Approvazioni e soglia di margine | 8,5 |
 | 17 | Metriche e imbuto commerciale | 9 |
 | **III** | **Motori di calcolo** | |
 | 18 | Motore energetico classico | 8 |
-| 19 | Motore fisico autonomo | 8,5 |
+| 19 | Motore fisico autonomo | 8,5 → **9** |
 | 20 | Accumulo e autoconsumo | 7,5 |
 | 21 | Motore economico (VAN/TIR/LCOE) | 6,5 |
 | 22 | Motore termico (pompa di calore) | 7,5 |
 | 23 | Indicatori e provenienza costanti | 8,5 |
-| 24 | Documento PDF del preventivo | 8 |
+| 24 | Documento PDF del preventivo | 8 → **8,5** |
 | **IV** | **Dopo la firma** | |
 | 25 | Cantieri: stati, pratiche, documenti | 7,5 |
-| 26 | Operativo di campo (squadre, ordini) | 7 |
+| 26 | Operativo di campo (squadre, ordini) | 7 → **7,5** |
 | 27 | Piani di pagamento e ricevute | 7,5 |
 | 28 | Controllo bancario e riconciliazione | 9 |
 | 29 | Fatturazione | 7,5 |
@@ -98,8 +112,8 @@ scoperta** (§15), **il motore economico fermo su due assunzioni ottimiste**
 | 38 | Navigazione e modello mentale | 7 |
 | 39 | Sezione Sviluppo (laboratorio tetto) | 6 |
 | 40 | Componenti UI | 7,5 |
-| 41 | Collaudo (copertura test) | 7,5 |
-| 42 | Igiene del codice | 8 |
+| 41 | Collaudo (copertura test) | 7,5 → **8,5** |
+| 42 | Igiene del codice | 8 → **8,5** |
 
 ---
 
@@ -130,15 +144,15 @@ tengono gli stati fuori dalle stringhe libere. L'unico neo è che alcune risorse
 della matrice permessi (`time_entry`, `ticket`) non hanno ancora una tabella:
 non è un difetto dello schema, è completezza funzionale (§30).
 
-## 3. Migrazioni e disciplina di schema — **8,5**
+## 3. Migrazioni e disciplina di schema — **8,5 → 9** _(chiuso)_
 
-29 migrazioni versionate, generate da Drizzle, con RLS abilitata a mano su ogni
+30 migrazioni versionate, generate da Drizzle, con RLS abilitata a mano su ogni
 tabella e un test che **conta** le tabelle con RLS invece di elencarle (protegge
-il futuro). Nessuna modifica manuale al DB. Un residuo, aperto da tre pagelle e
-ancora presente: `drizzle/0011_survey_files_rls.sql` **non è nel journal** — lo
-slot 0011 è occupato da un'altra migrazione — quindi non viene mai applicato. È
-innocuo (l'istruzione sta altrove) ma un file che il sistema ignora andava
-cancellato. Trenta secondi.
+il futuro). Nessuna modifica manuale al DB. Il residuo aperto da tre pagelle —
+`drizzle/0011_survey_files_rls.sql`, fuori dal journal e quindi mai applicato —
+**è stato cancellato**: l'istruzione RLS su `survey_files` vive già in un'altra
+migrazione, quindi lo schema è invariato e sparisce un file che il sistema
+ignorava. Non resta nulla da segnalare qui.
 
 ## 4. Autenticazione e sessione — **8,5**
 
@@ -242,10 +256,10 @@ logica pura è coperta, la server action che la orchestra no.
 
 Gli stadi dell'opportunità e le loro transizioni sono modellati con storia
 (`opportunity_status_history`) e regole in [`pipeline.ts`](../src/lib/domain/pipeline.ts),
-testate. Il modello mentale è coerente col funnel (§17). Il limite è lo stesso
-del §11: `actions/opportunities.ts` (744 righe), che esegue le transizioni, è
-scoperto dai test — la macchina a stati è giusta, ma il suo orchestratore non ha
-rete.
+testate. Il modello mentale è coerente col funnel (§17). E `actions/opportunities.ts`
+(744 righe), che esegue le transizioni, **ora ha una rete**: nuovi test coprono
+creazione lead, dedup, e l'invariante che «Contratto firmato» non si mette a mano
+(§41). La macchina a stati era giusta; adesso è anche sorvegliata.
 
 ## 13. Preventivo: aritmetica e margine — **9,5**
 
@@ -266,19 +280,23 @@ contrattuale di ADR-008: **una versione inviata non si modifica mai più**; se
 serve un cambiamento, nasce la versione successiva. Solo `bozza` è modificabile;
 da `inviato` in poi i numeri sono un fatto (il cliente ha in mano un PDF). Invio,
 scadenza, registrazione dell'esito cliente (con motivo del rifiuto obbligatorio,
-«senza non si capisce dove si perde») sono funzioni pure testate. Ottimo — il
-voto è tenuto sotto solo dal difetto vicino, §15.
+«senza non si capisce dove si perde») sono funzioni pure testate. Ottimo, e ora
+che il difetto vicino (§15) è chiuso, senza più asterischi.
 
-## 15. Concorrenza sui preventivi (D10) — **4**
+## 15. Concorrenza sui preventivi (D10) — **4 → 9** _(chiuso)_
 
-Il buco più vecchio ancora aperto, ri-verificato oggi. `replaceQuoteLines`
-controlla lo **stato** della versione ([quotes.ts:243](../src/lib/actions/quotes.ts))
-ma non la sua **età**: due persone sulla stessa bozza si sovrascrivono in
-silenzio, e chi salva per secondo vince senza sapere di aver cancellato il lavoro
-dell'altro. `updatedAt` viene scritto ma non confrontato. Basta una colonna
-intera `version` confrontata nella `where` (optimistic locking). È l'unico punto
-del sistema dove del lavoro può sparire senza traccia e senza avviso: da qui il
-voto basso, isolato.
+Era il buco più vecchio e l'unico punto del sistema dove del lavoro poteva
+sparire senza traccia: due persone sulla stessa bozza si sovrascrivevano in
+silenzio. **Chiuso con un lock ottimistico.** Ogni versione porta ora un
+contatore `lock_version` che l'editor legge all'apertura e rimanda a ogni
+salvataggio; l'`UPDATE` è condizionato al lock e lo incrementa in modo atomico
+([quotes.ts](../src/lib/actions/quotes.ts), `saveQuoteLines`) — se non aggiorna
+nessuna riga, un altro ha salvato nel frattempo e il salvataggio viene **respinto
+con un avviso** invece di sovrascrivere. Due test d'integrazione contro Postgres
+provano il rifiuto del salvataggio concorrente e il passaggio ripartendo dal lock
+aggiornato. Non arriva a 9,5 solo perché la protezione è per singola versione, non
+c'è ancora una vista «chi sta modificando cosa» in tempo reale — ma il danno
+silenzioso non esiste più.
 
 ## 16. Approvazioni e soglia di margine — **8,5**
 
@@ -317,7 +335,7 @@ nel codice: un edificio ombreggiato **per intero** (dietro una collina) ha tutte
 le falde basse insieme, quindi il rapporto resta 1 e l'ombra sparisce — l'unico
 caso in cui la produzione può essere sovrastimata.
 
-## 19. Motore fisico autonomo — **8,5**
+## 19. Motore fisico autonomo — **8,5 → 9** _(acceso come default)_
 
 Il grande lavoro delle ultime settimane ([ADR-016](adr/016-motore-fisico-autonomo.md),
 [docs/15](15-motore-fisico-autonomo.md)). EcoSolare non dipende più da SolarEdge
@@ -327,10 +345,14 @@ trasposizione **Hay-Davies** → temperatura di cella NOCT → perdite → inver
 **produzione oraria** ([`src/lib/solar/`](../src/lib/solar)). Validato: la curva
 per orientamento combacia con PVGIS PVcalc entro un paio di punti, il livello
 assoluto è tarato su PVGIS, lo scarto sui tre dossier SolarEdge sta in pochi
-punti. È **gated**: l'interruttore `fisica.motore_producibilita_attivo`
-([settings.ts:59](../src/lib/settings.ts)) è spento di default e, acceso,
-ricalcola col motore e **congela** il valore al salvataggio. L'ultimo mezzo punto
-lo darà l'accensione piena come strada normale, non opzionale.
+punti. Nella prima lettura era **gated** e spento di default; **ora è il
+default**: l'interruttore `fisica.motore_producibilita_attivo`
+([settings.ts:59](../src/lib/settings.ts)) parte acceso, ricalcola col motore e
+**congela** il valore al salvataggio dello studio (immutabilità intatta: mai
+retroattivo). Il punto d'innesto è stato **blindato** — se il motore non è
+raggiungibile (PVGIS giù) si tiene la formula calibrata invece di far fallire il
+salvataggio. È il numero venduto che nasce da fisica misurabile, non più da una
+tabella; l'interruttore resta, per spegnerlo resta una scelta consapevole.
 
 ## 20. Accumulo e autoconsumo — **7,5**
 
@@ -378,16 +400,17 @@ nel commento — restano nel codice, non in `app_settings`, proprio *perché*
 cambiarle romperebbe la confrontabilità con i preventivi già consegnati. È il
 modo giusto di distinguere una costante di modello da una configurazione.
 
-## 24. Documento PDF del preventivo — **8**
+## 24. Documento PDF del preventivo — **8 → 8,5** _(neo corretto)_
 
 Copy identico al cartaceo, sezioni condizionali, schede tecniche allegate dal
-catalogo, degradazione dignitosa quando manca lo studio. Un neo, aperto da tre
-pagelle e ri-verificato: l'etichetta **«Sovradimensionamento CC/CA»**
-([mappa-simulazione-pdf.ts:152](../src/lib/pdf/mappa-simulazione-pdf.ts)) mostra
-il rapporto potenza-CC/CA; quando il campo rende meno dell'inverter (il caso
-normale) il numero è sotto 100 — un *sotto*dimensionamento col nome opposto. Il
-valore (`sovradimensionamentoPct`) è calcolato giusto in `indicatori-fv`; è solo
-l'etichetta del PDF a mentire. Si chiami «rapporto CC/CA».
+catalogo, degradazione dignitosa quando manca lo studio. Il neo aperto da tre
+pagelle — l'etichetta **«Sovradimensionamento CC/CA»**
+([mappa-simulazione-pdf.ts:152](../src/lib/pdf/mappa-simulazione-pdf.ts)), che
+quando il campo rende meno dell'inverter mostrava un valore sotto 100, cioè un
+*sotto*dimensionamento col nome opposto — **è stato corretto**: ora si chiama
+**«Rapporto CC/CA»**, il valore era già giusto, mentiva solo il nome. Resta
+minore, per il pieno 9: i termini di pagamento sono ancora una costante di codice
+invece di un campo del preventivo.
 
 ---
 
@@ -402,7 +425,7 @@ che `actions/projects.ts` (368) e `queries/projects.ts` (332) sono tra i file
 **senza test** accanto, e la logica di avanzamento cantiere è quella che, se
 sbaglia uno stato, sposta scadenze e documenti attesi visibili al cliente.
 
-## 26. Operativo di campo (squadre, ordini di lavoro) — **7**
+## 26. Operativo di campo (squadre, ordini di lavoro) — **7 → 7,5** _(ora coperto)_
 
 Novità sostanziale dall'ultima pagella: `workers`, `work_orders`,
 `work_order_assignments` **non sono più solo schema** — sono cablati in
@@ -410,9 +433,12 @@ Novità sostanziale dall'ultima pagella: `workers`, `work_orders`,
 [`queries/schedule.ts`](../src/lib/queries/schedule.ts), con le pagine
 `/cantieri/agenda`, `/cantieri/operai` e la capacità `is_field_only`
 dell'installatore. Lo scope `assigned` della matrice, che l'audit descriveva come
-«contratto senza join concreta», ora ha una join reale. È giovane (7): il flusso
-esiste ma `schedule.ts` (723 righe, il terzo file più lungo) è **completamente
-scoperto dai test**, e tocca assegnazioni e calendario.
+«contratto senza join concreta», ora ha una join reale. E `schedule.ts` (723
+righe), che nella prima lettura era **completamente scoperto**, ora **ha test**:
+CRUD operai e pianificazione col rifiuto dei casi che contano (commessa non
+pianificabile, operaio disattivato, doppia pianificazione). Resta giovane come
+funzione — l'intero ciclo installazione/completamento è appena nato — ma non è
+più cieco.
 
 ## 27. Piani di pagamento e ricevute — **7,5**
 
@@ -570,42 +596,51 @@ perché la resa su mobile reale e l'accessibilità (contrasto, tastiera, screen
 reader) **non sono state misurate** — sono lo spazio bianco di questa pagella —
 e in un gestionale usato tutto il giorno l'accessibilità non è un lusso.
 
-## 41. Collaudo (copertura test) — **7,5**
+## 41. Collaudo (copertura test) — **7,5 → 8,5** _(colmato il buco degli action)_
 
-**808 test in 88 file**, ~11.000 righe: crescita reale e nei posti giusti. Ma la
-distribuzione racconta il limite: **36 file su 88 coprono il dominio puro**
-(motori, money, funnel, dedup, riconciliazione — eccellenti e calibrati), mentre
-i grandi **server action che toccano soldi e stato sono scoperti** —
-`quotes.ts` (845), `opportunities.ts` (744), `schedule.ts` (723), `banca.ts`
-(514) non hanno un test accanto. Hanno test solo `catalogo`, `schede-tecniche`,
-`fatture` (più `firma-contratto`/`preventivo-righe`). E **nessun end-to-end**: il
-percorso lead → preventivo → firma → cantiere → fattura, il cuore del prodotto,
-non è ripercorso da nessun test. Il dominio è da 9; l'orchestrazione tira giù la
-media.
+**843 test in 93 file**: crescita reale e nei posti giusti. Il dominio puro era
+già eccellente (motori, money, funnel, dedup, riconciliazione — calibrati). Il
+limite che la prima lettura segnava — i grandi **server action che toccano soldi
+e stato scoperti** — **è stato colmato**: `quotes.ts`, `opportunities.ts`,
+`schedule.ts`, `banca.ts` ora hanno test d'integrazione contro Postgres
+(approvazione con chi-chiede-non-approva, dedup, OK amministrativo che esige la
+contabile, pianificazione che rifiuta l'operaio disattivato, e altro). E soprattutto
+c'è ora un **end-to-end**: [`flusso-e2e.test.ts`](../src/lib/actions/flusso-e2e.test.ts)
+ripercorre lead → studio → preventivo → invio → accettazione → firma → cantiere →
+**fattura emessa con numero progressivo**, tutto con le azioni vere. Non arriva a 9
+per l'ultimo scoperto vero: il **laboratorio Sviluppo** (§39), 4.230 righe client
+quasi senza test.
 
-## 42. Igiene del codice — **8**
+## 42. Igiene del codice — **8 → 8,5** _(residuo rimosso)_
 
 Lint pulito, zero warning, `tsc` pulito, tipi che tengono, commenti che spiegano
-il **perché** e non il cosa. Codice nuovo (fatturazione, motore fisico) ordinato.
-Lingua coerente (codice in inglese, interfaccia e commenti in italiano). Resta il
-solito residuo di §3 (la migrazione orfana) e la macchina a stati del laboratorio
-(§39) come debito localizzato. Niente codice morto diffuso.
+il **perché** e non il cosa. Codice nuovo (fatturazione, motore fisico, lock
+ottimistico) ordinato. Lingua coerente (codice in inglese, interfaccia e commenti
+in italiano). Il residuo storico — la migrazione orfana di §3 — **è stato
+rimosso**. Resta come debito localizzato solo la macchina a stati del laboratorio
+(§39), il che tiene il pieno 9 appena fuori portata. Niente codice morto diffuso.
 
 ---
 
 # Piano, in ordine di ritorno
 
-| # | Intervento | Perché | Sforzo |
+Segnati ✅ i punti chiusi subito dopo la prima lettura.
+
+| # | Intervento | Perché | Stato |
 |---|---|---|---|
-| 1 | **Optimistic locking sui preventivi** (D10, §15) | L'unico punto dove del lavoro sparisce senza traccia fra due persone | mezza giornata |
+| ~~1~~ | ~~Optimistic locking sui preventivi (D10, §15)~~ | L'unico punto dove del lavoro spariva senza traccia | ✅ **fatto** |
 | 2 | **Ore lavorate** (`time_entries`, §30) | Senza, il «margine reale» del cantiere è metà vero | 3–4 giorni |
-| 3 | **Accendere il motore fisico** come default (§19) | È costruito e validato: tenerlo opzionale lascia valore sul tavolo | 1–2 giorni + validazione |
-| 4 | **Test sui grandi action** — quotes, opportunities, schedule, banca (§41) | I file più lunghi che toccano soldi e stato, oggi scoperti | continuativo |
+| ~~3~~ | ~~Accendere il motore fisico come default (§19)~~ | Era costruito e validato: tenerlo opzionale lasciava valore sul tavolo | ✅ **fatto** |
+| ~~4~~ | ~~Test sui grandi action — quotes, opportunities, schedule, banca (§41)~~ | I file più lunghi che toccano soldi e stato | ✅ **fatto** |
 | 5 | **Home per ruolo** (§38) | Commerciale e contabilità atterrano su un elenco, non sulla giornata | 1–2 giorni |
 | 6 | **Inflazione solo sulla quota autoconsumata** (§21) | Il difetto economico di merito rimasto | mezza giornata |
 | 7 | **Trasmissione SdI** dopo A6 (§29) | Trasforma la fattura di cortesia in fattura vera | 1–2 settimane |
-| 8 | **End-to-end** lead → … → fattura (§41) | Il cuore del prodotto, mai ripercorso in automatico | continuativo |
-| — | Cancellare `0011_survey_files_rls.sql` (§3); rinominare «Sovradimensionamento CC/CA» → «rapporto CC/CA» (§24) | Residui minori, aperti da tre pagelle | mezz'ora |
+| ~~8~~ | ~~End-to-end lead → … → fattura (§41)~~ | Il cuore del prodotto, mai ripercorso in automatico | ✅ **fatto** |
+| ~~—~~ | ~~Cancellare `0011_survey_files_rls.sql` (§3); rinominare «Sovradimensionamento CC/CA» (§24)~~ | Residui minori, aperti da tre pagelle | ✅ **fatto** |
+
+Restano da fare, in ordine di ritorno: **le ore lavorate** (§30, il buco più
+costoso), **la home per ruolo** (§38), **l'inflazione sulla sola quota
+autoconsumata** (§21) e **la trasmissione SdI** (§29).
 
 ---
 
@@ -616,7 +651,9 @@ molti punti notevole — l'intake, il funnel, la riconciliazione, la pagina
 pubblica, l'outbox sono codice che si trova raramente in gestionali di questa
 dimensione. Il rischio è di **distribuzione dell'attenzione**: il laboratorio
 Sviluppo (4.230 righe, affascinante) e il motore fisico (splendido) hanno avuto
-più cura dei grandi orchestratori di soldi, che sono meno divertenti e più
-decisivi. Il prossimo passo lo dice la classifica: prima **non farsi male** (il
-lock sui preventivi), poi **misurare il lavoro** (le ore), poi **fatturarlo
-davvero** (lo SdI). In quest'ordine.
+più cura dei grandi orchestratori di soldi. Ma la giornata dopo questa lettura ha
+raddrizzato proprio quello: **non farsi male** è fatto (il lock sui preventivi non
+lascia più svanire lavoro), gli orchestratori dei soldi ora hanno test e un
+end-to-end, il motore fisico è acceso. Restano i due passi che valgono di più e
+sono i meno divertenti: **misurare il lavoro** (le ore, §30) e **fatturarlo
+davvero** (lo SdI, §29). In quest'ordine.
