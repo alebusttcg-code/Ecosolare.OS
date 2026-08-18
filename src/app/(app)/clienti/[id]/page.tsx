@@ -40,8 +40,8 @@ export default async function SchedaClientePage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
           <Link
             href={eCliente ? '/clienti' : '/lead'}
             className="text-sm"
@@ -61,7 +61,7 @@ export default async function SchedaClientePage({
             {!contatto.phone && !contatto.email ? 'Nessun recapito' : null}
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
           {contatto.phone ? (
             <BottoneChiama telefono={contatto.phone} telefonoE164={contatto.phoneE164} />
           ) : null}
