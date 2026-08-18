@@ -85,6 +85,44 @@ export default async function BancaPage({
       </div>
 
       <div className="mt-8 space-y-6">
+        <Card title="Registro fatture — export per il commercialista">
+          {/* Form GET: il browser scarica il CSV senza lasciare la pagina. */}
+          <form
+            method="get"
+            action="/api/fatture/export"
+            className="flex flex-wrap items-end gap-3"
+          >
+            <label className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+              <span className="block">Dal</span>
+              <input
+                type="date"
+                name="dal"
+                className="mt-1 rounded-lg border bg-transparent px-2 py-1.5 text-sm"
+                style={{ borderColor: 'var(--bordo)', color: 'var(--testo)' }}
+              />
+            </label>
+            <label className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
+              <span className="block">Al</span>
+              <input
+                type="date"
+                name="al"
+                className="mt-1 rounded-lg border bg-transparent px-2 py-1.5 text-sm"
+                style={{ borderColor: 'var(--bordo)', color: 'var(--testo)' }}
+              />
+            </label>
+            <button
+              type="submit"
+              className="bottone-fantasma rounded-lg border px-3 py-2 text-xs"
+              style={{ borderColor: 'var(--bordo)', color: 'var(--testo-tenue)' }}
+            >
+              Scarica CSV
+            </button>
+          </form>
+          <p className="mt-2 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+            Solo le fatture emesse. Senza periodo, l’anno in corso. Numeri e date
+            all’italiana, pronto per il gestionale del commercialista.
+          </p>
+        </Card>
         <Card title="Carica un estratto conto" indice={1}>
           <CaricaEstratto />
         </Card>
