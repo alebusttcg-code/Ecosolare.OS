@@ -149,7 +149,7 @@ export function mappaSimulazionePerPdf(sim: RisultatoSimulazioneFv): {
     { icona: 'co2', etichetta: 'Emissioni CO2 evitate', valore: ind.co2EvitataTonnellate.toLocaleString('it-IT', { maximumFractionDigits: 2 }), unita: 't/anno' },
     { icona: 'albero', etichetta: 'Alberi equivalenti', valore: ind.alberiEquivalenti.toLocaleString('it-IT'), unita: '' },
     ...(ind.sovradimensionamentoPct
-      ? [{ icona: 'rapporto', etichetta: 'Sovradimensionamento CC/CA', valore: Math.round(ind.sovradimensionamentoPct).toLocaleString('it-IT'), unita: '%' }]
+      ? [{ icona: 'rapporto', etichetta: 'Rapporto CC/CA', valore: Math.round(ind.sovradimensionamentoPct).toLocaleString('it-IT'), unita: '%' }]
       : []),
     ...(sim.resaSpecificaKwhKwp != null
       ? [{ icona: 'calendario', etichetta: 'Produzione specifica annua', valore: Math.round(sim.resaSpecificaKwhKwp).toLocaleString('it-IT'), unita: 'kWh/kWp' }]
