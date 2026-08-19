@@ -1,13 +1,9 @@
-import { can, type PolicySubject } from '@/lib/auth/policy'
-
 /**
- * Atterraggio dopo login / visita a `/` per chi non è amministratore.
- * La Dashboard unica è solo direzione.
+ * Atterraggio dopo il login. Ora ogni ruolo ha la sua home su `/`: la direzione
+ * il cruscotto, il commerciale e il campo la loro giornata, la contabilità le
+ * fatture da chiudere. Non si manda più nessuno direttamente su un elenco — per
+ * questo la destinazione non dipende più dal ruolo.
  */
-export function homeDopoAccesso(utente: PolicySubject): string {
-  if (utente.role === 'amministratore') return '/'
-  if (can(utente, 'read', 'opportunity')) return '/lead'
-  if (can(utente, 'read', 'activity')) return '/attivita'
-  if (can(utente, 'read', 'project')) return '/cantieri'
-  return '/lead'
+export function homeDopoAccesso(): string {
+  return '/'
 }

@@ -148,12 +148,7 @@ export async function accedi(
     ok: true,
     data: {
       deveCambiarePassword: utente.mustChangePassword,
-      destinazione: homeDopoAccesso({
-        role: utente.role,
-        canViewCosts: utente.canViewCosts,
-        isFieldOnly: utente.isFieldOnly,
-        isActive: utente.isActive,
-      }),
+      destinazione: homeDopoAccesso(),
     },
   }
 }

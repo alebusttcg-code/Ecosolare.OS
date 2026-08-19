@@ -10,7 +10,7 @@ const FLUSSO = ['Lead', 'Sopralluogo', 'Preventivo', 'Cantiere', 'Lavoro complet
 
 export default async function AccediPage() {
   const utente = await getCurrentUser()
-  if (utente) redirect(homeDopoAccesso(utente))
+  if (utente) redirect(homeDopoAccesso())
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6">

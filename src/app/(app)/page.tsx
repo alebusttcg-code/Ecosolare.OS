@@ -1,37 +1,15 @@
 import { redirect } from 'next/navigation'
 import { Intestazione } from '@/components/ui'
-import { homeDopoAccesso } from '@/lib/auth/home'
 import { getCurrentUser, guard } from '@/lib/auth/session'
+import { dataEstesa, primoNome, saluto } from '@/lib/saluto'
 import { FasciaSalute } from './dashboard/fascia-salute'
 import { SezioneEconomia } from './dashboard/sezione-economia'
 import { SezioneOggi } from './dashboard/sezione-oggi'
 import { SezionePerformance } from './dashboard/sezione-performance'
+import { HomeContabilita } from './home-contabilita'
+import { HomeOperativa } from './home-operativa'
 
-export const metadata = { title: 'Dashboard — EcoSolare OS' }
-
-/** Saluto secondo l'ora italiana: è la prima riga che si legge ogni mattina. */
-function saluto(): string {
-  const ora = Number(
-    new Intl.DateTimeFormat('it-IT', {
-      hour: 'numeric',
-      hourCycle: 'h23',
-      timeZone: 'Europe/Rome',
-    }).format(new Date()),
-  )
-  if (ora >= 5 && ora < 13) return 'Buongiorno'
-  if (ora < 18) return 'Buon pomeriggio'
-  return 'Buonasera'
-}
-
-function dataEstesa(): string {
-  const testo = new Intl.DateTimeFormat('it-IT', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'Europe/Rome',
-  }).format(new Date())
-  return testo.charAt(0).toUpperCase() + testo.slice(1)
-}
+export const metadata = { title: 'Home — EcoSolare OS' }
 
 export default async function DashboardPage({
   searchParams,
@@ -45,14 +23,18 @@ export default async function DashboardPage({
 }) {
   const utente = await getCurrentUser()
   if (!utente) redirect('/accedi')
-  if (utente.role !== 'amministratore') redirect(homeDopoAccesso(utente))
 
-  // Risorsa dashboard ancora verificata (ADR-006); il ruolo restringe la pagina.
+  // Risorsa dashboard verificata per tutti (ADR-006); ogni ruolo ha però la sua
+  // home: la direzione vede il cruscotto completo, gli altri il quadro della
+  // loro giornata invece di un elenco.
   await guard('read', 'dashboard')
+
+  if (utente.role === 'contabilita') return <HomeContabilita utente={utente} />
+  if (utente.role !== 'amministratore') return <HomeOperativa utente={utente} />
 
   const params = await searchParams
   const adesso = new Date()
-  const nome = (utente.name ?? utente.email).split(/[\s@]/)[0]
+  const nome = primoNome(utente.name, utente.email)
   const periodoEco = {
     periodo: params.periodo,
     da: params.da,

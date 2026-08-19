@@ -46,12 +46,14 @@ const VOCI: readonly (VoceMenu & {
   soloRuolo?: Role
 })[] = [
   {
+    // Ogni ruolo ha la sua home su `/`: cruscotto per la direzione, la giornata
+    // per gli altri. Niente più `soloRuolo`: la matrice consente a tutti la
+    // lettura della dashboard, e la pagina sceglie cosa mostrare.
     href: '/',
-    label: 'Dashboard',
+    label: 'Home',
     icona: '◈',
     gruppo: 'direzione',
     resource: 'dashboard',
-    soloRuolo: 'amministratore',
   },
 
   { href: '/lead', label: 'Lead', icona: '◭', gruppo: 'ciclo', resource: 'opportunity' },
