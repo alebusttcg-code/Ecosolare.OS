@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SnapshotStudioTetto } from '@/lib/domain/studio-tetto'
 import { geoAPixel } from '@/lib/solar'
+import { fotoTettoPng } from '@/lib/solar/foto-tetto'
 import {
   arricchisciPlanimetriaConOrtofoto,
   centroDaPunti,
@@ -12,6 +13,15 @@ import {
   zoomCheContienePunti,
 } from './ortofoto-moduli-pdf'
 import type { PlanimetriaPdfDto } from './dati-preventivo'
+
+// La foto aerea arriva da Google Solar (GeoTIFF ricampionato → PNG). Qui la si
+// mocka: il test verifica l'integrazione nell'ortofoto, non la rete/geotiff.
+vi.mock('@/lib/solar/foto-tetto', () => ({ fotoTettoPng: vi.fn() }))
+const fotoMock = vi.mocked(fotoTettoPng)
+
+const PNG_FINTO = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...Array(40).fill(0),
+])
 
 function snapshotMini(): SnapshotStudioTetto {
   const modulo = (lat: number, lng: number) => ({
@@ -87,6 +97,7 @@ describe('ortofoto moduli PDF', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
+    fotoMock.mockReset()
   })
 
   it('calcola centro e zoom che contiene i punti nel frame', () => {
@@ -116,7 +127,7 @@ describe('ortofoto moduli PDF', () => {
     }
   })
 
-  it('inquadraturaDaStudio espone dimensioni pixel Static Maps', () => {
+  it('inquadraturaDaStudio espone le dimensioni pixel del frame', () => {
     const iq = inquadraturaDaStudio(snapshotMini())
     expect(iq).not.toBeNull()
     expect(iq!.pixelW).toBe(1280)
@@ -126,51 +137,24 @@ describe('ortofoto moduli PDF', () => {
 
   it('senza API key lascia lo schema (foto null)', async () => {
     const base = schemaBase()
-    const out = await arricchisciPlanimetriaConOrtofoto(
-      base,
-      snapshotMini(),
-      null,
-    )
+    const out = await arricchisciPlanimetriaConOrtofoto(base, snapshotMini(), null)
     expect(out).toEqual(base)
     expect(out.fotoDataUri).toBeNull()
+    expect(fotoMock).not.toHaveBeenCalled()
   })
 
-  it('se Static Maps fallisce lascia lo schema', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 500 }),
-    )
+  it('se la foto Solar non c’è lascia lo schema', async () => {
+    fotoMock.mockResolvedValue(null)
     const base = schemaBase()
-    const out = await arricchisciPlanimetriaConOrtofoto(
-      base,
-      snapshotMini(),
-      'fake-key',
-    )
+    const out = await arricchisciPlanimetriaConOrtofoto(base, snapshotMini(), 'fake-key')
     expect(out.fotoDataUri).toBeNull()
     expect(out.viewBox).toBe(base.viewBox)
   })
 
-  it('con Static Maps ok produce foto e path in pixel', async () => {
-    const pngFake = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...Array(40).fill(0)])
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: { get: () => 'image/png' },
-        arrayBuffer: async () =>
-          pngFake.buffer.slice(
-            pngFake.byteOffset,
-            pngFake.byteOffset + pngFake.byteLength,
-          ),
-      }),
-    )
+  it('con la foto Solar produce foto e path in pixel', async () => {
+    fotoMock.mockResolvedValue(PNG_FINTO)
     const base = schemaBase()
-    const out = await arricchisciPlanimetriaConOrtofoto(
-      base,
-      snapshotMini(),
-      'fake-key',
-    )
+    const out = await arricchisciPlanimetriaConOrtofoto(base, snapshotMini(), 'fake-key')
     expect(out.fotoDataUri).toMatch(/^data:image\/png;base64,/)
     expect(out.fotoSenzaModuliDataUri).toMatch(/^data:image\/png;base64,/)
     expect(out.fotoConModuliIntegrati).toBe(false)
@@ -183,20 +167,7 @@ describe('ortofoto moduli PDF', () => {
   })
 
   it('preserva la cattura editor con pannelli e aggiunge l’ortofoto pulita', async () => {
-    const pngFake = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...Array(40).fill(0)])
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: { get: () => 'image/png' },
-        arrayBuffer: async () =>
-          pngFake.buffer.slice(
-            pngFake.byteOffset,
-            pngFake.byteOffset + pngFake.byteLength,
-          ),
-      }),
-    )
+    fotoMock.mockResolvedValue(PNG_FINTO)
     const fotoEditor = 'data:image/jpeg;base64,/9j/4AAQ'
     const out = await arricchisciPlanimetriaConOrtofoto(
       {
