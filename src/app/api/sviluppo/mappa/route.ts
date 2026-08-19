@@ -3,11 +3,16 @@ import { z } from 'zod'
 import { env } from '@/env'
 import { AuthorizationError } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
-import { scaricaStaticMap } from '@/lib/solar/static-map'
+import { fotoTettoPng } from '@/lib/solar/foto-tetto'
 
 /**
- * Proxy Static Maps (satellite): la key resta sul server.
- * Richiede Maps Static API abilitata sulla stessa GOOGLE_MAPS_API_KEY.
+ * Sfondo dell'anteprima moduli: foto aerea del tetto da Google Solar.
+ *
+ * Prima usava la Static Maps satellite, ma dal 2025 Google la blocca in UE
+ * (403). La Solar API dà la stessa foto aerea (via GeoTIFF RGB): la
+ * ricampioniamo qui nella cornice dell'editor e la serviamo come PNG. La key
+ * resta sul server. Se la Solar non ha imagery per la zona si risponde 502 e
+ * l'editor disegna comunque falda e moduli su sfondo neutro.
  */
 const querySchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
@@ -45,30 +50,29 @@ export async function GET(request: Request) {
     return NextResponse.json({ errore: 'Coordinate non valide' }, { status: 400 })
   }
 
-  const { lat, lng, zoom, marker } = parsed.data
-  const mappa = await scaricaStaticMap({
+  const { lat, lng, zoom } = parsed.data
+  const png = await fotoTettoPng({
     centro: { latitude: lat, longitude: lng },
     zoom,
-    width: 640,
-    height: 420,
     scale: 2,
-    maptype: 'satellite',
-    marker: marker === '1',
+    widthBase: 640,
+    heightBase: 420,
     apiKey: chiave,
   })
 
-  if (!mappa) {
+  if (!png) {
     return NextResponse.json(
-      { errore: 'Static Maps non disponibile' },
+      { errore: 'Foto aerea non disponibile per questa zona' },
       { status: 502 },
     )
   }
 
-  return new NextResponse(new Uint8Array(mappa.bytes), {
+  return new NextResponse(new Uint8Array(png), {
     status: 200,
     headers: {
-      'Content-Type': mappa.contentType,
-      'Cache-Control': 'private, max-age=300',
+      'Content-Type': 'image/png',
+      // La foto di un tetto non cambia: cache lunga lato client.
+      'Cache-Control': 'private, max-age=86400',
     },
   })
 }

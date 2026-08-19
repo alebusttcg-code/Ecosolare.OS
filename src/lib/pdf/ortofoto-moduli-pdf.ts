@@ -6,7 +6,7 @@ import {
 } from '@/lib/domain/studio-tetto'
 import type { PlanimetriaPdfDto } from '@/lib/pdf/dati-preventivo'
 import { geoAPixel, type Coordinate } from '@/lib/solar'
-import { scaricaStaticMap } from '@/lib/solar/static-map'
+import { fotoTettoPng } from '@/lib/solar/foto-tetto'
 
 /** Allineato all’editor moduli (Static Maps scale=2). */
 export const ORTOFOTO_CSS_W = 640
@@ -130,21 +130,22 @@ export async function arricchisciPlanimetriaConOrtofoto(
   const inquadratura = inquadraturaDaStudio(snapshot)
   if (!inquadratura) return base
 
-  const mappa = await scaricaStaticMap({
+  // Foto aerea da Google Solar (la Static Maps satellite è bloccata in UE dal
+  // 2025). Ricampionata nella stessa cornice della proiezione qui sotto, quindi
+  // i path dei moduli si allineano per costruzione.
+  const png = await fotoTettoPng({
     centro: inquadratura.centro,
     zoom: inquadratura.zoom,
-    width: ORTOFOTO_CSS_W,
-    height: ORTOFOTO_CSS_H,
     scale: ORTOFOTO_SCALE,
-    maptype: 'satellite',
-    marker: false,
+    widthBase: ORTOFOTO_CSS_W,
+    heightBase: ORTOFOTO_CSS_H,
     apiKey: chiave,
   })
-  if (!mappa) return base
+  if (!png) return base
 
   const { centro, zoom, scale } = inquadratura
-  const pixelW = mappa.pixelW
-  const pixelH = mappa.pixelH
+  const pixelW = ORTOFOTO_PIXEL_W
+  const pixelH = ORTOFOTO_PIXEL_H
   const layouts = layoutsAttivi(snapshot)
 
   const poligoniPaths: string[] = []
@@ -163,10 +164,7 @@ export async function arricchisciPlanimetriaConOrtofoto(
     }
   }
 
-  const mime = mappa.contentType.includes('jpeg')
-    ? 'image/jpeg'
-    : 'image/png'
-  const fotoSenzaModuliDataUri = `data:${mime};base64,${mappa.bytes.toString('base64')}`
+  const fotoSenzaModuliDataUri = `data:image/png;base64,${png.toString('base64')}`
   const conservaAnteprimaEditor =
     base.fotoConModuliIntegrati === true && Boolean(base.fotoDataUri)
 
