@@ -67,7 +67,15 @@ export async function scaricaStaticMap(
     const res = await fetch(staticUrl, {
       signal: AbortSignal.timeout(timeoutMs),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      // Il motivo vero (es. 403 «satellite non disponibile in UE») altrimenti
+      // sparisce: senza questo log si vede solo il canvas nero senza spiegazione.
+      const dettaglio = await res.text().catch(() => '')
+      console.warn(
+        `[static-map] Google ${res.status}: ${dettaglio.slice(0, 200)}`,
+      )
+      return null
+    }
     const bytes = Buffer.from(await res.arrayBuffer())
     if (bytes.length < 32) return null
     return {

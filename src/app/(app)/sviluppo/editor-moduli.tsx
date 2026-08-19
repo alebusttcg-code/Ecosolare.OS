@@ -18,6 +18,14 @@ import {
 
 const ZOOM = 20
 const SCALE = 2
+/**
+ * Dimensioni della Static Map richiesta (640×420 @ scale 2). Sono note a priori:
+ * così la proiezione geo→canvas regge anche quando l'immagine satellitare non
+ * arriva — dal 2025 Google blocca il satellite sulla Static Maps API in UE, ma
+ * la falda e i moduli devono restare disegnabili lo stesso, in scala.
+ */
+const MAP_W = 640 * SCALE
+const MAP_H = 420 * SCALE
 const ZOOM_VISTA_MIN = 1
 const ZOOM_VISTA_MAX = 5
 
@@ -305,10 +313,13 @@ export function EditorModuli({
 
   const disegna = useCallback(() => {
     const canvas = canvasRef.current
-    const img = imgRef.current
-    if (!canvas || !img?.complete || !centro || !poligono || poligono.length < 3) {
+    if (!canvas || !centro || !poligono || poligono.length < 3) {
       return
     }
+    // L'immagine satellitare è un di più: senza (Static Maps UE) si disegna
+    // comunque la falda e i moduli su sfondo neutro, in scala.
+    const img = imgRef.current
+    const imgOk = !!img && img.complete && img.naturalWidth > 0
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
@@ -322,12 +333,12 @@ export function EditorModuli({
     canvas.height = Math.floor(h * dpr)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    const base = Math.max(w / img.naturalWidth, h / img.naturalHeight)
+    const base = Math.max(w / MAP_W, h / MAP_H)
     const z = zoomVistaRef.current
     const scale = base * z
     let pan = panRef.current
-    const dw = img.naturalWidth * scale
-    const dh = img.naturalHeight * scale
+    const dw = MAP_W * scale
+    const dh = MAP_H * scale
     if (z <= 1.001) {
       pan = { x: 0, y: 0 }
       panRef.current = pan
@@ -337,8 +348,8 @@ export function EditorModuli({
     }
     const ox = (w - dw) / 2 + pan.x
     const oy = (h - dh) / 2 + pan.y
-    const mapW = img.naturalWidth
-    const mapH = img.naturalHeight
+    const mapW = MAP_W
+    const mapH = MAP_H
 
     const toScreen = (c: Coordinate) => {
       const p = geoAPixel(c, centro, ZOOM, SCALE, mapW, mapH)
@@ -353,7 +364,17 @@ export function EditorModuli({
 
     ctx.fillStyle = '#050a14'
     ctx.fillRect(0, 0, w, h)
-    ctx.drawImage(img, ox, oy, dw, dh)
+    if (imgOk && img) {
+      ctx.drawImage(img, ox, oy, dw, dh)
+    } else {
+      // Ripiego senza satellite: rettangolo neutro nell'area della mappa e un
+      // avviso, così è chiaro perché manca la foto (non è un errore dell'app).
+      ctx.fillStyle = 'rgba(127,178,232,0.05)'
+      ctx.fillRect(ox, oy, dw, dh)
+      ctx.fillStyle = 'rgba(159,176,195,0.85)'
+      ctx.font = '12px system-ui, sans-serif'
+      ctx.fillText('Vista satellitare non disponibile (UE) — falda e moduli in scala', 14, 22)
+    }
 
     ctx.beginPath()
     poligono.forEach((c, i) => {
@@ -430,21 +451,16 @@ export function EditorModuli({
     img.onload = () => {
       if (!annullato) disegna()
     }
+    // Anche in errore (satellite UE bloccato) si ridisegna: `disegna` gestisce
+    // l'assenza dell'immagine e mostra comunque falda e moduli.
     img.onerror = () => {
-      if (annullato) return
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      const w = canvas.clientWidth || 400
-      const h = canvas.clientHeight || 320
-      canvas.width = w
-      canvas.height = h
-      ctx.fillStyle = '#0a1528'
-      ctx.fillRect(0, 0, w, h)
-      ctx.fillStyle = '#5c7595'
-      ctx.font = '12px sans-serif'
-      ctx.fillText('Anteprima satellitare non disponibile', 16, 28)
+      if (!annullato) disegna()
     }
     img.src = urlStatica
+
+    // Disegno subito, senza aspettare la rete: la falda compare all'istante e
+    // l'eventuale foto satellitare si sovrappone dopo, al load.
+    disegna()
 
     return () => {
       annullato = true
