@@ -992,6 +992,11 @@ function Risultato({
                 poligono={verticiSelezionati}
                 layoutIniziale={layoutInizialeFalda}
                 onLayoutChange={onLayoutChange}
+                onPoligonoChange={
+                  falda
+                    ? (vertici) => onPoligonoCambiato(falda.indice, [...vertici])
+                    : undefined
+                }
                 onTrascinamentoChange={setTrascinamentoModuli}
               />
             </div>

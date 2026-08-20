@@ -38,6 +38,9 @@ const MAP_W = 640 * SCALE
 const MAP_H = 420 * SCALE
 const ZOOM_VISTA_MIN = 1
 const ZOOM_VISTA_MAX = 5
+/** Maniglia di vertice della falda: raggio disegnato e raggio di presa (px CSS). */
+const RAGGIO_MANIGLIA = 6
+const PRESA_MANIGLIA = 14
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
@@ -92,6 +95,11 @@ type DragMode =
       y0: number
       pan0: { x: number; y: number }
     }
+  | {
+      tipo: 'vertice'
+      /** Indice del vertice della falda trascinato sulla foto Solar. */
+      indice: number
+    }
 
 export type LayoutModuliCorrente = {
   readonly faldaIndice: number
@@ -108,6 +116,7 @@ export function EditorModuli({
   poligono,
   layoutIniziale,
   onLayoutChange,
+  onPoligonoChange,
   onTrascinamentoChange,
 }: {
   falda: FaldaTetto | null
@@ -115,6 +124,13 @@ export function EditorModuli({
   /** Layout già salvato per questa falda (multi-falda: non perdere il lavoro). */
   layoutIniziale?: LayoutModuliCorrente | null
   onLayoutChange?: (layout: LayoutModuliCorrente | null) => void
+  /**
+   * Vertici della falda modificati trascinandoli **sulla foto Solar**. È la fonte
+   * unica: la foto Solar è co-registrata con la propria geometria, quindi ciò che
+   * si regola qui combacia con l'anteprima e col PDF, senza lo scarto di
+   * parallasse che nasce tracciando sul satellite Google Maps (altro scatto).
+   */
+  onPoligonoChange?: (punti: readonly Coordinate[]) => void
   /** true mentre si spostano moduli: il parent non deve cambiare falda. */
   onTrascinamentoChange?: (attivo: boolean) => void
 }) {
@@ -228,7 +244,12 @@ export function EditorModuli({
   const moduliRef = useRef(moduli)
   const selezionatiRef = useRef(selezionati)
   const onLayoutChangeRef = useRef(onLayoutChange)
+  const onPoligonoChangeRef = useRef(onPoligonoChange)
   const onTrascinamentoChangeRef = useRef(onTrascinamentoChange)
+  // Copia viva del poligono: durante il trascinamento di un vertice la si muta
+  // e ridisegna, senza rimontare (centro/zoom della foto restano fermi finché
+  // non si rilascia). Al rilascio si notifica il parent, che aggiorna il prop.
+  const poligonoRef = useRef<readonly Coordinate[] | null>(poligono)
   const formatoIdRef = useRef(formatoId)
   const quantitaRef = useRef(quantita)
   const landscapeRef = useRef(landscape)
@@ -241,7 +262,12 @@ export function EditorModuli({
   }, [moduli, selezionati])
 
   useEffect(() => {
+    poligonoRef.current = poligono
+  }, [poligono])
+
+  useEffect(() => {
     onLayoutChangeRef.current = onLayoutChange
+    onPoligonoChangeRef.current = onPoligonoChange
     onTrascinamentoChangeRef.current = onTrascinamentoChange
     formatoIdRef.current = formatoId
     quantitaRef.current = quantita
@@ -250,6 +276,7 @@ export function EditorModuli({
     faldaIndiceRef.current = falda?.indice ?? null
   }, [
     onLayoutChange,
+    onPoligonoChange,
     onTrascinamentoChange,
     formatoId,
     quantita,
@@ -397,8 +424,9 @@ export function EditorModuli({
       ctx.fillText('Vista satellitare non disponibile (UE) — falda e moduli in scala', 14, 22)
     }
 
+    const punti = poligonoRef.current ?? poligono ?? []
     ctx.beginPath()
-    poligono.forEach((c, i) => {
+    punti.forEach((c, i) => {
       const p = toScreen(c)
       if (i === 0) ctx.moveTo(p.x, p.y)
       else ctx.lineTo(p.x, p.y)
@@ -409,6 +437,21 @@ export function EditorModuli({
     ctx.lineWidth = 1.5
     ctx.fill()
     ctx.stroke()
+
+    // Maniglie dei vertici: si trascinano per incollare la falda al tetto della
+    // foto Solar (fonte unica, co-registrata con l'anteprima e col PDF).
+    if (onPoligonoChangeRef.current) {
+      punti.forEach((c) => {
+        const p = toScreen(c)
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, RAGGIO_MANIGLIA, 0, Math.PI * 2)
+        ctx.fillStyle = '#e8c765'
+        ctx.strokeStyle = 'rgba(10,21,40,0.9)'
+        ctx.lineWidth = 2
+        ctx.fill()
+        ctx.stroke()
+      })
+    }
 
     const sel = selezionatiRef.current
     moduliRef.current.forEach((m, i) => {
@@ -512,6 +555,26 @@ export function EditorModuli({
       return null
     }
 
+    // Vertice della falda più vicino al puntatore, se entro la presa. Ha priorità
+    // sui moduli: le maniglie stanno sopra, e regolare la falda è l'atto raro e
+    // deliberato che qui va reso possibile.
+    const hitVertice = (x: number, y: number): number | null => {
+      const proj = proiezioneRef.current
+      const punti = poligonoRef.current
+      if (!proj || !punti || !onPoligonoChangeRef.current) return null
+      let migliore: number | null = null
+      let minDist = PRESA_MANIGLIA
+      punti.forEach((c, i) => {
+        const p = proj.toScreen(c)
+        const d = Math.hypot(p.x - x, p.y - y)
+        if (d <= minDist) {
+          minDist = d
+          migliore = i
+        }
+      })
+      return migliore
+    }
+
     const intersecaMarquee = (
       pts: { x: number; y: number }[],
       box: { x0: number; y0: number; x1: number; y1: number },
@@ -573,6 +636,17 @@ export function EditorModuli({
     const onDown = (e: PointerEvent) => {
       e.preventDefault()
       const { x, y } = coordsLocale(e)
+
+      // Trascinamento di un vertice della falda: priorità su tutto il resto.
+      const vertice = hitVertice(x, y)
+      if (vertice != null) {
+        dragRef.current = { tipo: 'vertice', indice: vertice }
+        onTrascinamentoChangeRef.current?.(true)
+        canvas.setPointerCapture(e.pointerId)
+        canvas.style.cursor = 'grabbing'
+        return
+      }
+
       const hit = hitTest(x, y)
       const toggle = e.shiftKey || e.metaKey || e.ctrlKey
 
@@ -668,6 +742,17 @@ export function EditorModuli({
         return
       }
 
+      if (drag.tipo === 'vertice') {
+        const proj = proiezioneRef.current
+        const base = poligonoRef.current
+        if (!proj || !base) return
+        const geo = proj.fromScreen(x, y)
+        const next = base.map((c, i) => (i === drag.indice ? geo : c))
+        poligonoRef.current = next
+        disegnaRef.current()
+        return
+      }
+
       const proj = proiezioneRef.current
       if (!proj || !falda) return
       const pointer = proj.fromScreen(x, y)
@@ -735,6 +820,14 @@ export function EditorModuli({
 
       if (drag?.tipo === 'moduli') {
         onTrascinamentoChangeRef.current?.(false)
+      }
+
+      if (drag?.tipo === 'vertice') {
+        onTrascinamentoChangeRef.current?.(false)
+        const punti = poligonoRef.current
+        if (punti) onPoligonoChangeRef.current?.(punti)
+        disegnaRef.current()
+        return
       }
 
       if (pendingCommitRef.current) {
@@ -940,8 +1033,8 @@ export function EditorModuli({
         <div>
           <h3 className="text-sm font-medium">Anteprima moduli</h3>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-            Falda {falda.indice + 1} · zoom rotella/± · trascina (calamita) ·
-            Shift/⌘ o riquadro
+            Falda {falda.indice + 1} · trascina i punti gialli per allineare la
+            falda al tetto · zoom rotella/± · Shift/⌘ o riquadro
             {schermoIntero ? ' · Esc per uscire' : null}
           </p>
         </div>
@@ -1180,10 +1273,12 @@ export function EditorModuli({
 
       {!schermoIntero ? (
         <p className="text-[11px] leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-          Rotella o ± per zoom; con zoom attivo trascina lo sfondo per
-          spostare la vista (Shift+trascina = riquadro). Rotazione fine ±1° /
-          ±5° (tasti [ ] , anche Shift). Vicini entro ~30 cm si attaccano.
-          Anteprima indicativa.
+          Trascina i punti gialli per far combaciare la falda col tetto di
+          questa foto (è la stessa che finisce nel PDF), poi «Ridisponi» per
+          rimettere i moduli dentro. Rotella o ± per zoom; con zoom attivo
+          trascina lo sfondo per spostare la vista (Shift+trascina = riquadro).
+          Rotazione fine ±1° / ±5° (tasti [ ] , anche Shift). Vicini entro
+          ~30 cm si attaccano.
         </p>
       ) : null}
     </div>
