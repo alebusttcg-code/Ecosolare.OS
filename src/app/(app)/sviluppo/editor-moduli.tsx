@@ -21,6 +21,14 @@ import {
 const ZOOM_DEFAULT = 20
 const SCALE = 2
 /**
+ * Versione dello sfondo aereo. La foto è cache-abile 24h lato client (una foto
+ * di un tetto non cambia), ma quando cambia il *ricampionamento* — proiezione,
+ * zoom adattivo, skew — gli stessi parametri servirebbero una foto vecchia,
+ * disallineata dal poligono ridisegnato con la logica nuova. Bumpare qui cambia
+ * l'URL e invalida la cache a ogni rilascio che tocca `foto-tetto.ts`.
+ */
+const VERSIONE_SFONDO = '4'
+/**
  * Dimensioni della Static Map richiesta (640×420 @ scale 2). Sono note a priori:
  * così la proiezione geo→canvas regge anche quando l'immagine satellitare non
  * arriva — dal 2025 Google blocca il satellite sulla Static Maps API in UE, ma
@@ -321,7 +329,7 @@ export function EditorModuli({
   }, [falda?.indice, notificaLayoutAlParent])
 
   const urlStatica = centro
-    ? `/api/sviluppo/mappa?lat=${centro.latitude}&lng=${centro.longitude}&zoom=${zoom}&marker=0`
+    ? `/api/sviluppo/mappa?lat=${centro.latitude}&lng=${centro.longitude}&zoom=${zoom}&marker=0&v=${VERSIONE_SFONDO}`
     : null
 
   const disegna = useCallback(() => {
