@@ -32,8 +32,15 @@ interface RgbRaster {
   readonly r: ArrayLike<number>
   readonly g: ArrayLike<number>
   readonly b: ArrayLike<number>
-  /** Estensione in WGS84 (approssimazione valida sulla piccola area di un tetto). */
-  readonly bounds: { south: number; north: number; west: number; east: number }
+  /**
+   * lat/lng → pixel del raster, con la **proiezione vera** del GeoTIFF.
+   *
+   * Prima si campionava con un'interpolazione lineare sul bounding box in
+   * WGS84: ignorava la rotazione della griglia proiettata (UTM) rispetto al nord
+   * vero — sul tetto, ai bordi, qualche pixel di skew, visibile allo zoom. Qui si
+   * proietta il punto nel CRS del raster e si usa l'affine reale: nessuno scarto.
+   */
+  readonly colRow: (lat: number, lng: number) => { col: number; row: number }
 }
 
 async function parseRgb(buffer: ArrayBuffer): Promise<RgbRaster> {
@@ -48,26 +55,26 @@ async function parseRgb(buffer: ArrayBuffer): Promise<RgbRaster> {
   const b = (rasters[2] as ArrayLike<number> | undefined) ?? r
 
   const projObj = geokeysToProj4.toProj4(image.getGeoKeys())
-  const projezione = proj4(projObj.proj4, 'WGS84')
+  // Trasformazione WGS84 → CRS del raster (l'inverso di quella usata per il DSM).
+  const versoCrs = proj4('WGS84', projObj.proj4)
   const box = image.getBoundingBox()
   const sx = projObj.coordinatesConversionParameters.x
   const sy = projObj.coordinatesConversionParameters.y
-  const sw = projezione.forward({ x: box[0]! * sx, y: box[1]! * sy })
-  const ne = projezione.forward({ x: box[2]! * sx, y: box[3]! * sy })
+  const minX = Math.min(box[0]! * sx, box[2]! * sx)
+  const maxX = Math.max(box[0]! * sx, box[2]! * sx)
+  const minY = Math.min(box[1]! * sy, box[3]! * sy)
+  const maxY = Math.max(box[1]! * sy, box[3]! * sy)
 
-  return {
-    width,
-    height,
-    r,
-    g,
-    b,
-    bounds: {
-      south: Math.min(sw.y, ne.y),
-      north: Math.max(sw.y, ne.y),
-      west: Math.min(sw.x, ne.x),
-      east: Math.max(sw.x, ne.x),
-    },
+  const colRow = (lat: number, lng: number) => {
+    const p = versoCrs.forward({ x: lng, y: lat })
+    return {
+      col: ((p.x - minX) / (maxX - minX)) * (width - 1),
+      // Riga 0 = nord (maxY) in un GeoTIFF north-up.
+      row: ((maxY - p.y) / (maxY - minY)) * (height - 1),
+    }
   }
+
+  return { width, height, r, g, b, colRow }
 }
 
 function ottetto(v: number): number {
@@ -141,33 +148,34 @@ export async function fotoTettoPng(req: FotoTettoRichiesta): Promise<Buffer | nu
     return null
   }
 
-  const dLngX = (gX.longitude - g00.longitude) / (W - 1)
-  const dLatX = (gX.latitude - g00.latitude) / (W - 1)
-  const dLngY = (gY.longitude - g00.longitude) / (H - 1)
-  const dLatY = (gY.latitude - g00.latitude) / (H - 1)
+  // (col,row) del raster ai tre angoli, con la proiezione vera del GeoTIFF. La
+  // mappa target→raster è affine sulla piccola area del tetto: la ricostruiamo
+  // per interpolazione da questi tre punti — precisa e veloce (niente proj4 per
+  // pixel, niente skew UTM).
+  const cr00 = rgb.colRow(g00.latitude, g00.longitude)
+  const crX = rgb.colRow(gX.latitude, gX.longitude)
+  const crY = rgb.colRow(gY.latitude, gY.longitude)
+  const dColX = (crX.col - cr00.col) / (W - 1)
+  const dRowX = (crX.row - cr00.row) / (W - 1)
+  const dColY = (crY.col - cr00.col) / (H - 1)
+  const dRowY = (crY.row - cr00.row) / (H - 1)
 
-  const spanLng = rgb.bounds.east - rgb.bounds.west
-  const spanLat = rgb.bounds.north - rgb.bounds.south
   const out = new Uint8Array(W * H * 3)
 
   for (let ty = 0; ty < H; ty += 1) {
-    const lngRiga = g00.longitude + dLngY * ty
-    const latRiga = g00.latitude + dLatY * ty
+    const colRiga = cr00.col + dColY * ty
+    const rowRiga = cr00.row + dRowY * ty
     for (let tx = 0; tx < W; tx += 1) {
-      const lng = lngRiga + dLngX * tx
-      const lat = latRiga + dLatX * tx
-      const fx = (lng - rgb.bounds.west) / spanLng
-      const fy = (rgb.bounds.north - lat) / spanLat
       const o = (ty * W + tx) * 3
-      if (fx < 0 || fx > 1 || fy < 0 || fy > 1) {
+      const col = Math.round(colRiga + dColX * tx)
+      const row = Math.round(rowRiga + dRowX * tx)
+      if (col < 0 || col >= rgb.width || row < 0 || row >= rgb.height) {
         // Fuori dalla foto: neutro scuro (bordo dell'inquadratura).
         out[o] = 10
         out[o + 1] = 21
         out[o + 2] = 40
         continue
       }
-      const col = Math.min(rgb.width - 1, Math.round(fx * (rgb.width - 1)))
-      const row = Math.min(rgb.height - 1, Math.round(fy * (rgb.height - 1)))
       const idx = row * rgb.width + col
       out[o] = ottetto(rgb.r[idx]!)
       out[o + 1] = ottetto(rgb.g[idx]!)
