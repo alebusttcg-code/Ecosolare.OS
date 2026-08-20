@@ -28,10 +28,9 @@ const SCALE = 2
  */
 const VERSIONE_SFONDO = process.env.NEXT_PUBLIC_SFONDO_VER ?? 'dev'
 /**
- * Dimensioni della Static Map richiesta (640×420 @ scale 2). Sono note a priori:
- * così la proiezione geo→canvas regge anche quando l'immagine satellitare non
- * arriva — dal 2025 Google blocca il satellite sulla Static Maps API in UE, ma
- * la falda e i moduli devono restare disegnabili lo stesso, in scala.
+ * Dimensioni del frame della foto aerea (640×420 @ scale 2). Sono note a priori:
+ * così la proiezione geo→canvas regge anche quando la foto Solar non arriva
+ * (zona senza imagery), e falda e moduli restano disegnabili lo stesso, in scala.
  */
 const MAP_W = 640 * SCALE
 const MAP_H = 420 * SCALE
@@ -356,7 +355,7 @@ export function EditorModuli({
     }
   }, [falda?.indice, notificaLayoutAlParent])
 
-  const urlStatica = centro
+  const urlFoto = centro
     ? `/api/sviluppo/mappa?lat=${centro.latitude}&lng=${centro.longitude}&zoom=${zoom}&marker=0&v=${VERSIONE_SFONDO}`
     : null
 
@@ -526,7 +525,7 @@ export function EditorModuli({
   // la foto lampeggerebbe. Il ridisegno su modifica falda passa da `disegnaRef`
   // (effetti sotto), riusando l'immagine già caricata.
   useEffect(() => {
-    if (!urlStatica) return
+    if (!urlFoto) return
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -541,7 +540,7 @@ export function EditorModuli({
     img.onerror = () => {
       if (!annullato) disegnaRef.current()
     }
-    img.src = urlStatica
+    img.src = urlFoto
 
     // Disegno subito, senza aspettare la rete: la falda compare all'istante e
     // l'eventuale foto satellitare si sovrappone dopo, al load.
@@ -550,7 +549,7 @@ export function EditorModuli({
     return () => {
       annullato = true
     }
-  }, [urlStatica])
+  }, [urlFoto])
 
   useEffect(() => {
     disegna()
