@@ -472,6 +472,36 @@ export function pixelAGeo(
   return daMetriLocali(e, n, centro)
 }
 
+/**
+ * Il massimo zoom (intero) a cui tutti i punti entrano nel frame, con margine.
+ *
+ * Serve a inquadrare l'anteprima moduli sulla **falda** invece che su un'area
+ * fissa: una singola falda in un frame da ~70 m resta minuscola, persa nel
+ * contorno. Con lo zoom giusto riempie la vista, come sulla mappa.
+ */
+export function zoomPerContenere(
+  punti: readonly Coordinate[],
+  centro: Coordinate,
+  larghezzaPx: number,
+  altezzaPx: number,
+  scale: number,
+  margine = 0.1,
+  zoomMin = 17,
+  zoomMax = 21,
+): number {
+  if (punti.length === 0) return zoomMax
+  const mx = larghezzaPx * margine
+  const my = altezzaPx * margine
+  for (let zoom = zoomMax; zoom >= zoomMin; zoom -= 1) {
+    const dentro = punti.every((p) => {
+      const { x, y } = geoAPixel(p, centro, zoom, scale, larghezzaPx, altezzaPx)
+      return x >= mx && x <= larghezzaPx - mx && y >= my && y <= altezzaPx - my
+    })
+    if (dentro) return zoom
+  }
+  return zoomMin
+}
+
 export function puntoInRettangoloSchermo(
   x: number,
   y: number,

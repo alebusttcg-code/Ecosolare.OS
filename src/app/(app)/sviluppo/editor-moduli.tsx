@@ -11,12 +11,14 @@ import {
   ruotaModulo,
   snapCentroModulo,
   spostaModulo,
+  zoomPerContenere,
   type Coordinate,
   type FaldaTetto,
   type RettangoloModulo,
 } from '@/lib/solar'
 
-const ZOOM = 20
+/** Zoom di ripiego quando non c'è ancora un poligono da inquadrare. */
+const ZOOM_DEFAULT = 20
 const SCALE = 2
 /**
  * Dimensioni della Static Map richiesta (640×420 @ scale 2). Sono note a priori:
@@ -166,6 +168,17 @@ export function EditorModuli({
     [poligono, falda],
   )
 
+  // Zoom che inquadra la falda nel frame, invece di un'area fissa: senza, una
+  // falda piccola resta persa nel contorno (alberi, strada). Si applica sia alla
+  // foto satellitare richiesta sia alla proiezione, quindi restano allineate.
+  const zoom = useMemo(
+    () =>
+      centro && poligono && poligono.length >= 3
+        ? zoomPerContenere(poligono, centro, MAP_W, MAP_H, SCALE)
+        : ZOOM_DEFAULT,
+    [poligono, centro],
+  )
+
   const formato = formatoModuloById(formatoId)
   const faldaKey = falda?.indice ?? -1
   const seedKey = `${faldaKey}|${formatoId}|${landscape}|${quantita}`
@@ -308,7 +321,7 @@ export function EditorModuli({
   }, [falda?.indice, notificaLayoutAlParent])
 
   const urlStatica = centro
-    ? `/api/sviluppo/mappa?lat=${centro.latitude}&lng=${centro.longitude}&zoom=${ZOOM}&marker=0`
+    ? `/api/sviluppo/mappa?lat=${centro.latitude}&lng=${centro.longitude}&zoom=${zoom}&marker=0`
     : null
 
   const disegna = useCallback(() => {
@@ -352,13 +365,13 @@ export function EditorModuli({
     const mapH = MAP_H
 
     const toScreen = (c: Coordinate) => {
-      const p = geoAPixel(c, centro, ZOOM, SCALE, mapW, mapH)
+      const p = geoAPixel(c, centro, zoom, SCALE, mapW, mapH)
       return { x: ox + p.x * scale, y: oy + p.y * scale }
     }
     const fromScreen = (sx: number, sy: number) => {
       const mx = (sx - ox) / scale
       const my = (sy - oy) / scale
-      return pixelAGeo(mx, my, centro, ZOOM, SCALE, mapW, mapH)
+      return pixelAGeo(mx, my, centro, zoom, SCALE, mapW, mapH)
     }
     proiezioneRef.current = { toScreen, fromScreen }
 
@@ -434,7 +447,7 @@ export function EditorModuli({
       ctx.strokeRect(x, y, bw, bh)
       ctx.setLineDash([])
     }
-  }, [centro, poligono])
+  }, [centro, poligono, zoom])
 
   useEffect(() => {
     disegnaRef.current = disegna

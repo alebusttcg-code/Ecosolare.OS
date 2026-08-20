@@ -33,6 +33,7 @@ export {
   snapModuloTraVicini,
   SOGLIA_SNAP_MODULI_M,
   spostaModulo,
+  zoomPerContenere,
 } from './layout-moduli'
 export {
   FORMATI_MODULO_FV,
