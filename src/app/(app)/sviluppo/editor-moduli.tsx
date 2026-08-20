@@ -4,9 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FORMATI_MODULO_FV,
   formatoModuloById,
-  geoAPixel,
   layoutModuliInFalda,
-  pixelAGeo,
   puntoInRettangoloSchermo,
   ruotaModulo,
   snapCentroModulo,
@@ -16,6 +14,7 @@ import {
   type RettangoloModulo,
 } from '@/lib/solar'
 import { calcolaFrameFoto, clamp, clampPan } from './designer-geometria'
+import { disegnaDesigner, type ProiezioneCanvas } from './disegna-designer'
 
 /** Zoom di ripiego quando non c'è ancora un poligono da inquadrare. */
 const ZOOM_DEFAULT = 20
@@ -43,11 +42,6 @@ const ZOOM_VISTA_INIZIALE = 2
 /** Maniglia di vertice della falda: raggio disegnato e raggio di presa (px CSS). */
 const RAGGIO_MANIGLIA = 6
 const PRESA_MANIGLIA = 14
-
-interface ProiezioneCanvas {
-  toScreen: (c: Coordinate) => { x: number; y: number }
-  fromScreen: (x: number, y: number) => Coordinate
-}
 
 type DragMode =
   | {
@@ -329,158 +323,27 @@ export function EditorModuli({
 
   const disegna = useCallback(() => {
     const canvas = canvasRef.current
-    if (!canvas || !centro || !poligono || poligono.length < 3) {
-      return
-    }
-    // L'immagine satellitare è un di più: senza (Static Maps UE) si disegna
-    // comunque la falda e i moduli su sfondo neutro, in scala.
-    const img = imgRef.current
-    const imgOk = !!img && img.complete && img.naturalWidth > 0
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const w = canvas.clientWidth || 400
-    const h = canvas.clientHeight || 320
-    const mobile =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(max-width: 1023px)').matches
-    const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2)
-    canvas.width = Math.floor(w * dpr)
-    canvas.height = Math.floor(h * dpr)
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-
-    const base = Math.max(w / MAP_W, h / MAP_H)
-    const z = zoomVistaRef.current
-    const scale = base * z
-    let pan = panRef.current
-    const dw = MAP_W * scale
-    const dh = MAP_H * scale
-    if (z <= 1.001) {
-      pan = { x: 0, y: 0 }
-      panRef.current = pan
-    } else {
-      pan = clampPan(w, h, dw, dh, pan)
-      panRef.current = pan
-    }
-    const ox = (w - dw) / 2 + pan.x
-    const oy = (h - dh) / 2 + pan.y
-    const mapW = MAP_W
-    const mapH = MAP_H
-
-    const toScreen = (c: Coordinate) => {
-      const p = geoAPixel(c, centro, zoom, SCALE, mapW, mapH)
-      return { x: ox + p.x * scale, y: oy + p.y * scale }
-    }
-    const fromScreen = (sx: number, sy: number) => {
-      const mx = (sx - ox) / scale
-      const my = (sy - oy) / scale
-      return pixelAGeo(mx, my, centro, zoom, SCALE, mapW, mapH)
-    }
-    proiezioneRef.current = { toScreen, fromScreen }
-
-    ctx.fillStyle = '#050a14'
-    ctx.fillRect(0, 0, w, h)
-    if (imgOk && img) {
-      ctx.drawImage(img, ox, oy, dw, dh)
-    } else {
-      // Ripiego senza satellite: rettangolo neutro nell'area della mappa e un
-      // avviso, così è chiaro perché manca la foto (non è un errore dell'app).
-      ctx.fillStyle = 'rgba(127,178,232,0.05)'
-      ctx.fillRect(ox, oy, dw, dh)
-      ctx.fillStyle = 'rgba(159,176,195,0.85)'
-      ctx.font = '12px system-ui, sans-serif'
-      ctx.fillText('Vista satellitare non disponibile (UE) — falda e moduli in scala', 14, 22)
-    }
-
-    const punti = poligonoRef.current ?? poligono ?? []
-    ctx.beginPath()
-    punti.forEach((c, i) => {
-      const p = toScreen(c)
-      if (i === 0) ctx.moveTo(p.x, p.y)
-      else ctx.lineTo(p.x, p.y)
+    if (!canvas || !centro || !poligono || poligono.length < 3) return
+    const esito = disegnaDesigner({
+      canvas,
+      img: imgRef.current,
+      centro,
+      zoom,
+      scale: SCALE,
+      mapW: MAP_W,
+      mapH: MAP_H,
+      zoomVista: zoomVistaRef.current,
+      pan: panRef.current,
+      poligono: poligonoRef.current ?? poligono,
+      moduli: moduliRef.current,
+      selezionati: selezionatiRef.current,
+      marquee: marqueeRef.current,
+      editabile: !!onPoligonoChangeRef.current,
+      raggioManiglia: RAGGIO_MANIGLIA,
     })
-    ctx.closePath()
-    ctx.fillStyle = 'rgba(217,164,65,0.12)'
-    ctx.strokeStyle = 'rgba(232,199,101,0.85)'
-    ctx.lineWidth = 1.5
-    ctx.fill()
-    ctx.stroke()
-
-    // Maniglie della falda: si trascinano per incollare la falda al tetto della
-    // foto Solar (fonte unica, co-registrata con l'anteprima e col PDF).
-    if (onPoligonoChangeRef.current && punti.length >= 3) {
-      // Punti medi dei lati (vuoti): trascinandoli si inserisce un vertice, per
-      // i tetti non rettangolari. Sotto i vertici pieni, così questi vincono.
-      for (let i = 0; i < punti.length; i++) {
-        const a = toScreen(punti[i]!)
-        const b = toScreen(punti[(i + 1) % punti.length]!)
-        const mx = (a.x + b.x) / 2
-        const my = (a.y + b.y) / 2
-        ctx.beginPath()
-        ctx.arc(mx, my, RAGGIO_MANIGLIA - 1, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(10,21,40,0.65)'
-        ctx.strokeStyle = 'rgba(232,199,101,0.9)'
-        ctx.lineWidth = 1.5
-        ctx.fill()
-        ctx.stroke()
-      }
-      // Vertici (pieni): trascina per spostare, doppio click per eliminare.
-      punti.forEach((c) => {
-        const p = toScreen(c)
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, RAGGIO_MANIGLIA, 0, Math.PI * 2)
-        ctx.fillStyle = '#e8c765'
-        ctx.strokeStyle = 'rgba(10,21,40,0.9)'
-        ctx.lineWidth = 2
-        ctx.fill()
-        ctx.stroke()
-      })
-    }
-
-    const sel = selezionatiRef.current
-    moduliRef.current.forEach((m, i) => {
-      const pts = m.angoli.map(toScreen)
-      const attivo = sel.has(i)
-      ctx.beginPath()
-      pts.forEach((p, pi) => {
-        if (pi === 0) ctx.moveTo(p.x, p.y)
-        else ctx.lineTo(p.x, p.y)
-      })
-      ctx.closePath()
-      ctx.fillStyle = attivo
-        ? 'rgba(232, 199, 101, 0.55)'
-        : 'rgba(30, 58, 95, 0.78)'
-      ctx.strokeStyle = attivo ? '#e8c765' : 'rgba(127, 178, 232, 0.95)'
-      ctx.lineWidth = attivo ? 2 : 1
-      ctx.fill()
-      ctx.stroke()
-
-      const a = pts[0]!
-      const b = pts[1]!
-      const c = pts[2]!
-      const d = pts[3]!
-      ctx.strokeStyle = attivo
-        ? 'rgba(232,199,101,0.55)'
-        : 'rgba(127,178,232,0.4)'
-      ctx.beginPath()
-      ctx.moveTo((a.x + d.x) / 2, (a.y + d.y) / 2)
-      ctx.lineTo((b.x + c.x) / 2, (b.y + c.y) / 2)
-      ctx.stroke()
-    })
-
-    const mq = marqueeRef.current
-    if (mq) {
-      const x = Math.min(mq.x0, mq.x1)
-      const y = Math.min(mq.y0, mq.y1)
-      const bw = Math.abs(mq.x1 - mq.x0)
-      const bh = Math.abs(mq.y1 - mq.y0)
-      ctx.fillStyle = 'rgba(127, 178, 232, 0.15)'
-      ctx.strokeStyle = 'rgba(127, 178, 232, 0.9)'
-      ctx.lineWidth = 1
-      ctx.setLineDash([4, 3])
-      ctx.fillRect(x, y, bw, bh)
-      ctx.strokeRect(x, y, bw, bh)
-      ctx.setLineDash([])
+    if (esito) {
+      proiezioneRef.current = esito.proiezione
+      panRef.current = esito.pan
     }
   }, [centro, poligono, zoom])
 

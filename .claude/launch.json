@@ -4,8 +4,8 @@
     {
       "name": "ecosolare",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3007"],
-      "port": 3007
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
     }
   ]
 }
