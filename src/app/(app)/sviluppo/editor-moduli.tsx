@@ -438,9 +438,25 @@ export function EditorModuli({
     ctx.fill()
     ctx.stroke()
 
-    // Maniglie dei vertici: si trascinano per incollare la falda al tetto della
+    // Maniglie della falda: si trascinano per incollare la falda al tetto della
     // foto Solar (fonte unica, co-registrata con l'anteprima e col PDF).
-    if (onPoligonoChangeRef.current) {
+    if (onPoligonoChangeRef.current && punti.length >= 3) {
+      // Punti medi dei lati (vuoti): trascinandoli si inserisce un vertice, per
+      // i tetti non rettangolari. Sotto i vertici pieni, così questi vincono.
+      for (let i = 0; i < punti.length; i++) {
+        const a = toScreen(punti[i]!)
+        const b = toScreen(punti[(i + 1) % punti.length]!)
+        const mx = (a.x + b.x) / 2
+        const my = (a.y + b.y) / 2
+        ctx.beginPath()
+        ctx.arc(mx, my, RAGGIO_MANIGLIA - 1, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(10,21,40,0.65)'
+        ctx.strokeStyle = 'rgba(232,199,101,0.9)'
+        ctx.lineWidth = 1.5
+        ctx.fill()
+        ctx.stroke()
+      }
+      // Vertici (pieni): trascina per spostare, doppio click per eliminare.
       punti.forEach((c) => {
         const p = toScreen(c)
         ctx.beginPath()
@@ -539,7 +555,7 @@ export function EditorModuli({
     const canvas = canvasRef.current
     if (!canvas || !falda || !poligono || !centro) return
 
-    const coordsLocale = (e: PointerEvent) => {
+    const coordsLocale = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
       return { x: e.clientX - rect.left, y: e.clientY - rect.top }
     }
@@ -572,6 +588,28 @@ export function EditorModuli({
           migliore = i
         }
       })
+      return migliore
+    }
+
+    // Punto medio del lato più vicino, se entro la presa. Ritorna l'indice del
+    // vertice DOPO cui inserire il nuovo punto (lato i → i+1).
+    const hitMidpoint = (x: number, y: number): number | null => {
+      const proj = proiezioneRef.current
+      const punti = poligonoRef.current
+      if (!proj || !punti || punti.length < 3 || !onPoligonoChangeRef.current) {
+        return null
+      }
+      let migliore: number | null = null
+      let minDist = PRESA_MANIGLIA
+      for (let i = 0; i < punti.length; i++) {
+        const a = proj.toScreen(punti[i]!)
+        const b = proj.toScreen(punti[(i + 1) % punti.length]!)
+        const d = Math.hypot((a.x + b.x) / 2 - x, (a.y + b.y) / 2 - y)
+        if (d <= minDist) {
+          minDist = d
+          migliore = i
+        }
+      }
       return migliore
     }
 
@@ -645,6 +683,28 @@ export function EditorModuli({
         canvas.setPointerCapture(e.pointerId)
         canvas.style.cursor = 'grabbing'
         return
+      }
+
+      // Punto medio di un lato: inserisci un vertice lì e trascinalo subito.
+      const lato = hitMidpoint(x, y)
+      if (lato != null) {
+        const base = poligonoRef.current
+        const proj = proiezioneRef.current
+        if (base && proj) {
+          const nuovo = proj.fromScreen(x, y)
+          const next = [
+            ...base.slice(0, lato + 1),
+            nuovo,
+            ...base.slice(lato + 1),
+          ]
+          poligonoRef.current = next
+          dragRef.current = { tipo: 'vertice', indice: lato + 1 }
+          onTrascinamentoChangeRef.current?.(true)
+          canvas.setPointerCapture(e.pointerId)
+          canvas.style.cursor = 'grabbing'
+          disegnaRef.current()
+          return
+        }
       }
 
       const hit = hitTest(x, y)
@@ -870,11 +930,27 @@ export function EditorModuli({
       applicaZoomSuPunto(e.clientX, e.clientY, zoomVistaRef.current * factor)
     }
 
+    // Doppio click su un vertice = eliminalo (una falda resta almeno un
+    // triangolo). Serve per i tetti che vanno semplificati dopo un inserimento.
+    const onDblClick = (e: MouseEvent) => {
+      const punti = poligonoRef.current
+      if (!punti || punti.length <= 3 || !onPoligonoChangeRef.current) return
+      const { x, y } = coordsLocale(e)
+      const v = hitVertice(x, y)
+      if (v == null) return
+      e.preventDefault()
+      const next = punti.filter((_, i) => i !== v)
+      poligonoRef.current = next
+      onPoligonoChangeRef.current(next)
+      disegnaRef.current()
+    }
+
     canvas.addEventListener('pointerdown', onDown)
     canvas.addEventListener('pointermove', onMove)
     canvas.addEventListener('pointerup', onUp)
     canvas.addEventListener('pointercancel', onUp)
     canvas.addEventListener('wheel', onWheel, { passive: false })
+    canvas.addEventListener('dblclick', onDblClick)
     canvas.style.cursor = 'grab'
     zoomAtRef.current = applicaZoomSuPunto
 
@@ -884,6 +960,7 @@ export function EditorModuli({
       canvas.removeEventListener('pointerup', onUp)
       canvas.removeEventListener('pointercancel', onUp)
       canvas.removeEventListener('wheel', onWheel)
+      canvas.removeEventListener('dblclick', onDblClick)
       zoomAtRef.current = null
     }
   }, [
@@ -1274,11 +1351,12 @@ export function EditorModuli({
       {!schermoIntero ? (
         <p className="text-[11px] leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
           Trascina i punti gialli per far combaciare la falda col tetto di
-          questa foto (è la stessa che finisce nel PDF), poi «Ridisponi» per
-          rimettere i moduli dentro. Rotella o ± per zoom; con zoom attivo
-          trascina lo sfondo per spostare la vista (Shift+trascina = riquadro).
-          Rotazione fine ±1° / ±5° (tasti [ ] , anche Shift). Vicini entro
-          ~30 cm si attaccano.
+          questa foto (è la stessa che finisce nel PDF); i punti vuoti sui lati
+          aggiungono un vertice, doppio click su un vertice lo elimina. Poi
+          «Ridisponi» per rimettere i moduli dentro. Rotella o ± per zoom; con
+          zoom attivo trascina lo sfondo per spostare la vista (Shift+trascina =
+          riquadro). Rotazione fine ±1° / ±5° (tasti [ ] , anche Shift). Vicini
+          entro ~30 cm si attaccano.
         </p>
       ) : null}
     </div>

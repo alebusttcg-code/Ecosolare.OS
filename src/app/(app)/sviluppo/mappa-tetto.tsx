@@ -116,7 +116,11 @@ function stileFalda(selezionata: boolean, editingAttivo: boolean) {
       fillColor: '#d9a441',
       fillOpacity: 0.28,
       zIndex: 200,
-      editable: true,
+      // Qui NON si editano i vertici: il satellite Google Maps non è
+      // ortorettificato, tracciare su un tetto in quota falserebbe le coordinate
+      // e lo scarto salterebbe fuori sulla foto Solar (e nel PDF). La falda si
+      // rifinisce a destra, sull'ortofoto Solar, che è l'immagine del PDF.
+      editable: false,
       clickable: true,
     }
   }
@@ -678,7 +682,8 @@ export function MappaTetto({
         <div>
           <h3 className="text-sm font-medium">Mappa del tetto</h3>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-            Seleziona una falda (marker o tabella), poi trascina i vertici
+            Seleziona la falda (marker o tabella); i vertici si rifiniscono a
+            destra, sulla foto Solar (è quella del PDF)
             {troncate
               ? ` · mostrate le ${selezionate.length} falde più ampie su ${analisi.falde.length}`
               : null}
@@ -960,11 +965,12 @@ export function MappaTetto({
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-        Oro tenue = edificio. Blu = falde. La falda selezionata (oro) è
-        editabile: i metri sui lati sono il rilievo del poligono. Inclinazione
-        ed esposizione sono stime.
+        Oro tenue = edificio. Blu = falde. La falda selezionata (oro) mostra qui
+        i metri dei lati; i vertici si rifiniscono a destra sull&apos;ortofoto
+        Solar (raddrizzata, uguale al PDF). Inclinazione ed esposizione sono
+        stime.
         {modo === 'interattiva'
-          ? ' «Cambia tetto» (in 2D) ripunta un altro edificio entro circa 200 m. In vista 3D i poligoni restano visibili; per spostarli torna a 2D.'
+          ? ' «Cambia tetto» (in 2D) ripunta un altro edificio entro circa 200 m. In vista 3D i poligoni restano visibili.'
           : null}
       </p>
 
