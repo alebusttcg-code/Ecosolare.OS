@@ -862,10 +862,6 @@ function Risultato({
     griglia: GrigliaDsm | null
     errore: string | null
   }>({ chiave: '', stato: 'caricamento', griglia: null, errore: null })
-  /** Su telefono mappa e moduli insieme saturano CPU/GPU: una vista per volta. */
-  const [vistaMobile, setVistaMobile] = useState<'mappa' | 'moduli'>('mappa')
-  /** null = non ancora misurato (mostra entrambe, evita flash desktop). */
-  const [desktop, setDesktop] = useState<boolean | null>(null)
   /** Durante lo spostamento moduli non si cambia falda (evita perdite). */
   const [trascinamentoModuli, setTrascinamentoModuli] = useState(false)
   const selezionaFalda = useCallback(
@@ -876,16 +872,6 @@ function Risultato({
     [onSeleziona, trascinamentoModuli],
   )
 
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)')
-    const sync = () => setDesktop(mq.matches)
-    sync()
-    mq.addEventListener('change', sync)
-    return () => mq.removeEventListener('change', sync)
-  }, [])
-
-  const mostraMappa = desktop !== false || vistaMobile === 'mappa'
-  const mostraModuli = desktop !== false || vistaMobile === 'moduli'
 
   useEffect(() => {
     let annullato = false
@@ -931,46 +917,16 @@ function Risultato({
 
   return (
     <div className="space-y-4">
-      <Card title="Mappa e anteprima moduli">
-        <div
-          className="mb-3 flex gap-1 rounded-lg border p-1 lg:hidden"
-          style={{ borderColor: 'var(--bordo)', background: 'rgba(5,10,20,0.45)' }}
-          role="tablist"
-          aria-label="Vista mobile"
-        >
-          {(
-            [
-              ['mappa', 'Mappa'],
-              ['moduli', 'Moduli'],
-            ] as const
-          ).map(([id, label]) => {
-            const attivo = vistaMobile === id
-            return (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={attivo}
-                onClick={() => setVistaMobile(id)}
-                className="flex-1 rounded-md px-3 py-2 text-xs font-medium transition"
-                style={{
-                  background: attivo
-                    ? 'rgba(217, 164, 65, 0.18)'
-                    : 'transparent',
-                  color: attivo ? '#e8c765' : 'var(--testo-tenue)',
-                  boxShadow: attivo
-                    ? 'inset 0 0 0 1px rgba(232, 199, 101, 0.35)'
-                    : undefined,
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </div>
-        <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-          {mostraMappa && (
-            <div className="min-w-0">
+      <Card
+        title={falda ? `Designer falda ${falda.indice + 1}` : 'Seleziona la falda'}
+      >
+        {falda == null ? (
+          <div className="min-w-0">
+            <p className="mb-3 text-xs" style={{ color: 'var(--testo-fioco)' }}>
+              Seleziona una falda — dai marker sulla mappa o dalla tabella qui
+              sotto — per aprire il designer e regolarne il perimetro sulla foto
+              aerea.
+            </p>
             <MappaTetto
               analisi={analisiVista}
               poligoni={poligoni}
@@ -982,26 +938,34 @@ function Risultato({
               onPuntoTetto={onPuntoTetto}
               ripresaInCorso={ripresaInCorso}
             />
-            </div>
-          )}
-          {mostraModuli && (
-            <div className="min-w-0">
-              <EditorModuli
-                key={falda?.indice ?? 'nessuna'}
-                falda={falda}
-                poligono={verticiSelezionati}
-                layoutIniziale={layoutInizialeFalda}
-                onLayoutChange={onLayoutChange}
-                onPoligonoChange={
-                  falda
-                    ? (vertici) => onPoligonoCambiato(falda.indice, [...vertici])
-                    : undefined
-                }
-                onTrascinamentoChange={setTrascinamentoModuli}
-              />
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="min-w-0 space-y-3">
+            <button
+              type="button"
+              onClick={() => selezionaFalda(null)}
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition hover:brightness-125"
+              style={{
+                borderColor: 'var(--bordo)',
+                background: 'rgba(5,10,20,0.45)',
+                color: 'var(--testo-tenue)',
+              }}
+            >
+              ← Cambia falda
+            </button>
+            <EditorModuli
+              key={falda.indice}
+              falda={falda}
+              poligono={verticiSelezionati}
+              layoutIniziale={layoutInizialeFalda}
+              onLayoutChange={onLayoutChange}
+              onPoligonoChange={(vertici) =>
+                onPoligonoCambiato(falda.indice, [...vertici])
+              }
+              onTrascinamentoChange={setTrascinamentoModuli}
+            />
+          </div>
+        )}
         <p className="mt-3 text-xs" style={{ color: 'var(--testo-fioco)' }}>
           {dsmStato === 'caricamento'
             ? 'Preparazione quote del tetto…'
