@@ -11,11 +11,11 @@ import {
   ruotaModulo,
   snapCentroModulo,
   spostaModulo,
-  zoomPerContenere,
   type Coordinate,
   type FaldaTetto,
   type RettangoloModulo,
 } from '@/lib/solar'
+import { calcolaFrameFoto, clamp, clampPan } from './designer-geometria'
 
 /** Zoom di ripiego quando non c'è ancora un poligono da inquadrare. */
 const ZOOM_DEFAULT = 20
@@ -43,33 +43,6 @@ const ZOOM_VISTA_INIZIALE = 2
 /** Maniglia di vertice della falda: raggio disegnato e raggio di presa (px CSS). */
 const RAGGIO_MANIGLIA = 6
 const PRESA_MANIGLIA = 14
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
-}
-
-function clampPan(
-  w: number,
-  h: number,
-  dw: number,
-  dh: number,
-  pan: { x: number; y: number },
-) {
-  const maxX = Math.max(0, (dw - w) / 2 + 48)
-  const maxY = Math.max(0, (dh - h) / 2 + 48)
-  return {
-    x: clamp(pan.x, -maxX, maxX),
-    y: clamp(pan.y, -maxY, maxY),
-  }
-}
-
-function centroide(vertici: readonly Coordinate[]): Coordinate {
-  const n = vertici.length || 1
-  return {
-    latitude: vertici.reduce((s, v) => s + v.latitude, 0) / n,
-    longitude: vertici.reduce((s, v) => s + v.longitude, 0) / n,
-  }
-}
 
 interface ProiezioneCanvas {
   toScreen: (c: Coordinate) => { x: number; y: number }
@@ -192,16 +165,11 @@ export function EditorModuli({
   // si rifinisce *dentro* questo frame, preso già un livello più largo del fit
   // esatto (c'è contesto e margine). Il componente si rimonta al cambio falda
   // (`key`), quindi il frame si ricalcola solo quando serve.
-  const frameRef = useRef<{ centro: Coordinate; zoom: number } | null>(null)
-  if (frameRef.current === null && poligono && poligono.length >= 3) {
-    const c = centroide(poligono)
-    frameRef.current = {
-      centro: c,
-      zoom: Math.max(17, zoomPerContenere(poligono, c, MAP_W, MAP_H, SCALE) - 1),
-    }
-  }
-  const centro = frameRef.current?.centro ?? falda?.center ?? null
-  const zoom = frameRef.current?.zoom ?? ZOOM_DEFAULT
+  // Congelato al mount (una volta per falda, grazie al `key`): non segue il
+  // poligono vivo, così spostare un vertice non ricarica la foto.
+  const [frame] = useState(() => calcolaFrameFoto(poligono, MAP_W, MAP_H, SCALE))
+  const centro = frame?.centro ?? falda?.center ?? null
+  const zoom = frame?.zoom ?? ZOOM_DEFAULT
 
   const formato = formatoModuloById(formatoId)
   const faldaKey = falda?.indice ?? -1

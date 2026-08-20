@@ -3,6 +3,7 @@ export { suggerisciIndirizziPlaces } from './places-autocomplete'
 export type { SuggerimentoIndirizzo } from './places-autocomplete'
 export {
   areaPoligonoMetri2,
+  centroide,
   formattaMetri,
   latiPoligono,
   latiRettangolo,

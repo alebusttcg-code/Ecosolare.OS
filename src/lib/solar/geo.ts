@@ -2,6 +2,15 @@ import type { Coordinate, RettangoloGeo } from './tipi'
 
 const RAGGIO_TERRA_M = 6_371_000
 
+/** Centroide (media dei vertici) di un poligono in coordinate WGS84. */
+export function centroide(vertici: readonly Coordinate[]): Coordinate {
+  const n = vertici.length || 1
+  return {
+    latitude: vertici.reduce((s, v) => s + v.latitude, 0) / n,
+    longitude: vertici.reduce((s, v) => s + v.longitude, 0) / n,
+  }
+}
+
 /** Distanza geodetica approssimata (Haversine) in metri. */
 export function metriFra(a: Coordinate, b: Coordinate): number {
   const φ1 = (a.latitude * Math.PI) / 180

@@ -1,4 +1,4 @@
-import { metriFra } from './geo'
+import { centroide, metriFra } from './geo'
 import {
   isQuotaValida,
   quoteAt,
@@ -34,14 +34,6 @@ export interface MeshFalda {
   readonly vertici: readonly PuntoMesh[]
   /** Indici triangoli (triplets). */
   readonly indici: readonly number[]
-}
-
-function centroide(vertici: readonly Coordinate[]): Coordinate {
-  const n = vertici.length || 1
-  return {
-    latitude: vertici.reduce((s, v) => s + v.latitude, 0) / n,
-    longitude: vertici.reduce((s, v) => s + v.longitude, 0) / n,
-  }
 }
 
 /** Sposta un punto di `metri` lungo un bearing (0 = Nord, gradi orari). */

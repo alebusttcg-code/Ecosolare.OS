@@ -1,3 +1,4 @@
+import { centroide } from './geo'
 import type { Coordinate } from './tipi'
 import type { FormatoModuloFv } from './moduli-fv'
 
@@ -18,14 +19,6 @@ export interface LayoutModuli {
   readonly collocati: number
   readonly kWp: number
   readonly areaModuliM2: number
-}
-
-function centroide(vertici: readonly Coordinate[]): Coordinate {
-  const n = vertici.length || 1
-  return {
-    latitude: vertici.reduce((s, v) => s + v.latitude, 0) / n,
-    longitude: vertici.reduce((s, v) => s + v.longitude, 0) / n,
-  }
 }
 
 function aMetriLocali(
