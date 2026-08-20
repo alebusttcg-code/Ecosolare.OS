@@ -35,8 +35,12 @@ const VERSIONE_SFONDO = process.env.NEXT_PUBLIC_SFONDO_VER ?? 'dev'
  */
 const MAP_W = 640 * SCALE
 const MAP_H = 420 * SCALE
+// Vista: 1 = tutta la foto (larga, con contesto), fino a 8× per il dettaglio
+// fine dei vertici. Si parte a metà strada così si può subito sia allargare
+// sia stringere.
 const ZOOM_VISTA_MIN = 1
-const ZOOM_VISTA_MAX = 5
+const ZOOM_VISTA_MAX = 8
+const ZOOM_VISTA_INIZIALE = 2
 /** Maniglia di vertice della falda: raggio disegnato e raggio di presa (px CSS). */
 const RAGGIO_MANIGLIA = 6
 const PRESA_MANIGLIA = 14
@@ -159,7 +163,7 @@ export function EditorModuli({
     () => new Set(),
   )
   const [schermoIntero, setSchermoIntero] = useState(false)
-  const [zoomVista, setZoomVista] = useState(1)
+  const [zoomVista, setZoomVista] = useState(ZOOM_VISTA_INIZIALE)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgRef = useRef<HTMLImageElement | null>(null)
@@ -173,7 +177,7 @@ export function EditorModuli({
   } | null>(null)
   const disegnaRef = useRef<() => void>(() => {})
   const pendingCommitRef = useRef<RettangoloModulo[] | null>(null)
-  const zoomVistaRef = useRef(1)
+  const zoomVistaRef = useRef(ZOOM_VISTA_INIZIALE)
   const panRef = useRef({ x: 0, y: 0 })
   const zoomAtRef = useRef<
     ((clientX: number, clientY: number, nuovoZoom: number) => void) | null
@@ -191,13 +195,14 @@ export function EditorModuli({
     [poligono, falda],
   )
 
-  // Zoom che inquadra la falda nel frame, invece di un'area fissa: senza, una
-  // falda piccola resta persa nel contorno (alberi, strada). Si applica sia alla
-  // foto satellitare richiesta sia alla proiezione, quindi restano allineate.
+  // Zoom della foto: si prende un livello più largo del "fit" esatto della
+  // falda, così attorno resta contesto (tetto intero, vicini) e si può poi sia
+  // allargare sia stringere con la vista. Vale per foto e proiezione insieme,
+  // quindi restano allineate.
   const zoom = useMemo(
     () =>
       centro && poligono && poligono.length >= 3
-        ? zoomPerContenere(poligono, centro, MAP_W, MAP_H, SCALE)
+        ? Math.max(17, zoomPerContenere(poligono, centro, MAP_W, MAP_H, SCALE) - 1)
         : ZOOM_DEFAULT,
     [poligono, centro],
   )
@@ -995,9 +1000,9 @@ export function EditorModuli({
   }
 
   const resetZoom = () => {
-    zoomVistaRef.current = 1
+    zoomVistaRef.current = ZOOM_VISTA_INIZIALE
     panRef.current = { x: 0, y: 0 }
-    setZoomVista(1)
+    setZoomVista(ZOOM_VISTA_INIZIALE)
   }
 
   const ruotaSelezione = useCallback(
@@ -1328,7 +1333,7 @@ export function EditorModuli({
               −
             </button>
           </div>
-          {zoomVista > 1.01 ? (
+          {Math.abs(zoomVista - ZOOM_VISTA_INIZIALE) > 0.01 ? (
             <button
               type="button"
               onClick={resetZoom}
