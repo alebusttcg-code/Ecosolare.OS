@@ -12,6 +12,18 @@ import type { NextConfig } from 'next'
  * delle rotte allineate alle etichette di menu.
  */
 const nextConfig: NextConfig = {
+  /*
+   * Id del deploy esposto al client. La foto aerea del tetto è cache-abile 24h
+   * lato browser (una foto non cambia), ma quando cambia il *ricampionamento* la
+   * stessa URL servirebbe una foto vecchia: l'utente la vedrebbe disallineata
+   * finché non svuota la cache (e in produzione non apriremo l'incognito). Legare
+   * l'URL a questo id fa sì che ogni rilascio la invalidi da solo, senza gesti
+   * manuali. Su Vercel è lo SHA del commit; in locale «dev».
+   */
+  env: {
+    NEXT_PUBLIC_SFONDO_VER:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? 'dev',
+  },
   // Playwright e Chromium serverless non vanno nel bundle webpack: sono pesanti
   // e `@sparticuz/chromium` espone binari nativi.
   serverExternalPackages: ['playwright-core', '@sparticuz/chromium'],

@@ -21,13 +21,12 @@ import {
 const ZOOM_DEFAULT = 20
 const SCALE = 2
 /**
- * Versione dello sfondo aereo. La foto è cache-abile 24h lato client (una foto
- * di un tetto non cambia), ma quando cambia il *ricampionamento* — proiezione,
- * zoom adattivo, skew — gli stessi parametri servirebbero una foto vecchia,
- * disallineata dal poligono ridisegnato con la logica nuova. Bumpare qui cambia
- * l'URL e invalida la cache a ogni rilascio che tocca `foto-tetto.ts`.
+ * Versione dello sfondo aereo, per invalidare la cache 24h della foto a ogni
+ * deploy. È l'id del rilascio (SHA del commit su Vercel), esposto da
+ * `next.config.ts`: così cambia da solo a ogni pubblicazione e l'utente non vede
+ * mai una foto vecchia disallineata, senza dover svuotare cache o usare incognito.
  */
-const VERSIONE_SFONDO = '4'
+const VERSIONE_SFONDO = process.env.NEXT_PUBLIC_SFONDO_VER ?? 'dev'
 /**
  * Dimensioni della Static Map richiesta (640×420 @ scale 2). Sono note a priori:
  * così la proiezione geo→canvas regge anche quando l'immagine satellitare non
