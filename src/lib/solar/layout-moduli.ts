@@ -147,39 +147,63 @@ export function layoutModuliInFalda(opzioni: {
   const stepU = w + gapM
   const stepV = h + gapM
 
-  const moduli: RettangoloModulo[] = []
-
-  for (let v = minV + h / 2; v <= maxV - h / 2 + 1e-6; v += stepV) {
-    for (let u = minU + w / 2; u <= maxU - w / 2 + 1e-6; u += stepU) {
-      if (moduli.length >= richiesti) break
-      if (!rettangoloInPoligonoUV(u, v, w, h, poliUV)) continue
-
-      const hw = w / 2
-      const hh = h / 2
-      const cornersUV = [
-        { u: u - hw, v: v - hh },
-        { u: u + hw, v: v - hh },
-        { u: u + hw, v: v + hh },
-        { u: u - hw, v: v + hh },
-      ]
-
-      const angoli = cornersUV.map((c) => {
-        // Inverso: e/n da u/v
-        const e = c.u * cosA - c.v * sinA
-        const n = c.u * sinA + c.v * cosA
-        return daMetriLocali(e, n, origine)
-      }) as [Coordinate, Coordinate, Coordinate, Coordinate]
-
-      const ce = u * cosA - v * sinA
-      const cn = u * sinA + v * cosA
-      moduli.push({
-        angoli,
-        centro: daMetriLocali(ce, cn, origine),
-        rotazioneDegrees: 0,
-      })
+  const costruisci = (u: number, v: number): RettangoloModulo => {
+    const hw = w / 2
+    const hh = h / 2
+    const cornersUV = [
+      { u: u - hw, v: v - hh },
+      { u: u + hw, v: v - hh },
+      { u: u + hw, v: v + hh },
+      { u: u - hw, v: v + hh },
+    ]
+    const angoli = cornersUV.map((c) => {
+      // Inverso: e/n da u/v
+      const e = c.u * cosA - c.v * sinA
+      const n = c.u * sinA + c.v * cosA
+      return daMetriLocali(e, n, origine)
+    }) as [Coordinate, Coordinate, Coordinate, Coordinate]
+    const ce = u * cosA - v * sinA
+    const cn = u * sinA + v * cosA
+    return {
+      angoli,
+      centro: daMetriLocali(ce, cn, origine),
+      rotazioneDegrees: 0,
     }
-    if (moduli.length >= richiesti) break
   }
+
+  const startU = minU + w / 2
+  const startV = minV + h / 2
+  // Colonne/righe che stanno nel bounding box della falda…
+  const colBbox = Math.max(1, Math.floor((maxU - w / 2 - startU) / stepU + 1e-6) + 1)
+  const rigBbox = Math.max(1, Math.floor((maxV - h / 2 - startV) / stepV + 1e-6) + 1)
+  // …estese quanto basta a piazzare TUTTI i moduli richiesti, anche se sforano il
+  // tetto: qui si mette il numero desiderato e gli esuberi si tolgono a mano se
+  // non ci stanno. Senza, il layout si fermava a quelli che entravano (e sembrava
+  // che «non ce ne stessero di più» pur avendone chiesti di più).
+  let nCol = colBbox
+  let nRig = rigBbox
+  while (nCol * nRig < richiesti) {
+    if (nCol <= nRig) nCol += 1
+    else nRig += 1
+  }
+
+  // Prima i moduli interni alla falda (in ordine di riga: la disposizione ordinata
+  // di sempre), poi gli altri per arrivare al numero richiesto — questi finiscono
+  // ai bordi, pronti da eliminare.
+  const dentro: { u: number; v: number }[] = []
+  const fuori: { u: number; v: number }[] = []
+  for (let r = 0; r < nRig; r += 1) {
+    for (let c = 0; c < nCol; c += 1) {
+      const u = startU + c * stepU
+      const v = startV + r * stepV
+      const punto = { u, v }
+      if (rettangoloInPoligonoUV(u, v, w, h, poliUV)) dentro.push(punto)
+      else fuori.push(punto)
+    }
+  }
+  const moduli = [...dentro, ...fuori]
+    .slice(0, richiesti)
+    .map(({ u, v }) => costruisci(u, v))
 
   const areaUno = formato.larghezzaM * formato.lunghezzaM
   return {

@@ -27,6 +27,26 @@ describe('layoutModuliInFalda', () => {
     )
   })
 
+  it('piazza il numero richiesto anche se sforano il tetto', () => {
+    // Falda piccola: dentro ne entrano pochi, ma chiedendone di più li mette
+    // comunque (gli esuberi ai bordi, da togliere a mano).
+    const piccola = [
+      { latitude: 45.0, longitude: 9.0 },
+      { latitude: 45.0, longitude: 9.00003 },
+      { latitude: 45.00002, longitude: 9.00003 },
+      { latitude: 45.00002, longitude: 9.0 },
+    ]
+    const layout = layoutModuliInFalda({
+      poligono: piccola,
+      formato: FORMATI_MODULO_FV[0]!,
+      quantita: 8,
+      azimuthDegrees: 180,
+    })
+    expect(layout.richiesti).toBe(8)
+    expect(layout.collocati).toBe(8)
+    expect(layout.moduli).toHaveLength(8)
+  })
+
   it('zero se quantità 0', () => {
     const layout = layoutModuliInFalda({
       poligono: falda,
