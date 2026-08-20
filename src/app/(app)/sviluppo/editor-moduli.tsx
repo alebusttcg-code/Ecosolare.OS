@@ -187,25 +187,22 @@ export function EditorModuli({
     zoomVistaRef.current = zoomVista
   }, [zoomVista])
 
-  const centro = useMemo(
-    () =>
-      poligono && poligono.length >= 3
-        ? centroide(poligono)
-        : falda?.center ?? null,
-    [poligono, falda],
-  )
-
-  // Zoom della foto: si prende un livello più largo del "fit" esatto della
-  // falda, così attorno resta contesto (tetto intero, vicini) e si può poi sia
-  // allargare sia stringere con la vista. Vale per foto e proiezione insieme,
-  // quindi restano allineate.
-  const zoom = useMemo(
-    () =>
-      centro && poligono && poligono.length >= 3
-        ? Math.max(17, zoomPerContenere(poligono, centro, MAP_W, MAP_H, SCALE) - 1)
-        : ZOOM_DEFAULT,
-    [poligono, centro],
-  )
+  // Frame della foto (centro + zoom): calcolato UNA volta per falda e congelato.
+  // Se dipendesse dal poligono vivo, spostare un vertice cambierebbe il centroide
+  // → nuova URL → la foto si ricaricherebbe a ogni pallino mosso. Invece la falda
+  // si rifinisce *dentro* questo frame, preso già un livello più largo del fit
+  // esatto (c'è contesto e margine). Il componente si rimonta al cambio falda
+  // (`key`), quindi il frame si ricalcola solo quando serve.
+  const frameRef = useRef<{ centro: Coordinate; zoom: number } | null>(null)
+  if (frameRef.current === null && poligono && poligono.length >= 3) {
+    const c = centroide(poligono)
+    frameRef.current = {
+      centro: c,
+      zoom: Math.max(17, zoomPerContenere(poligono, c, MAP_W, MAP_H, SCALE) - 1),
+    }
+  }
+  const centro = frameRef.current?.centro ?? falda?.center ?? null
+  const zoom = frameRef.current?.zoom ?? ZOOM_DEFAULT
 
   const formato = formatoModuloById(formatoId)
   const faldaKey = falda?.indice ?? -1
@@ -524,8 +521,12 @@ export function EditorModuli({
     disegnaRef.current = disegna
   }, [disegna])
 
+  // Carica la foto SOLO quando cambia l'URL (cioè al cambio falda), non a ogni
+  // modifica del poligono: altrimenti spostare un vertice ricreerebbe l'Image e
+  // la foto lampeggerebbe. Il ridisegno su modifica falda passa da `disegnaRef`
+  // (effetti sotto), riusando l'immagine già caricata.
   useEffect(() => {
-    if (!urlStatica || !centro || !poligono || poligono.length < 3) return
+    if (!urlStatica) return
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -533,23 +534,23 @@ export function EditorModuli({
     const img = new Image()
     imgRef.current = img
     img.onload = () => {
-      if (!annullato) disegna()
+      if (!annullato) disegnaRef.current()
     }
     // Anche in errore (satellite UE bloccato) si ridisegna: `disegna` gestisce
     // l'assenza dell'immagine e mostra comunque falda e moduli.
     img.onerror = () => {
-      if (!annullato) disegna()
+      if (!annullato) disegnaRef.current()
     }
     img.src = urlStatica
 
     // Disegno subito, senza aspettare la rete: la falda compare all'istante e
     // l'eventuale foto satellitare si sovrappone dopo, al load.
-    disegna()
+    disegnaRef.current()
 
     return () => {
       annullato = true
     }
-  }, [urlStatica, centro, poligono, disegna])
+  }, [urlStatica])
 
   useEffect(() => {
     disegna()
