@@ -33,6 +33,7 @@ import type { DefinizioneQuestionario, Risposte } from '@/lib/domain/questionnai
 import { unoAllaVolta } from '@/lib/uno-alla-volta'
 import { AzioniPreventivoLead } from '../azioni-preventivo-lead'
 import { CambiaStato } from './cambia-stato'
+import { FollowUpLead } from './follow-up-lead'
 import { NuovoPreventivo } from './nuovo-preventivo'
 import { NuovoSopralluogo } from './nuovo-sopralluogo'
 import { Prequalifica } from './prequalifica'
@@ -174,6 +175,8 @@ export default async function DettaglioLeadPage({
   const etichetta = (code: string | null) =>
     code ? (stages.find((s) => s.code === code)?.label ?? code) : '—'
   const prossima = attivitaAperte[0]
+  // Un solo follow-up manuale per lead (la sequenza automatica è stata rimossa).
+  const followUpManuale = followUp.find((f) => f.phase === 'manuale') ?? null
 
   const responsabile = riga.proprietario ?? riga.proprietarioEmail ?? '—'
 
@@ -272,49 +275,16 @@ export default async function DettaglioLeadPage({
             )}
           </Card>
 
-          {followUp.length > 0 ? (
-            <Card
-              title="Follow-up"
-              action={
-                <Link href="/follow-up" className="text-xs text-eco-blue-300 hover:underline collega">
-                  Tutti i follow-up
-                </Link>
-              }
-            >
-              <ul className="divide-y" style={{ borderColor: 'var(--bordo-tenue)' }}>
-                {followUp.map((f) => (
-                  <li
-                    key={f.id}
-                    className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className={f.completedAt ? 'line-through opacity-60' : ''}>
-                          {f.subject}
-                        </span>
-                        <Badge tone={f.phase === 'pre_sopralluogo' ? 'attenzione' : 'blu'}>
-                          {f.phaseLabel} · {f.step}/2
-                        </Badge>
-                        {f.isNextAction && !f.completedAt ? (
-                          <Badge tone="positivo">Prossima</Badge>
-                        ) : null}
-                      </div>
-                      <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-fioco)' }}>
-                        {f.completedAt
-                          ? `Chiuso ${formattaData(f.completedAt)}${f.outcome ? ` · ${f.outcome}` : ''}`
-                          : `Scade ${formattaData(f.dueAt)}`}
-                      </div>
-                      {f.notes ? (
-                        <p className="mt-1 text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                          {f.notes}
-                        </p>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ) : null}
+          <Card
+            title="Follow-up"
+            action={
+              <Link href="/follow-up" className="text-xs text-eco-blue-300 hover:underline collega">
+                Tutti i follow-up
+              </Link>
+            }
+          >
+            <FollowUpLead opportunityId={opp.id} corrente={followUpManuale} />
+          </Card>
 
           {templatePrequalifica && definizionePrequalifica ? (
             <Card title="Prequalifica">

@@ -70,6 +70,7 @@ export function scadenzePost(chiusuraSopralluogo: Date): readonly PassoFollowUp[
 export function etichettaFase(phase: string): string {
   if (phase === FASE_PRE) return 'Pre-sopralluogo'
   if (phase === FASE_POST) return 'Post-sopralluogo'
+  if (phase === 'manuale') return 'Follow-up'
   return phase
 }
 
