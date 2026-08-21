@@ -123,35 +123,9 @@ html {
   scrollbar-color: #1e3350 transparent;
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #1e3350, #16273e);
-  border-radius: 9999px;
-  border: 2px solid rgba(5, 10, 20, 0.6);
-  background-clip: padding-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #2f66a8;
-  background-clip: padding-box;
-}
-
 ::selection {
   background: rgba(217, 164, 65, 0.32);
   color: #f5f8fd;
-}
-
-:focus-visible {
-  outline: 2px solid rgba(91, 155, 213, 0.65);
-  outline-offset: 2px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -413,6 +387,13 @@ tr.riga::before {
 tr.riga:hover {
   padding-left: 0;
   background-color: rgba(91, 155, 213, 0.06);
+}
+
+/* La busbar dorata anche sulle righe di tabella: sul <tr> lo pseudo posizionato
+   non regge, ma un'ombra interna sulla prima cella sì — stesso segno delle liste
+   e della testata. */
+tr.riga:hover > *:first-child {
+  box-shadow: inset 3px 0 0 0 #d9a441;
 }
 
 tr.riga:active {
@@ -709,12 +690,12 @@ textarea::placeholder {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1c2d47;
+  background: linear-gradient(180deg, #24507f, #16273e);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #27405f;
+  background: linear-gradient(180deg, #d9a441, #2f66a8);
   background-clip: content-box;
 }
