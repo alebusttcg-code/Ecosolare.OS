@@ -49,7 +49,24 @@ export function Intestazione({
         </div>
         {azione ? <div className="shrink-0">{azione}</div> : null}
       </div>
-      <div className="mt-4 filetto barra-cresce" />
+      {/* Divisore come busbar del modulo: un cappuccio d'oro che sfuma nel
+          filetto. Stesso segno della testata delle Card: l'app parla una lingua. */}
+      <div className="mt-4 flex items-center barra-cresce">
+        <span
+          className="h-[2px] w-10 shrink-0 rounded-full"
+          style={{
+            background: 'linear-gradient(90deg, #f2dda0, #d9a441)',
+            boxShadow: '0 0 8px rgba(217,164,65,0.4)',
+          }}
+        />
+        <span
+          className="h-px flex-1"
+          style={{
+            background:
+              'linear-gradient(90deg, rgba(217,164,65,0.5) 0%, rgba(217,164,65,0.18) 30%, transparent 85%)',
+          }}
+        />
+      </div>
     </div>
   )
 }
@@ -79,6 +96,14 @@ export function Card({
     verde: 'rgba(163,197,99,0.4)',
     rosso: 'rgba(224,133,133,0.4)',
   }
+  // Tick "busbar" prima del titolo: marcatore di sistema, e codifica l'accento.
+  const tick: Record<string, string> = {
+    neutro: 'linear-gradient(180deg,#7fb2e8,#3f7fc4)',
+    blu: 'linear-gradient(180deg,#7fb2e8,#3f7fc4)',
+    oro: 'linear-gradient(180deg,#f2dda0,#d9a441)',
+    verde: 'linear-gradient(180deg,#c0dd8f,#7fa348)',
+    rosso: 'linear-gradient(180deg,#e8a0a0,#c96a6a)',
+  }
 
   return (
     <section
@@ -91,7 +116,14 @@ export function Card({
           className="flex items-center justify-between gap-4 border-b px-5 py-3.5"
           style={{ borderColor: 'var(--bordo-tenue)' }}
         >
-          <h2 className="text-sm font-semibold tracking-wide">{title}</h2>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span
+              aria-hidden
+              className="h-3.5 w-[3px] shrink-0 rounded-full"
+              style={{ background: tick[accento] ?? tick.neutro }}
+            />
+            <h2 className="truncate text-sm font-semibold tracking-wide">{title}</h2>
+          </div>
           {action}
         </header>
       ) : null}
