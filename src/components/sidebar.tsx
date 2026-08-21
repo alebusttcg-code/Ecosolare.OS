@@ -144,7 +144,23 @@ export function Sidebar({
           </Link>
         </div>
         <div className="px-5">
-          <div className="filetto" />
+          {/* Stesso divisore-busbar della testata pagina: coerenza di sistema. */}
+          <div className="flex items-center">
+            <span
+              className="h-[2px] w-10 shrink-0 rounded-full"
+              style={{
+                background: 'linear-gradient(90deg, #f2dda0, #d9a441)',
+                boxShadow: '0 0 8px rgba(217,164,65,0.4)',
+              }}
+            />
+            <span
+              className="h-px flex-1"
+              style={{
+                background:
+                  'linear-gradient(90deg, rgba(217,164,65,0.5) 0%, rgba(217,164,65,0.18) 30%, transparent 85%)',
+              }}
+            />
+          </div>
           <p className="mt-3 eyebrow">Operating System</p>
         </div>
 
@@ -227,6 +243,7 @@ function Gruppo({
                   background: attiva
                     ? 'linear-gradient(180deg, #e8c765, #d9a441)'
                     : 'rgba(91,155,213,0.55)',
+                  boxShadow: attiva ? '0 0 8px rgba(217,164,65,0.55)' : undefined,
                   transform: attiva ? 'scaleY(1)' : 'scaleY(0)',
                   transformOrigin: 'center',
                 }}

@@ -328,6 +328,10 @@ export function Campo({
         style={{
           background: 'rgba(5,10,20,0.6)',
           borderColor: errore ? 'var(--color-eco-red-400)' : 'var(--bordo)',
+          // Il cursore è oro (il sole): un dettaglio che lega anche il form al
+          // marchio. Luce appena percettibile sul filo superiore, per profondità.
+          caretColor: '#e8c765',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
         }}
       />
       {errore ? (
