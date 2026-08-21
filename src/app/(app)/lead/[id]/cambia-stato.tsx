@@ -74,6 +74,12 @@ export function CambiaStato({
       }}
       className="space-y-3"
     >
+      <p className="text-xs leading-relaxed" style={{ color: 'var(--testo-tenue)' }}>
+        Fa avanzare il lead lungo il percorso commerciale (la fase è il badge in
+        alto alla scheda). Non è lo «status cliente»: quello scatta con «Conferma
+        e apri cantiere» su un preventivo accettato.
+      </p>
+
       <select
         value={destinazione}
         onChange={(e) => setDestinazione(e.target.value)}
@@ -86,11 +92,6 @@ export function CambiaStato({
           </option>
         ))}
       </select>
-
-      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--testo-fioco)' }}>
-        Per diventare cliente usa «Conferma e apri cantiere» sul preventivo
-        accettato.
-      </p>
 
       {serveProssimaAzione ? (
         <label className="block">

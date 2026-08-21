@@ -16,6 +16,12 @@ export function useAzioneServer() {
     setInCorso(true)
     void Promise.resolve()
       .then(() => azione())
+      // Senza catch un throw dell'azione diventa un rejection non gestito: niente
+      // in console utile, e per l'utente «non succede nulla». Almeno lo logghiamo
+      // (i chiamanti che vogliono mostrarlo lo avvolgono in try/catch loro).
+      .catch((errore) => {
+        console.error('Azione server fallita:', errore)
+      })
       .finally(() => {
         setInCorso(false)
       })

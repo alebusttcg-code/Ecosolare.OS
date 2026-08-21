@@ -64,18 +64,29 @@ export function Prequalifica({
   function salva() {
     setMessaggio(null)
     esegui(async () => {
-      const risultato = await savePrequalification({ opportunityId, templateId, risposte })
-      if (!risultato.ok) {
-        setMessaggio(Object.values(risultato.errors)[0] ?? 'Salvataggio non riuscito.')
-        return
+      try {
+        const risultato = await savePrequalification({ opportunityId, templateId, risposte })
+        if (!risultato.ok) {
+          setMessaggio(Object.values(risultato.errors)[0] ?? 'Salvataggio non riuscito.')
+          return
+        }
+        setPunteggio({ punteggio: risultato.data.punteggio, massimo: risultato.data.massimo })
+        const parti = [`Salvato. Punteggio ${risultato.data.punteggio}/${risultato.data.massimo}.`]
+        if (risultato.data.campiMancanti.length > 0) {
+          parti.push(`Non compilati: ${risultato.data.campiMancanti.join(', ')}.`)
+        }
+        setMessaggio(parti.join(' '))
+        avvisa('Prequalifica salvata.')
+      } catch (errore) {
+        // Prima l'errore veniva ingoiato (useAzioneServer non ha catch) e sembrava
+        // «non salva senza motivo». Ora si vede sempre cosa è andato storto.
+        console.error('Salvataggio prequalifica fallito:', errore)
+        setMessaggio(
+          errore instanceof Error
+            ? `Salvataggio non riuscito: ${errore.message}`
+            : 'Salvataggio non riuscito per un errore imprevisto.',
+        )
       }
-      setPunteggio({ punteggio: risultato.data.punteggio, massimo: risultato.data.massimo })
-      const parti = [`Salvato. Punteggio ${risultato.data.punteggio}/${risultato.data.massimo}.`]
-      if (risultato.data.campiMancanti.length > 0) {
-        parti.push(`Non compilati: ${risultato.data.campiMancanti.join(', ')}.`)
-      }
-      setMessaggio(parti.join(' '))
-      avvisa('Prequalifica salvata.')
     })
   }
 

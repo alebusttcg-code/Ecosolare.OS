@@ -501,7 +501,7 @@ export default async function DettaglioLeadPage({
         </div>
 
         <div className="space-y-6">
-          <Card title="Cambia stato">
+          <Card title="Fase del lead">
             <CambiaStato
               opportunityId={opp.id}
               statoCorrente={opp.stage}
