@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { Badge, Card, Intestazione, Stat, Vuoto, formattaData } from '@/components/ui'
+import { Badge, Card, Stat, Vuoto, formattaData } from '@/components/ui'
+import { TestataHome } from '@/components/testata-home'
 import type { CurrentUser } from '@/lib/auth/session'
 import { contaScadute, listDaFare } from '@/lib/queries/da-fare'
 import { dataEstesa, primoNome, saluto } from '@/lib/saluto'
@@ -27,10 +28,9 @@ export async function HomeOperativa({ utente }: { utente: CurrentUser }) {
 
   return (
     <div className="space-y-8">
-      <Intestazione
+      <TestataHome
         eyebrow="La tua giornata"
         titolo={`${saluto()}, ${primoNome(utente.name, utente.email)}`}
-        titoloOro
         sottotitolo={`${dataEstesa()} · ${eCantiere ? 'i tuoi cantieri e le cose da fare' : 'i tuoi lead e le cose da fare'}`}
       />
 

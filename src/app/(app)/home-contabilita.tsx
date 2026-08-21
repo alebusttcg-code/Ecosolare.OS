@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { Card, Intestazione, Stat, Vuoto, formattaEuro } from '@/components/ui'
+import { Card, Stat, Vuoto, formattaEuro } from '@/components/ui'
+import { TestataHome } from '@/components/testata-home'
 import type { CurrentUser } from '@/lib/auth/session'
 import { getFattureElenco } from '@/lib/queries/fatture'
 import { dataEstesa, primoNome, saluto } from '@/lib/saluto'
@@ -21,10 +22,9 @@ export async function HomeContabilita({ utente }: { utente: CurrentUser }) {
 
   return (
     <div className="space-y-8">
-      <Intestazione
+      <TestataHome
         eyebrow="Amministrazione"
         titolo={`${saluto()}, ${primoNome(utente.name, utente.email)}`}
-        titoloOro
         sottotitolo={`${dataEstesa()} · fatture da emettere e controllo incassi`}
       />
 

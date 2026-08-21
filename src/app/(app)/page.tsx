@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { Intestazione } from '@/components/ui'
+import { TestataHome } from '@/components/testata-home'
 import { getCurrentUser, guard } from '@/lib/auth/session'
 import { dataEstesa, primoNome, saluto } from '@/lib/saluto'
 import { FasciaSalute } from './dashboard/fascia-salute'
@@ -43,10 +43,9 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-14">
-      <Intestazione
+      <TestataHome
         eyebrow="Dashboard"
         titolo={`${saluto()}, ${nome}`}
-        titoloOro
         sottotitolo={`${dataEstesa()} · economia, performance commerciale e operatività`}
       />
 

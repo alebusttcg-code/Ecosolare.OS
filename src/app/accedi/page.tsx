@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { homeDopoAccesso } from '@/lib/auth/home'
 import { getCurrentUser } from '@/lib/auth/session'
 import { ModuloAccesso } from './modulo'
-import { SfondoSolare } from './sfondo-solare'
+import { SfondoSolare } from '@/components/sfondo-solare'
 
 export const metadata = { title: 'Accedi — EcoSolare OS' }
 

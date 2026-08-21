@@ -10,8 +10,15 @@ import { useEffect, useRef } from 'react'
  *
  * Il logo e la card restano sopra e intatti; un velo garantisce il contrasto.
  * Con `prefers-reduced-motion` la scena è statica, già illuminata.
+ *
+ * `variante`: 'soglia' = login, scena piena e centrata; 'accenno' = banner
+ * discreto (home), più sobrio e con velo a sinistra per il saluto.
  */
-export function SfondoSolare() {
+export function SfondoSolare({
+  variante = 'soglia',
+}: {
+  variante?: 'soglia' | 'accenno'
+} = {}) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -219,18 +226,27 @@ export function SfondoSolare() {
     }
   }, [])
 
+  const accenno = variante === 'accenno'
   return (
     <div
       aria-hidden
       className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
     >
-      <canvas ref={ref} className="h-full w-full" />
+      <canvas
+        ref={ref}
+        className="h-full w-full"
+        style={accenno ? { opacity: 0.9 } : undefined}
+      />
       <div
         className="absolute inset-0"
         style={{
-          background:
-            'radial-gradient(58% 52% at 50% 46%, rgba(4,7,13,0.55), transparent 72%),' +
-            'linear-gradient(180deg, rgba(4,7,13,0.34) 0%, transparent 28%, transparent 66%, rgba(4,7,13,0.62) 100%)',
+          background: accenno
+            ? // banner: velo forte a sinistra (il saluto ci sta sopra), luce a
+              // destra dove non c'è testo — stessa regola di contrasto del login
+              'linear-gradient(90deg, rgba(4,7,13,0.86) 0%, rgba(4,7,13,0.5) 44%, rgba(4,7,13,0.12) 72%),' +
+              'linear-gradient(180deg, rgba(4,7,13,0.42) 0%, transparent 34%, transparent 58%, rgba(4,7,13,0.72) 100%)'
+            : 'radial-gradient(58% 52% at 50% 46%, rgba(4,7,13,0.55), transparent 72%),' +
+              'linear-gradient(180deg, rgba(4,7,13,0.34) 0%, transparent 28%, transparent 66%, rgba(4,7,13,0.62) 100%)',
         }}
       />
     </div>
