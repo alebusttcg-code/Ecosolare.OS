@@ -111,10 +111,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       badge: badge[href] ?? 0,
     }))
 
-  const capacita = [
-    utente.canViewCosts ? 'Vede i costi' : null,
-    utente.isFieldOnly ? 'Solo campo' : null,
-  ]
+  // «Vede i costi» rimosso su richiesta: il ruolo lo dice già. Resta «Solo campo»
+  // per distinguere gli operai di cantiere.
+  const capacita = [utente.isFieldOnly ? 'Solo campo' : null]
     .filter(Boolean)
     .join(' · ')
 
