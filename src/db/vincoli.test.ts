@@ -92,7 +92,7 @@ describe('vincoli di integrita', () => {
       .values({
         code: 'OPP-2026-0002',
         contactId,
-        businessLine: 'elettrico',
+        businessLine: 'fv_pdc',
         title: 'Adeguamento quadro',
         stage: 'nuovo',
         ownerId: userId,
@@ -125,7 +125,7 @@ describe('vincoli di integrita', () => {
       db.insert(opportunities).values({
         code: 'OPP-2026-0001',
         contactId,
-        businessLine: 'idraulico',
+        businessLine: 'batterie',
         title: 'Duplicato',
         stage: 'nuovo',
         ownerId: userId,

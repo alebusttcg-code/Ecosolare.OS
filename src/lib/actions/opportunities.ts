@@ -78,7 +78,7 @@ const leadSchema = z
     province: z.string().trim().max(4).optional(),
     postalCode: z.string().trim().max(10).optional(),
 
-    businessLine: z.enum(['fotovoltaico', 'elettrico', 'idraulico']),
+    businessLine: z.enum(['fotovoltaico', 'fv_pdc', 'batterie', 'colonnina']),
     title: z.string().trim().min(1, 'Indicare una descrizione').max(160),
     sourceId: z.uuid().optional(),
     /** Solo utenti con ruolo commerciale: è chi prende in carico il lead. */
@@ -604,7 +604,7 @@ const aggiornaLeadSchema = z.object({
   province: z.string().trim().max(4).optional(),
   postalCode: z.string().trim().max(10).optional(),
 
-  businessLine: z.enum(['fotovoltaico', 'elettrico', 'idraulico']),
+  businessLine: z.enum(['fotovoltaico', 'fv_pdc', 'batterie', 'colonnina']),
   title: z.string().trim().min(1, 'Indicare una descrizione').max(160),
   sourceId: z.uuid().optional(),
   ownerId: z.uuid('Selezionare un responsabile commerciale'),

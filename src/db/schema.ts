@@ -341,8 +341,9 @@ export const appSettings = pgTable('app_settings', {
 /** Le tre linee di business (§1 del brief). Stabili: enum. */
 export const businessLine = pgEnum('business_line', [
   'fotovoltaico',
-  'elettrico',
-  'idraulico',
+  'fv_pdc',
+  'batterie',
+  'colonnina',
 ])
 
 export const preferredChannel = pgEnum('preferred_channel', [

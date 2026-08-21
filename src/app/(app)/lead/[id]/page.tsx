@@ -18,6 +18,7 @@ import {
   users,
 } from '@/db/schema'
 import { guard } from '@/lib/auth/session'
+import { etichettaLinea } from '@/lib/domain/linee-business'
 import {
   arricchisciDefinizionePrequalifica,
   risposteDaLead,
@@ -200,7 +201,7 @@ export default async function DettaglioLeadPage({
               ) : null}
             </div>
             <p className="mt-1 text-sm" style={{ color: 'var(--testo-tenue)' }}>
-              {opp.title} · {opp.code} · {opp.businessLine}
+              {opp.title} · {opp.code} · {etichettaLinea(opp.businessLine)}
               {' · '}
               <span style={{ color: 'var(--testo-fioco)' }}>Resp. {responsabile}</span>
             </p>

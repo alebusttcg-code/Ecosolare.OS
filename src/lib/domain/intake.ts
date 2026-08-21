@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { type LineaBusiness } from './linee-business'
 import { normalizeEmail, normalizePhone } from './phone'
 
 /**
@@ -35,7 +36,7 @@ function primoValore(raw: Record<string, unknown>, chiavi: readonly string[]): s
   return null
 }
 
-export type LineaBusiness = 'fotovoltaico' | 'elettrico' | 'idraulico'
+export type { LineaBusiness }
 
 export interface LeadNormalizzato {
   readonly firstName: string | null
@@ -59,8 +60,9 @@ export type EsitoParsing =
 /** Riconosce la linea di business dal testo, con il fotovoltaico come default. */
 function riconosciLinea(valore: string | null, messaggio: string | null): LineaBusiness {
   const testo = `${valore ?? ''} ${messaggio ?? ''}`.toLowerCase()
-  if (/idraulic|caldaia|termo|pompa di calore|bagno/.test(testo)) return 'idraulico'
-  if (/elettric|quadro|impianto elettrico|colonnina|presa/.test(testo)) return 'elettrico'
+  if (/colonnin|wallbox|ricarica|presa|auto elettric/.test(testo)) return 'colonnina'
+  if (/batteri|accumulo|storage|backup/.test(testo)) return 'batterie'
+  if (/pompa di calore|\bpdc\b|caldaia|termo|clima|riscaldament/.test(testo)) return 'fv_pdc'
   // Il core business e' il fotovoltaico (§1 del brief): in assenza di indizi
   // e' l'ipotesi piu' probabile, e comunque correggibile dal commerciale.
   return 'fotovoltaico'

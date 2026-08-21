@@ -5,6 +5,7 @@ import { getDb } from '@/db'
 import { contacts, opportunities, sites } from '@/db/schema'
 import { can } from '@/lib/auth/policy'
 import { guard } from '@/lib/auth/session'
+import { type LineaBusiness } from '@/lib/domain/linee-business'
 import { scomponiIndirizzo } from '@/lib/geo/tipi-via'
 import { getCommercialiAttivi, getLeadSources } from '@/lib/queries/lookup'
 import { FormModificaLead } from './form'
@@ -73,10 +74,7 @@ export default async function ModificaLeadPage({
               ? canale
               : '',
           marketingConsent: riga.contatto.marketingConsent,
-          businessLine: riga.opp.businessLine as
-            | 'fotovoltaico'
-            | 'elettrico'
-            | 'idraulico',
+          businessLine: riga.opp.businessLine as LineaBusiness,
           title: riga.opp.title,
           sourceId: riga.opp.sourceId ?? '',
           ownerId: riga.opp.ownerId,

@@ -211,6 +211,13 @@
       "when": 1787074537552,
       "tag": "0029_polite_johnny_blaze",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1787318111906,
+      "tag": "0030_careless_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

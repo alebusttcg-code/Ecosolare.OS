@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { Badge, Card, Vuoto, formattaData, formattaEuro } from '@/components/ui'
 import { BottoneChiama, BottoneWhatsApp } from '@/components/bottoni-contatto'
 import { guard } from '@/lib/auth/session'
+import { etichettaLinea } from '@/lib/domain/linee-business'
 import { getContactDetail } from '@/lib/queries/contacts'
 import { getStages } from '@/lib/queries/pipeline'
 import { NuovoImmobile } from './nuovo-immobile'
@@ -196,7 +197,7 @@ export default async function SchedaClientePage({
                         {o.title}
                       </Link>
                       <div className="mt-0.5 text-xs" style={{ color: 'var(--testo-tenue)' }}>
-                        {o.code} · {o.businessLine}
+                        {o.code} · {etichettaLinea(o.businessLine)}
                         {statoDi(o.stage)?.isWon
                           ? ' · il seguito è nel cantiere'
                           : null}

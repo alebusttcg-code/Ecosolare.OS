@@ -13,6 +13,7 @@ import {
   totaleAzienda,
   type RigaRipartizione,
 } from '@/lib/domain/funnel'
+import { etichettaLinea } from '@/lib/domain/linee-business'
 import { formattaImporto } from '@/lib/domain/money'
 import { urlPeriodoEconomia } from '@/lib/domain/periodo-economia'
 import { getCoorteCommerciale, periodiDisponibili, trovaPeriodo } from '@/lib/queries/metrics'
@@ -37,7 +38,7 @@ export async function SezionePerformance({
   const azienda = totaleAzienda(coorte)
   const perFonte = ripartisci(coorte, (p) => p.fonte)
   const perCommerciale = ripartisci(coorte, (p) => p.commerciale, 'Non assegnato')
-  const perLinea = ripartisci(coorte, (p) => p.lineaBusiness)
+  const perLinea = ripartisci(coorte, (p) => etichettaLinea(p.lineaBusiness))
   const perdite = motiviDiPerdita(coorte)
   const massimoImbuto = Math.max(1, ...imbuto.map((t) => t.conteggio))
 

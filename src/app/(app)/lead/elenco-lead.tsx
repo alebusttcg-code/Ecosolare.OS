@@ -7,6 +7,7 @@ import { BottoneChiama, BottoneWhatsApp } from '@/components/bottoni-contatto'
 import { LinkNome } from '@/components/link-nome'
 import { Badge, Card, Vuoto, formattaData } from '@/components/ui'
 import { componeIndirizzo } from '@/lib/geo/tipi-via'
+import { etichettaLinea } from '@/lib/domain/linee-business'
 import type { LeadInElenco, VistaLead } from '@/lib/queries/opportunities'
 
 function normalizza(s: string) {
@@ -210,7 +211,7 @@ function DettaglioLead({
           <Badge tone={lead.isLost ? 'critico' : 'neutro'}>{lead.stageLabel}</Badge>
         )}
         <span className="text-xs" style={{ color: 'var(--testo-tenue)' }}>
-          {lead.code} · {lead.businessLine}
+          {lead.code} · {etichettaLinea(lead.businessLine)}
         </span>
         {lead.isOpen && lead.nextActionDueAt === null ? (
           <Badge tone="critico">Senza prossima azione</Badge>

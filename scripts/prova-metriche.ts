@@ -227,7 +227,7 @@ async function main(): Promise<void> {
     .values({
       code: code3,
       contactId: c3!.id,
-      businessLine: 'elettrico',
+      businessLine: 'fv_pdc',
       title: 'Adeguamento quadro — prova metriche',
       stage: 'perso',
       stageSince: perso3,

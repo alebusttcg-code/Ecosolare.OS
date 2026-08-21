@@ -7,6 +7,7 @@ import { useAvvisi } from '@/components/avvisi'
 import { useAzioneServer } from '@/lib/use-azione-server'
 import { Bottone, Campo } from '@/components/ui'
 import { IndirizzoItalia, type IndirizzoIniziale } from '@/components/indirizzo-italia'
+import { LINEE_BUSINESS, type LineaBusiness } from '@/lib/domain/linee-business'
 import { updateLead } from '@/lib/actions/opportunities'
 
 export function FormModificaLead({
@@ -26,7 +27,7 @@ export function FormModificaLead({
     taxCode: string
     preferredChannel: '' | 'telefono' | 'email' | 'whatsapp'
     marketingConsent: boolean
-    businessLine: 'fotovoltaico' | 'elettrico' | 'idraulico'
+    businessLine: LineaBusiness
     title: string
     sourceId: string
     ownerId: string
@@ -63,10 +64,9 @@ export function FormModificaLead({
             city: String(formData.get('city') ?? '') || undefined,
             province: String(formData.get('province') ?? '') || undefined,
             postalCode: String(formData.get('postalCode') ?? '') || undefined,
-            businessLine: String(formData.get('businessLine') ?? 'fotovoltaico') as
-              | 'fotovoltaico'
-              | 'elettrico'
-              | 'idraulico',
+            businessLine: String(
+              formData.get('businessLine') ?? 'fotovoltaico',
+            ) as LineaBusiness,
             title: String(formData.get('title') ?? ''),
             sourceId: String(formData.get('sourceId') ?? '') || undefined,
             ownerId: String(formData.get('ownerId') ?? ''),
@@ -179,9 +179,11 @@ export function FormModificaLead({
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-eco-blue-400"
               style={{ background: 'rgba(5,10,20,0.55)', borderColor: 'var(--bordo)' }}
             >
-              <option value="fotovoltaico">Fotovoltaico</option>
-              <option value="elettrico">Elettrico</option>
-              <option value="idraulico">Idraulico</option>
+              {LINEE_BUSINESS.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
             </select>
           </label>
           <label className="block">

@@ -59,19 +59,26 @@ describe('parseIntakePayload', () => {
   })
 
   it('riconosce la linea di business dal messaggio', () => {
-    const idraulico = parseIntakePayload({
+    const pdc = parseIntakePayload({
       cognome: 'Rossi',
       telefono: '3331234567',
-      messaggio: 'Ho un problema con la caldaia',
+      messaggio: 'Vorrei fotovoltaico con pompa di calore',
     })
-    expect(idraulico.ok && idraulico.lead.businessLine).toBe('idraulico')
+    expect(pdc.ok && pdc.lead.businessLine).toBe('fv_pdc')
 
-    const elettrico = parseIntakePayload({
+    const colonnina = parseIntakePayload({
       cognome: 'Rossi',
       telefono: '3331234567',
       servizio: 'Colonnina di ricarica',
     })
-    expect(elettrico.ok && elettrico.lead.businessLine).toBe('elettrico')
+    expect(colonnina.ok && colonnina.lead.businessLine).toBe('colonnina')
+
+    const batterie = parseIntakePayload({
+      cognome: 'Rossi',
+      telefono: '3331234567',
+      messaggio: 'Mi interessa un sistema di accumulo',
+    })
+    expect(batterie.ok && batterie.lead.businessLine).toBe('batterie')
   })
 
   it('usa il fotovoltaico come default in assenza di indizi', () => {
