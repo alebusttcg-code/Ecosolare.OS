@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { homeDopoAccesso } from '@/lib/auth/home'
 import { getCurrentUser } from '@/lib/auth/session'
 import { ModuloAccesso } from './modulo'
+import { SfondoSolare } from './sfondo-solare'
 
 export const metadata = { title: 'Accedi — EcoSolare OS' }
 
@@ -14,36 +15,11 @@ export default async function AccediPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6">
-      {/* Aurora dietro la soglia: oro del sole in alto, blu del marchio in
-          basso. Sono luci, non decorazioni: definiscono il centro. */}
-      <div
-        className="alone-accesso"
-        aria-hidden
-        style={{
-          width: 560,
-          height: 560,
-          top: '-12%',
-          left: '50%',
-          marginLeft: -280,
-          background:
-            'radial-gradient(closest-side, rgba(217,164,65,0.16) 0%, rgba(217,164,65,0.05) 45%, transparent 75%)',
-        }}
-      />
-      <div
-        className="alone-accesso"
-        aria-hidden
-        style={{
-          width: 640,
-          height: 640,
-          bottom: '-22%',
-          right: '-10%',
-          background:
-            'radial-gradient(closest-side, rgba(63,127,196,0.14) 0%, rgba(63,127,196,0.04) 50%, transparent 78%)',
-          animationDelay: '-5.5s',
-        }}
-      />
+      {/* La soglia è un tetto di pannelli all'alba: cattura la prima luce prima
+          ancora di entrare. Logo e card restano sopra, intatti (ADR marchio). */}
+      <SfondoSolare />
 
-      <div className="relative w-full max-w-md">
+      <div className="relative z-10 w-full max-w-md">
         <div className="rivela mb-8 flex justify-center">
           <Image
             src="/brand/ecosolare-logo.png"
