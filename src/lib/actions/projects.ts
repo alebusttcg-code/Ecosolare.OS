@@ -280,7 +280,9 @@ export async function signContractAndOpenProject(
     }
 
     /* Pratiche -------------------------------------------------------------- */
-    if (riga.businessLine === 'fotovoltaico') {
+    // FV+PDC è a tutti gli effetti un impianto fotovoltaico: stesse pratiche
+    // burocratiche (GSE, connessione…). Batterie e colonnina non le richiedono.
+    if (riga.businessLine === 'fotovoltaico' || riga.businessLine === 'fv_pdc') {
       await tx.insert(projectPractices).values(
         PRATICHE_FV.map((p) => ({
           projectId: commessaId,
