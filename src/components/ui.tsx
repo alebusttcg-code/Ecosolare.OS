@@ -127,6 +127,15 @@ export function Stat({
     critico: 'var(--color-eco-red-400)',
   }
   const colore = colori[tone] ?? colori.neutro!
+  // Tenue alone sotto la cifra, del suo stesso colore: il numero "emette" luce,
+  // come l'energia che rappresenta. Discreto, così regge anche in griglie fitte.
+  const alone: Record<string, string> = {
+    neutro: 'rgba(127,178,232,0.16)',
+    positivo: 'rgba(163,197,99,0.18)',
+    attenzione: 'rgba(232,199,101,0.22)',
+    critico: 'rgba(224,133,133,0.16)',
+  }
+  const coloreAlone = alone[tone] ?? alone.neutro!
 
   const corpo = (
     <div
@@ -148,10 +157,20 @@ export function Stat({
         ) : null}
       </div>
       <div
-        className="mt-2 flex-1 text-3xl font-semibold leading-none tracking-tight tabular-nums"
+        className="relative mt-2 flex-1 text-3xl font-semibold leading-none tracking-tight tabular-nums"
         style={{ color: tone === 'neutro' ? 'var(--testo)' : colore }}
       >
-        <Contatore valore={value} formato={formato} />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -left-1 top-0 h-9 w-32 max-w-full"
+          style={{
+            background: `radial-gradient(closest-side, ${coloreAlone}, transparent 72%)`,
+            filter: 'blur(8px)',
+          }}
+        />
+        <span className="relative">
+          <Contatore valore={value} formato={formato} />
+        </span>
       </div>
       <p
         className="mt-2 min-h-[2rem] text-xs leading-snug"
@@ -209,9 +228,38 @@ export function Badge({
 
 export function Vuoto({ messaggio }: { messaggio: string }) {
   return (
-    <p className="py-10 text-center text-sm" style={{ color: 'var(--testo-fioco)' }}>
-      {messaggio}
-    </p>
+    <div className="flex flex-col items-center gap-3.5 py-12 text-center">
+      {/* Una piccola tessera di modulo FV: la trama a celle con le busbar dorate
+          e un riflesso sul vetro. Dà identità allo stato vuoto senza rumore. */}
+      <span
+        aria-hidden
+        className="relative block h-11 w-16 shrink-0 overflow-hidden rounded-md"
+        style={{
+          border: '1px solid var(--bordo)',
+          background:
+            'repeating-linear-gradient(90deg, rgba(143,190,240,0.16) 0 1px, transparent 1px 12px),' +
+            'repeating-linear-gradient(0deg, rgba(143,190,240,0.16) 0 1px, transparent 1px 12px),' +
+            'repeating-linear-gradient(90deg, rgba(232,199,101,0.30) 0 1.5px, transparent 1.5px 33px),' +
+            'linear-gradient(160deg, #16325a, #0c1f3c)',
+          boxShadow:
+            'inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 22px -14px rgba(0,0,0,0.85)',
+        }}
+      >
+        <span
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(115deg, transparent 38%, rgba(251,231,184,0.22) 50%, transparent 62%)',
+          }}
+        />
+      </span>
+      <p
+        className="max-w-sm text-sm leading-relaxed"
+        style={{ color: 'var(--testo-fioco)' }}
+      >
+        {messaggio}
+      </p>
+    </div>
   )
 }
 
